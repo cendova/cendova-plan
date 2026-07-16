@@ -1,0 +1,21 @@
+CendovaPlan — Teil der Cendova-Suite
+Copyright 2026 Philipp A. Michel
+Autor / Author: Priv.-Doz. Dr. med. Philipp A. Michel
+
+Licensed under the Apache License, Version 2.0 (the "License").
+You may obtain a copy of the License in the file LICENSE or at
+http://www.apache.org/licenses/LICENSE-2.0.
+
+-------------------------------------------------------------------------------
+
+KEIN MEDIZINPRODUKT / NOT A MEDICAL DEVICE
+
+This software is a research and educational tool. It is NOT CE-marked, NOT
+FDA-cleared, and NOT intended for clinical use, diagnosis, or treatment
+decisions. See DISCLAIMER.md.
+
+KEINE HERSTELLER-SCHABLONEN / NO MANUFACTURER TEMPLATES
+
+This repository does not include and does not distribute any manufacturer
+implant templates, catalogs, or sizing data. Users must obtain and verify
+such data from the respective manufacturers themselves. See DISCLAIMER.md.

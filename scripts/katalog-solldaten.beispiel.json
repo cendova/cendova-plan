@@ -1,0 +1,45 @@
+{
+  "_kommentar": [
+    "BEISPIEL-Struktur für scripts/katalog-solldaten.local.json (gitignored).",
+    "Alle Werte hier sind PLATZHALTER — die echten Katalog-/Zeichnungsmaße",
+    "stammen aus den selbst beschafften Herstellerunterlagen und gehören",
+    "nicht ins Repo (siehe NOTICE/DISCLAIMER). Kopieren nach",
+    "katalog-solldaten.local.json und mit eigenen Werten befüllen.",
+    "Nur die Sektionen anlegen, die die genutzten Skripte brauchen."
+  ],
+  "legionPsFemur": [
+    { "size": "1", "mlMm": 10, "apMm": 10, "apBoxMm": 5 },
+    { "size": "2N", "mlMm": 10, "apMm": 12, "apBoxMm": 6 },
+    { "size": "2", "mlMm": 12, "apMm": 12, "apBoxMm": 6 }
+  ],
+  "genesisTibia": [
+    { "size": "1", "apMm": 10, "mlMm": 20 },
+    { "size": "2", "apMm": 11, "mlMm": 22 }
+  ],
+  "dxfExpect": {
+    "legion-narrow-femoral": {
+      "2N": { "ap_w": 10, "lat_w": 9 }
+    },
+    "genesis-tibial-g2": {
+      "1": { "ap_w": 20, "lat_w": 10 }
+    }
+  },
+  "addonExpect": {
+    "femurW": { "AP": { "2N": 10 }, "lateral": { "2N": 9 } },
+    "tibiaW": { "AP": { "1": 20 }, "lateral": { "1": 10 } }
+  },
+  "catalogApWidth": {
+    "legion-ps-femur": [10, 10, 12],
+    "genesis-tibia-female": [20, 22]
+  },
+  "analyzeExpect": {
+    "femurMlMm": 12,
+    "femurLabel": "Beispiel Gr.2",
+    "tibiaMlMm": 22,
+    "tibiaLabel": "Beispiel Gr.2"
+  },
+  "stemCcdByFolder": {
+    "HERSTELLER - [Stem] - Beispielschaft STD": 135,
+    "HERSTELLER - [Stem] - Beispielschaft LAT": 125
+  }
+}

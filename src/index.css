@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  /* Vollbild-App: das Dokument selbst darf NIE scrollen. Sonst „scrollt" beim
+     Zoomen/Rad über dem Viewport (Einzelbild → Cornerstone hat nichts zu
+     blättern) die ganze Seite wie eine Browser-Seite weg. */
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}

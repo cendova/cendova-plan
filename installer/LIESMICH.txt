@@ -1,0 +1,53 @@
+CendovaPlan - Installation vom USB-Stick (Windows)
+==================================================
+
+So installierst du CendovaPlan auf einem Klinik-PC (am besten gemeinsam
+mit der Klinik-IT, die ggf. Berechtigungen / Netzzugriff freigibt):
+
+  1. Diesen Ordner "installer" auf den Klinik-PC kopieren
+     (oder direkt vom USB-Stick starten).
+
+  2. "Installieren.cmd" doppelklicken.
+     Das Skript:
+       - prueft/installiert Node.js + Git (mit IT-/UAC-Freigabe),
+       - holt CendovaPlan nach  %USERPROFILE%\CendovaPlan  (oder
+         aktualisiert eine bestehende Installation),
+       - installiert die Programmbibliotheken,
+       - legt die Desktop-Verknuepfung "CendovaPlan" an.
+
+  3. Einmalig das eigene Schablonen-Paket importieren: CendovaPlan
+     starten, Paket-Symbol in der Kopfzeile klicken und die
+     Paket-Datei (cendova-*.zip) waehlen.
+     WICHTIG: Schablonen-Pakete enthalten lizenziertes Hersteller-
+     Material und sind bewusst NICHT im Repository enthalten. Jede
+     Einrichtung erstellt/erhaelt ihr eigenes Paket und gibt es nicht
+     weiter.
+
+  4. Fertig. Zum Starten kuenftig die Desktop-Verknuepfung doppelklicken.
+     -> Beim Start wird AUTOMATISCH die neueste Version geholt (Update).
+
+Zugriff aufs Repository:
+  Das Repository ist oeffentlich (github.com/cendova/cendova-plan) —
+  es ist kein GitHub-Konto und kein Token noetig.
+
+Was die IT freigeben muss (nur fuer Code-Updates, NIE Patientendaten):
+  - ausgehender HTTPS-Zugriff auf  github.com,  registry.npmjs.org
+    und  nodejs.org.
+  Admin-Rechte sind NICHT zwingend: Fehlt Node.js und ist winget
+  gesperrt, laedt der Installer automatisch eine lokale Node.js-Kopie
+  in den Programmordner (wie am Mac). Nur Git muss vorhanden sein oder
+  einmalig installiert werden (winget oder IT).
+
+Datenschutz: CendovaPlan ist eine reine Browser-App und laeuft nur lokal
+(localhost). Patienten-DICOMs verlassen den Rechner NICHT.
+
+Anderen Branch verfolgen? (Standard: main)
+  Installieren.cmd  -Branch  <branchname>
+Anderes Repository?
+  Installieren.cmd  -RepoUrl <url>  -Branch <branchname>
+
+Ausfuehrliche Erklaerung fuer die IT: docs\klinik-installation.pdf
+(liegt nach der Installation im Ordner %USERPROFILE%\CendovaPlan).
+
+Hinweis fuer macOS: install-mac.command doppelklicken (gleicher Ablauf,
+ohne Admin-Rechte).

@@ -1,0 +1,53 @@
+node_modules
+dist
+dist-ssr
+*.local
+.vite
+*.log
+.DS_Store
+
+# ── Datenschutz: Patientendaten NIE versionieren/pushen ──────────────
+# DICOM-Bilder und Patienten-Ausleitungen bleiben rein lokal (keine externe
+# Übertragung). Blanket-Regeln, damit nie versehentlich PHI ins Repo gerät.
+*.dcm
+*.dicom
+*.ima
+*DICOMDIR*
+
+# Claude-interne Sitzungs-Memory (kein Projektcode)
+memory/
+
+# Lokale Schablonen-Quellordner (fremdes Material — NIE einchecken; liegt
+# extern gesichert).
+Templates Osirix/
+
+# Build-Cache + lokale Editor-Settings
+*.tsbuildinfo
+.claude/settings.local.json
+
+# Headless-Test-Artefakte (Screenshots + report.txt aus `npm run shot`)
+.test-artifacts/
+
+# Privates Schablonen-Paket (Hersteller-Material!) — NIE committen.
+# Erzeugt von scripts/export-template-package.mjs.
+cendova-*.zip
+
+# Lokale Node-Kopie des macOS-Installers (kein Projektcode)
+.node/
+
+# ── Stufe C2: Hersteller-Material darf NIE wieder ins Repo ──────────
+# (Schablonen/Kataloge/Anleitungen kommen aus dem privaten Paket)
+Templates Hip/
+Templates Knee/
+public/templates/
+Versafit_Anleitung.pdf
+
+# Hersteller-Schablonendateien (DXF/Original-ZIPs) - NIE einchecken.
+# Konverter liest sie aus einem lokalen Ordner ausserhalb des Repos.
+*.dxf
+Schablonen-Quellen/
+
+# Editor-/maschinenspezifische Konfiguration (private Pfade)
+.claude/launch.json
+# Private Katalog-Solldaten u. ä. lokale Konfiguration
+*.local.json
