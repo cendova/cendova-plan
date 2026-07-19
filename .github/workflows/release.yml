@@ -1,0 +1,29 @@
+# Release-Automation: Ein Tag `v*` erzeugt das zugehörige GitHub-Release.
+# Die Release-Notes kommen aus docs/releases/<tag>.md; fehlt die Datei,
+# werden die Notes automatisch aus den Commits generiert.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release erzeugen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="docs/releases/${GITHUB_REF_NAME}.md"
+          if [ -f "$notes" ]; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag \
+              --title "CendovaPlan $GITHUB_REF_NAME" --notes-file "$notes"
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag \
+              --title "CendovaPlan $GITHUB_REF_NAME" --generate-notes
+          fi
