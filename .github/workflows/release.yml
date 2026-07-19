@@ -22,18 +22,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Installer-Pakete schnüren
+        # Je Plattform ein ZIP: Windows braucht Installieren.cmd + install.ps1
+        # nebeneinander; das ZIP erhält beim Mac-Installer das Ausführungsrecht.
+        run: |
+          mkdir -p /tmp/assets
+          zip -j /tmp/assets/CendovaPlan-Installer-Windows.zip \
+            installer/Installieren.cmd installer/install.ps1 installer/LIESMICH.txt
+          zip -j /tmp/assets/CendovaPlan-Installer-macOS.zip \
+            installer/install-mac.command installer/LIESMICH.txt
       - name: Release erzeugen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ inputs.tag || github.ref_name }}"
           notes="docs/releases/${tag}.md"
-          # Idempotent: existiert das Release schon, nur Notes/Titel
-          # aktualisieren (z. B. nach Korrekturen an der Notes-Datei).
+          # Idempotent: existiert das Release schon, Notes/Titel aktualisieren
+          # und die Installer-ZIPs ersetzen.
           if gh release view "$tag" >/dev/null 2>&1; then
             if [ -f "$notes" ]; then
               gh release edit "$tag" --title "CendovaPlan $tag" --notes-file "$notes"
             fi
+            gh release upload "$tag" /tmp/assets/*.zip --clobber
             exit 0
           fi
           args=(--title "CendovaPlan $tag")
@@ -47,4 +57,4 @@ jobs:
           else
             args+=(--generate-notes)
           fi
-          gh release create "$tag" "${args[@]}"
+          gh release create "$tag" "${args[@]}" /tmp/assets/*.zip
