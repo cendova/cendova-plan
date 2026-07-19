@@ -1,4 +1,6 @@
-# Release-Automation: Ein Tag `v*` erzeugt das zugehörige GitHub-Release.
+# Release-Automation: Ein Tag `v*` (Push) ODER ein manueller Start mit
+# Tag-Name erzeugt das zugehörige GitHub-Release; beim manuellen Start
+# wird der Tag am aktuellen Stand serverseitig mit angelegt.
 # Die Release-Notes kommen aus docs/releases/<tag>.md; fehlt die Datei,
 # werden die Notes automatisch aus den Commits generiert.
 name: Release
@@ -6,6 +8,11 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag-Name (z. B. v0.1.0) — wird bei Bedarf erzeugt'
+        required: true
 
 permissions:
   contents: write
@@ -19,11 +26,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          notes="docs/releases/${GITHUB_REF_NAME}.md"
-          if [ -f "$notes" ]; then
-            gh release create "$GITHUB_REF_NAME" --verify-tag \
-              --title "CendovaPlan $GITHUB_REF_NAME" --notes-file "$notes"
+          tag="${{ inputs.tag || github.ref_name }}"
+          notes="docs/releases/${tag}.md"
+          args=(--title "CendovaPlan $tag")
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            args+=(--target "$GITHUB_SHA")
           else
-            gh release create "$GITHUB_REF_NAME" --verify-tag \
-              --title "CendovaPlan $GITHUB_REF_NAME" --generate-notes
+            args+=(--verify-tag)
           fi
+          if [ -f "$notes" ]; then
+            args+=(--notes-file "$notes")
+          else
+            args+=(--generate-notes)
+          fi
+          gh release create "$tag" "${args[@]}"
