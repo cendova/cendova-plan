@@ -92,9 +92,10 @@ function App() {
   return (
     <div className="relative flex h-full flex-col bg-neutral-900 text-neutral-200">
       <header className="flex items-center gap-3 border-b border-neutral-700 bg-neutral-950 px-4 py-2">
-        {/* Marken-Icon aus dem Cendova-Design-System (public/brand). */}
+        {/* Marken-Icon aus dem Cendova-Design-System (public/brand);
+            BASE_URL, damit es auch unter einem Unterpfad (GitHub Pages) lädt. */}
         <img
-          src="/brand/cendova-plan.svg"
+          src={`${import.meta.env.BASE_URL}brand/cendova-plan.svg`}
           alt=""
           className="h-7 w-7 select-none"
           draggable={false}

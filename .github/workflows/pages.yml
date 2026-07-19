@@ -1,0 +1,50 @@
+# Live-Demo: baut die App und veröffentlicht sie via GitHub Pages unter
+# https://cendova.github.io/cendova-plan/ — reines Frontend, DICOM-Daten
+# bleiben im Browser der Besucher. Ohne Schablonen-Paket sind Messungen,
+# Pläne und PDF voll nutzbar; Templating zeigt den Paket-Hinweis.
+name: Demo (GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/configure-pages@v5
+        with:
+          # Aktiviert Pages beim ersten Lauf automatisch (Quelle: Actions).
+          enablement: true
+      - run: npm ci
+      # npm hängt Zusatz-Argumente ans Skript-Ende, `--base` erreicht also
+      # `vite build`: die Demo liegt unter dem Unterpfad /cendova-plan/.
+      - run: npm run build -- --base=/cendova-plan/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,10 +1,18 @@
 # CendovaPlan
 
+[![Verifikation](https://github.com/cendova/cendova-plan/actions/workflows/verify.yml/badge.svg)](https://github.com/cendova/cendova-plan/actions/workflows/verify.yml)
+[![Demo](https://github.com/cendova/cendova-plan/actions/workflows/pages.yml/badge.svg)](https://cendova.github.io/cendova-plan/)
+
 Browser-basiertes Planungstool für **Hüft- und Knie-Endoprothetik** (DICOM) —
 Teil der **Cendova**-Suite (geplant: CendovaView · CendovaCare).
 
 > ⚠️ **Kein Medizinprodukt.** Lern-/Forschungsprojekt, nicht CE-zertifiziert,
 > **nicht für die klinische Anwendung** bestimmt. Details: [DISCLAIMER.md](DISCLAIMER.md).
+
+**Live-Demo:** <https://cendova.github.io/cendova-plan/> — läuft vollständig
+im Browser, DICOM-Dateien verlassen den Rechner nicht. Die Demo enthält
+keine Hersteller-Schablonen ([warum?](docs/schablonen-pakete.md));
+Messungen, Pläne und PDF-Export sind uneingeschränkt nutzbar.
 
 ## Funktionen
 
@@ -38,6 +46,12 @@ Klinik-Installation: [docs/klinik-installation.md](docs/klinik-installation.md)
 
 React 19 · TypeScript · Vite 6 · Tailwind CSS 4 · Cornerstone3D (WebGL) —
 reines Frontend, kein Backend.
+
+## Mitwirken
+
+Hinweise zu Setup, Tests und den harten Regeln (keine Hersteller-/
+Patientendaten): [CONTRIBUTING.md](CONTRIBUTING.md) ·
+Sicherheitsmeldungen: [SECURITY.md](SECURITY.md)
 
 ## Lizenz
 
