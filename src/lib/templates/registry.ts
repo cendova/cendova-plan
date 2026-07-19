@@ -36,6 +36,12 @@ import {
 } from './packageFormat'
 import { useTemplatePackageStore } from '../../state/templatePackageStore'
 import { logDiagnostic } from '../diagnostics'
+import {
+  persistentenSpeicherAnfordern,
+  sicherungLaden,
+  sicherungLoeschen,
+  sicherungSchreiben,
+} from '../lokaleSicherung'
 
 const DISABLE_BUNDLE_KEY = 'cendova.disableBundledTemplates'
 
@@ -240,6 +246,8 @@ function publishState(): void {
  * Fehler sind nie fatal — die App läuft dann mit den eingebauten Daten.
  */
 export async function initTemplateRegistry(): Promise<void> {
+  // Browser bitten, den Speicher nicht bei Speicherdruck zu räumen.
+  void persistentenSpeicherAnfordern()
   try {
     const stored = await idbLoadPackage()
     if (stored) {
@@ -256,6 +264,27 @@ export async function initTemplateRegistry(): Promise<void> {
   } catch (err) {
     logDiagnostic(
       `Schablonen-Paket-Load fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+  // Kein Paket im Browser-Speicher (z. B. von einer Klinik-Richtlinie beim
+  // Schließen gelöscht) → aus der lokalen Datei-Sicherung wiederherstellen.
+  try {
+    const backup = await sicherungLaden('paket')
+    if (backup) {
+      const result = await importTemplatePackage(
+        new File([new Uint8Array(backup)], 'lokale-sicherung.zip', { type: 'application/zip' }),
+      )
+      if (result.ok) {
+        logDiagnostic(
+          `Schablonen-Paket aus lokaler Sicherung wiederhergestellt: ${result.name} (${result.imageCount} Bilder)`,
+        )
+        return
+      }
+      logDiagnostic(`Lokale Paket-Sicherung ungültig: ${result.error}`)
+    }
+  } catch (err) {
+    logDiagnostic(
+      `Wiederherstellung aus lokaler Sicherung fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
     )
   }
   if (bundledTemplatesDisabled()) clearBundledData()
@@ -319,6 +348,8 @@ export async function importTemplatePackage(
     imageBlobs = storeImages
     applyOverrides(manifest)
     publishState()
+    // Zusätzlich als Datei sichern — übersteht Browser-Speicher-Löschungen.
+    void paketSichern()
     logDiagnostic(
       `Schablonen-Paket importiert: ${manifest.name} (${storeImages.size} Bilder)`,
     )
@@ -340,6 +371,31 @@ export async function importTemplatePackage(
  * EINEM Schritt importiert wird (ohne merge-Flag → Import ERSETZT dort
  * sauber den kompletten Bestand). Dient zugleich als Backup/Umzug.
  */
+/** Aktuellen (gemergten) Stand als ZIP-Bytes bauen — null ohne Paket. */
+async function buildPackageZipBytes(): Promise<Uint8Array | null> {
+  if (!manifest) return null
+  // PNGs sind bereits komprimiert → level 0 (nur speichern, ~10× schneller).
+  const files: Record<string, [Uint8Array, { level: 0 | 6 }]> = {
+    'manifest.json': [strToU8(JSON.stringify(manifest, null, 1)), { level: 6 }],
+  }
+  for (const [path, blob] of imageBlobs) {
+    files[path] = [new Uint8Array(await blob.arrayBuffer()), { level: 0 }]
+  }
+  return zipSync(files)
+}
+
+/** Paket zusätzlich als Datei im Projektordner sichern (fire-and-forget). */
+async function paketSichern(): Promise<void> {
+  try {
+    const bytes = await buildPackageZipBytes()
+    if (bytes) sicherungSchreiben('paket', bytes)
+  } catch (err) {
+    logDiagnostic(
+      `Lokale Paket-Sicherung fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+}
+
 export async function exportTemplatePackage(): Promise<
   { ok: true; fileName: string; imageCount: number } | { ok: false; error: string }
 > {
@@ -347,14 +403,7 @@ export async function exportTemplatePackage(): Promise<
     return { ok: false, error: 'Kein Schablonen-Paket geladen — nichts zu exportieren.' }
   }
   try {
-    // PNGs sind bereits komprimiert → level 0 (nur speichern, ~10× schneller).
-    const files: Record<string, [Uint8Array, { level: 0 | 6 }]> = {
-      'manifest.json': [strToU8(JSON.stringify(manifest, null, 1)), { level: 6 }],
-    }
-    for (const [path, blob] of imageBlobs) {
-      files[path] = [new Uint8Array(await blob.arrayBuffer()), { level: 0 }]
-    }
-    const zipped = zipSync(files)
+    const zipped = (await buildPackageZipBytes())!
     const fileName = `cendova-schablonen-komplett-${new Date().toISOString().slice(0, 10)}.zip`
     const url = URL.createObjectURL(
       new Blob([new Uint8Array(zipped)], { type: 'application/zip' }),
@@ -383,5 +432,8 @@ export async function removeTemplatePackage(): Promise<void> {
   restoreBundled()
   if (bundledTemplatesDisabled()) clearBundledData()
   publishState()
+  // Bewusst entfernt = auch die Datei-Sicherung löschen (sonst käme das
+  // Paket beim nächsten Start von selbst wieder).
+  sicherungLoeschen('paket')
   logDiagnostic('Schablonen-Paket entfernt — eingebaute Daten aktiv')
 }

@@ -3,9 +3,10 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import os from 'node:os'
 import path from 'node:path'
+import { lokaleSicherung } from './vite-lokale-sicherung'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), lokaleSicherung()],
   // Vite-Cache (vorab gebündelte Abhängigkeiten) auf LOKALE Platte legen statt
   // ins Google-Drive-gespiegelte node_modules/.vite. Cornerstone3D ist ein
   // riesiger Modulbaum; diese Chunks bei jedem Browser-Laden vom Drive-Mirror
@@ -23,6 +24,11 @@ export default defineConfig({
       ],
     },
     port: 5173,
+    // NIE still auf einen anderen Port ausweichen: localhost:5174 wäre für
+    // den Browser eine ANDERE Herkunft mit leerem Speicher — importiertes
+    // Paket/Profil schienen dann „verschwunden" (klinischer Befund). Die
+    // Launcher erkennen eine laufende Instanz und öffnen nur den Browser.
+    strictPort: true,
     // Für Remote-/Cloud-Preview: Zugriff läuft über einen Proxy-Hostname statt
     // localhost. Vites DNS-Rebinding-Schutz würde fremde Host-Header sonst mit
     // „Blocked request. This host is not allowed." abweisen. (Test-Einstellung.)

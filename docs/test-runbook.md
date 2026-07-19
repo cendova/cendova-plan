@@ -55,6 +55,15 @@ node scripts/test-pdf-footer.mjs
 Erzeugt `.test-artifacts/footer-A/B/C.pdf`. Exit 0 = alle drei Fußzeilen korrekt.
 Sichert ab, dass im öffentlichen (neutralen) Stand kein Klarname im PDF steht.
 
+**Optional: Lokale-Sicherungs-Test** (Klinik-Wipe-Szenario). Simuliert per
+frischem Browser-Kontext das Richtlinien-Löschen des Browser-Speichers und
+prüft die automatische Wiederherstellung von Paket + Profil aus
+`.cendova-daten/` (sowie: bewusstes Entfernen löscht auch die Sicherung):
+
+```bash
+node scripts/test-lokale-sicherung.mjs
+```
+
 ### Warum das Screenshot-Skript so gebaut ist (Umgebungs-Eigenheiten)
 - **Browser-Download ist geblockt.** Die Netzwerk-Policy lässt npm-Registry zu,
   aber **nicht** die Playwright-Browser-CDN. Darum:

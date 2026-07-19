@@ -51,3 +51,6 @@ Schablonen-Quellen/
 .claude/launch.json
 # Private Katalog-Solldaten u. ä. lokale Konfiguration
 *.local.json
+
+# Lokale Sicherung von Schablonen-Paket/Profil (Hersteller-Material, privat)
+.cendova-daten/

@@ -27,6 +27,29 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 
 Write-Host '== CendovaPlan lokaler Start ==' -ForegroundColor Cyan
 
+# Läuft bereits eine CendovaPlan-Instanz? Dann NUR den Browser öffnen.
+# Wichtig: Ein zweiter Server landete früher still auf Port 5174 — für den
+# Browser eine ANDERE Herkunft mit leerem Speicher; importiertes Paket/
+# Profil schienen dann „verschwunden" (klinischer Befund). Der Port ist
+# jetzt fest (strictPort); belegt eine FREMDE Anwendung 5173, brechen wir
+# mit klarer Meldung ab statt auszuweichen.
+try {
+  $probe = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:5173/' -TimeoutSec 3
+  if ($probe.Content -match 'CendovaPlan') {
+    Write-Host 'CendovaPlan laeuft bereits - oeffne nur den Browser (kein zweiter Server).' -ForegroundColor Green
+    Start-Process 'http://localhost:5173/'
+    exit 0
+  } else {
+    Write-Host 'FEHLER: Port 5173 ist durch eine ANDERE Anwendung belegt.' -ForegroundColor Red
+    Write-Host 'CendovaPlan braucht genau diesen Port (Browser-Speicher haengt daran).' -ForegroundColor Red
+    Write-Host 'Bitte die andere Anwendung beenden und erneut starten.' -ForegroundColor Red
+    Read-Host 'Enter zum Schliessen'
+    exit 1
+  }
+} catch {
+  # Port frei - normaler Start.
+}
+
 # Einmalige Migration: liegt irgendwo noch eine veraltete Verknuepfung
 # ("CendovaPlan starten" auf Benutzer-, OneDrive- oder oeffentlichem
 # Desktop — in Kliniken oft umgeleitet), ersetzt create-desktop-shortcut

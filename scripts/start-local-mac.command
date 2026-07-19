@@ -18,6 +18,22 @@ fi
 
 echo "== CendovaPlan lokaler Teststart =="
 
+# Läuft bereits eine CendovaPlan-Instanz? Dann NUR den Browser öffnen.
+# (Ein zweiter Server landete früher still auf Port 5174 — andere Browser-
+# Herkunft mit leerem Speicher; Paket/Profil schienen „verschwunden".
+# Port ist jetzt fest [strictPort]; fremde Belegung → klare Meldung.)
+PROBE="$(curl -fsS --max-time 3 http://localhost:5173/ 2>/dev/null || true)"
+if printf '%s' "$PROBE" | grep -q 'CendovaPlan'; then
+  echo "CendovaPlan läuft bereits — öffne nur den Browser (kein zweiter Server)."
+  open "http://localhost:5173/"
+  exit 0
+elif [ -n "$PROBE" ]; then
+  echo "FEHLER: Port 5173 ist durch eine ANDERE Anwendung belegt."
+  echo "CendovaPlan braucht genau diesen Port (Browser-Speicher hängt daran)."
+  read -r -p "Enter zum Schließen "
+  exit 1
+fi
+
 # Aktuellen Stand holen — nur wenn der Branch einen Upstream hat.
 if git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
   echo "Hole aktuellen Stand ..."

@@ -1,4 +1,9 @@
 import { create } from 'zustand'
+import {
+  sicherungLaden,
+  sicherungLoeschen,
+  sicherungSchreiben,
+} from '../lib/lokaleSicherung'
 
 /**
  * Einrichtungs-Profil (Personalisierung): Kopfzeilen-Untertitel,
@@ -66,12 +71,25 @@ function load(): OrgProfile {
   }
 }
 
+/** Neutral = keine Personalisierung hinterlegt (Auslieferungszustand). */
+function istNeutral(p: OrgProfile): boolean {
+  return (
+    !p.headerSubtitle.trim() &&
+    cleanHospitals(p.hospitals).length === 0 &&
+    !p.defaultPlanner.trim()
+  )
+}
+
 function persist(p: OrgProfile): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(p))
   } catch {
     /* Privat-Modus o. ä. — Profil gilt dann nur für die Sitzung. */
   }
+  // Zusätzlich als Datei sichern (übersteht Browser-Speicher-Löschungen,
+  // s. lib/lokaleSicherung). Neutral wird nicht gesichert — sonst legte
+  // jede unpersonalisierte Sitzung eine leere Sicherung an.
+  if (!istNeutral(p)) sicherungSchreiben('profil', JSON.stringify(p))
 }
 
 /** Nur die reinen Datenfelder (ohne UI-Flags/Setter). */
@@ -118,6 +136,9 @@ export const useOrgProfileStore = create<OrgProfileState>((set) => ({
   resetProfile: () =>
     set(() => {
       persist(NEUTRAL_PROFILE)
+      // Bewusst zurückgesetzt = Datei-Sicherung löschen (sonst käme das
+      // Profil beim nächsten Start von selbst wieder).
+      sicherungLoeschen('profil')
       return { ...NEUTRAL_PROFILE }
     }),
 }))
@@ -125,4 +146,23 @@ export const useOrgProfileStore = create<OrgProfileState>((set) => ({
 /** Nicht-reaktiver Zugriff (pdfExport, Store-Initialisierung). */
 export function getOrgProfile(): OrgProfile {
   return profileData(useOrgProfileStore.getState())
+}
+
+/**
+ * Beim App-Start: Ist das Profil neutral (z. B. weil eine Klinik-Richtlinie
+ * den Browser-Speicher beim Schließen geleert hat), aus der lokalen
+ * Datei-Sicherung wiederherstellen. Personalisierte Zustände bleiben
+ * unangetastet (die Sicherung überschreibt nie vorhandene Eingaben).
+ */
+export async function initOrgProfileSicherung(): Promise<void> {
+  if (!istNeutral(getOrgProfile())) return
+  const bytes = await sicherungLaden('profil')
+  if (!bytes) return
+  try {
+    const raw: unknown = JSON.parse(new TextDecoder().decode(bytes))
+    const p = coerce(raw)
+    if (!istNeutral(p)) useOrgProfileStore.getState().importProfile(p)
+  } catch {
+    /* defekte Sicherungsdatei — ignorieren, App läuft neutral weiter */
+  }
 }

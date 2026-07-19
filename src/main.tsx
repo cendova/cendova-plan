@@ -10,8 +10,11 @@ installErrorCapture()
 
 // Schablonen-Paket (falls eins importiert wurde) aus der IndexedDB laden —
 // asynchron, blockiert den App-Start nicht. Bis dahin (und ohne Paket)
-// gelten die eingebauten Schablonen-Daten.
+// gelten die eingebauten Schablonen-Daten. Fällt der Browser-Speicher aus
+// (Klinik-Richtlinie „beim Schließen löschen"), stellen Registry und
+// Profil sich aus der lokalen Datei-Sicherung selbst wieder her.
 void templateRegistry.initTemplateRegistry()
+void import('./state/orgProfileStore').then((m) => m.initOrgProfileSicherung())
 
 // Dev-Helper: Stores aufs window legen, damit man sie in der Browser-
 // Konsole inspizieren/manipulieren kann (z. B. für E2E-Tests oder

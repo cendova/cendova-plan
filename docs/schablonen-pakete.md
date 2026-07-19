@@ -25,6 +25,16 @@ Paket zusammenfassen, weitere Rechner in einem Schritt bestücken und
 Backups anlegen — der Import des Komplett-ZIPs ersetzt den Bestand
 vollständig (kein `merge`-Flag).
 
+**Lokale Sicherung (automatisch):** Beim lokalen Betrieb über den
+Dev-/Preview-Server sichert die App Paket und Einrichtungs-Profil
+zusätzlich als Dateien im Projektordner (`.cendova-daten/`, gitignored)
+und stellt beides nach einem Browser-Speicher-Verlust selbst wieder her —
+z. B. wenn eine Klinik-Richtlinie „Websitedaten beim Schließen löschen"
+IndexedDB/localStorage leert. „Paket entfernen"/„Zurücksetzen (neutral)"
+löschen auch die Sicherung (bewusste Entscheidungen bleiben bewusst).
+Details: `vite-lokale-sicherung.ts` + `src/lib/lokaleSicherung.ts`;
+Test: `node scripts/test-lokale-sicherung.mjs`.
+
 ## ZIP-Aufbau
 
 ```
