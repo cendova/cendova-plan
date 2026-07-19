@@ -12,10 +12,22 @@ import { logDiagnostic } from './diagnostics'
 
 const BASIS = '/__cendova/sicherung/'
 
+/**
+ * Sicherung nur im lokalen Betrieb (Dev-/Preview-Server auf localhost).
+ * Auf öffentlichem Hosting (z. B. der GitHub-Pages-Demo) wird gar kein
+ * Request versucht — die Endpunkte existieren dort ohnehin nicht, und so
+ * verlässt auch kein Paket-/Profil-Byte den Browser.
+ */
+function lokalerBetrieb(): boolean {
+  const h = window.location.hostname
+  return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1'
+}
+
 export type SicherungsName = 'paket' | 'profil'
 
 /** Sicherung lesen — null bei „keine vorhanden" ODER „Endpunkt fehlt". */
 export async function sicherungLaden(name: SicherungsName): Promise<Uint8Array | null> {
+  if (!lokalerBetrieb()) return null
   try {
     const res = await fetch(BASIS + name, { cache: 'no-store' })
     if (!res.ok) return null
@@ -27,6 +39,7 @@ export async function sicherungLaden(name: SicherungsName): Promise<Uint8Array |
 
 /** Sicherung schreiben — fire-and-forget (Fehler nur ins Diagnose-Log). */
 export function sicherungSchreiben(name: SicherungsName, daten: Uint8Array | string): void {
+  if (!lokalerBetrieb()) return
   const body = typeof daten === 'string' ? daten : new Blob([new Uint8Array(daten)])
   void fetch(BASIS + name, { method: 'PUT', body })
     .then((res) => {
@@ -41,6 +54,7 @@ export function sicherungSchreiben(name: SicherungsName, daten: Uint8Array | str
 
 /** Sicherung löschen (z. B. „Paket entfernen", „Profil zurücksetzen"). */
 export function sicherungLoeschen(name: SicherungsName): void {
+  if (!lokalerBetrieb()) return
   void fetch(BASIS + name, { method: 'DELETE' }).catch(() => {
     /* s. o. */
   })
