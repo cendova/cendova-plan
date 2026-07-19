@@ -28,6 +28,14 @@ jobs:
         run: |
           tag="${{ inputs.tag || github.ref_name }}"
           notes="docs/releases/${tag}.md"
+          # Idempotent: existiert das Release schon, nur Notes/Titel
+          # aktualisieren (z. B. nach Korrekturen an der Notes-Datei).
+          if gh release view "$tag" >/dev/null 2>&1; then
+            if [ -f "$notes" ]; then
+              gh release edit "$tag" --title "CendovaPlan $tag" --notes-file "$notes"
+            fi
+            exit 0
+          fi
           args=(--title "CendovaPlan $tag")
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             args+=(--target "$GITHUB_SHA")
