@@ -14,9 +14,9 @@ im Browser, DICOM-Dateien verlassen den Rechner nicht. Die Demo enthält
 keine Hersteller-Schablonen ([warum?](docs/schablonen-pakete.md));
 Messungen, Pläne und PDF-Export sind uneingeschränkt nutzbar.
 
-| Hüfte — Beckenübersicht AP | Knie — Ganzbein im Stand |
+| Hüfte — Beinlängen-Bilanz (Beckenübersicht AP) | Knie — 17-Punkt-Vollvermessung + CPAK (Ganzbein) |
 | --- | --- |
-| ![CendovaPlan mit einer AP-Beckenübersicht](docs/screenshots/huefte-becken-ap.png) | ![CendovaPlan mit einer Ganzbeinaufnahme](docs/screenshots/knie-ganzbein.png) |
+| ![CendovaPlan: Beinlängendifferenz auf einer AP-Beckenübersicht](docs/screenshots/huefte-becken-ap.jpg) | ![CendovaPlan: Knie-Vollvermessung mit mHKA und CPAK-Klassifikation auf einem Ganzbein](docs/screenshots/knie-ganzbein.png) |
 
 <sub>Screenshots mit frei lizenzierten Lehr-Röntgenbildern (keine Patienten-
 oder Herstellerdaten) — Quellen & Lizenzen: [docs/screenshots/QUELLEN.md](docs/screenshots/QUELLEN.md).</sub>
