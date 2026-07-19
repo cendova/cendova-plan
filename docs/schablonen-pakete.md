@@ -26,7 +26,9 @@ Backups anlegen — der Import des Komplett-ZIPs ersetzt den Bestand
 vollständig (kein `merge`-Flag).
 
 **Lokale Sicherung (automatisch):** Beim lokalen Betrieb über den
-Dev-/Preview-Server sichert die App Paket und Einrichtungs-Profil
+Dev-/Preview-Server (nur `localhost` — auf öffentlichem Hosting wie der
+Pages-Demo wird kein Sicherungs-Request versucht) sichert die App Paket
+und Einrichtungs-Profil
 zusätzlich als Dateien im Projektordner (`.cendova-daten/`, gitignored)
 und stellt beides nach einem Browser-Speicher-Verlust selbst wieder her —
 z. B. wenn eine Klinik-Richtlinie „Websitedaten beim Schließen löschen"
