@@ -1,15 +1,16 @@
 # CendovaPlan
 
 [![Verifikation](https://github.com/cendova/cendova-plan/actions/workflows/verify.yml/badge.svg)](https://github.com/cendova/cendova-plan/actions/workflows/verify.yml)
-[![Demo](https://github.com/cendova/cendova-plan/actions/workflows/pages.yml/badge.svg)](https://cendova.github.io/cendova-plan/)
+[![Demo](https://github.com/cendova/cendova-plan/actions/workflows/pages.yml/badge.svg)](https://cendova.de/cendova-plan/)
 
 Browser-basiertes Planungstool für **Hüft- und Knie-Endoprothetik** (DICOM) —
 Teil der **Cendova**-Suite (geplant: CendovaView · CendovaCare).
+Website: <https://cendova.de/>
 
 > ⚠️ **Kein Medizinprodukt.** Lern-/Forschungsprojekt, nicht CE-zertifiziert,
 > **nicht für die klinische Anwendung** bestimmt. Details: [DISCLAIMER.md](DISCLAIMER.md).
 
-**Live-Demo:** <https://cendova.github.io/cendova-plan/> — läuft vollständig
+**Live-Demo:** <https://cendova.de/cendova-plan/> — läuft vollständig
 im Browser, DICOM-Dateien verlassen den Rechner nicht. Die Demo enthält
 keine Hersteller-Schablonen ([warum?](docs/schablonen-pakete.md));
 Messungen, Pläne und PDF-Export sind uneingeschränkt nutzbar.
@@ -35,6 +36,19 @@ oder Herstellerdaten) — Quellen & Lizenzen: [docs/screenshots/QUELLEN.md](docs
 
 Patientenbezogene Bilddaten werden **ausschließlich lokal** im Browser
 verarbeitet — kein Server, keine Übertragung. Siehe [DISCLAIMER.md](DISCLAIMER.md).
+
+## Installation (eigener Rechner / Klinik-PC)
+
+Ein-Klick-Installer — richtet Git und Node.js selbst ein und legt eine
+Desktop-Verknüpfung an, die beim Start automatisch aktualisiert:
+
+- **Windows:** [CendovaPlan-Installer-Windows.zip](https://github.com/cendova/cendova-plan/releases/latest/download/CendovaPlan-Installer-Windows.zip)
+  — entpacken, „Installieren.cmd" doppelklicken
+- **macOS:** [CendovaPlan-Installer-macOS.zip](https://github.com/cendova/cendova-plan/releases/latest/download/CendovaPlan-Installer-macOS.zip)
+  — entpacken, Rechtsklick auf „install-mac.command" → „Öffnen"
+
+Details und Hinweise für die Klinik-IT:
+[docs/klinik-installation.md](docs/klinik-installation.md)
 
 ## Entwicklung
 
