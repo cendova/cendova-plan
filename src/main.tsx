@@ -3,10 +3,16 @@ import './index.css'
 import App from './App'
 import { installErrorCapture } from './lib/diagnostics'
 import * as templateRegistry from './lib/templates/registry'
+import { initEmbeddedBridge } from './lib/embedded'
 
 // Fehler-/Diagnose-Erfassung so früh wie möglich starten (Ringpuffer für den
 // „Diagnose"-Knopf in der Fußzeile).
 installErrorCapture()
+
+// Embedded-Modus (CendovaView-iframe, ?embedded=1): postMessage-Bridge für
+// Bild-Übergabe und automatisierten Plan-Rückfluss. Außerhalb des iframes
+// ein No-op.
+initEmbeddedBridge()
 
 // Schablonen-Paket (falls eins importiert wurde) aus der IndexedDB laden —
 // asynchron, blockiert den App-Start nicht. Bis dahin (und ohne Paket)
