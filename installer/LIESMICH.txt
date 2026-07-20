@@ -49,5 +49,23 @@ Anderes Repository?
 Ausfuehrliche Erklaerung fuer die IT: docs\klinik-installation.pdf
 (liegt nach der Installation im Ordner %USERPROFILE%\CendovaPlan).
 
-Hinweis fuer macOS: install-mac.command doppelklicken (gleicher Ablauf,
-ohne Admin-Rechte).
+Installation auf macOS (gleicher Ablauf, ohne Admin-Rechte)
+===========================================================
+
+  Empfohlen - Terminal oeffnen (cmd+Leertaste, "Terminal") und den
+  Einzeiler ausfuehren:
+
+      curl -fsSL https://cendova.de/install-mac.sh | bash
+
+  Alternative mit diesem ZIP: Terminal oeffnen und im entpackten
+  Ordner ausfuehren:
+
+      bash install-mac.command
+
+  WICHTIG - nicht doppelklicken: macOS versieht Downloads mit einem
+  Quarantaene-Attribut; unsignierte Skripte blockiert Gatekeeper dann
+  mit der Meldung "install-mac.command nicht geoeffnet" (der Installer
+  traegt keine Apple-Entwickler-Signatur). Der Start ueber das Terminal
+  ist davon nicht betroffen und identisch sicher - das Skript ist
+  oeffentlich einsehbar (github.com/cendova/cendova-plan, Ordner
+  installer/).
