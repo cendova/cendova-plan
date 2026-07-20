@@ -54,3 +54,7 @@ Schablonen-Quellen/
 
 # Lokale Sicherung von Schablonen-Paket/Profil (Hersteller-Material, privat)
 .cendova-daten/
+
+# Ausnahme: mitgelieferte Demo-Beispielbilder (frei lizenzierte
+# Lehraufnahmen, KEINE Patientendaten — Quellen: public/sample/LIESMICH.txt)
+!public/sample/*.dcm
