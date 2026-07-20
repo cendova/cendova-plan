@@ -1,5 +1,13 @@
 #!/bin/bash
-# CendovaPlan - Installer fuer macOS (Doppelklick oder `bash install-mac.command`).
+# CendovaPlan - Installer fuer macOS.
+#
+# Start uebers TERMINAL (nicht per Doppelklick):
+#   Einzeiler (empfohlen):  curl -fsSL https://cendova.de/install-mac.sh | bash
+#   oder im ZIP-Ordner:     bash install-mac.command
+# Doppelklick funktioniert bei heruntergeladenen Skripten nicht: macOS
+# haengt Downloads ein Quarantaene-Attribut an, und Gatekeeper blockiert
+# unsignierte Skripte dann mit "... nicht geoeffnet" (keine Apple-Signatur).
+# `bash <datei>` bzw. per curl geladene Skripte sind davon nicht betroffen.
 #
 # Pendant zum Windows-Installer (install.ps1). Richtet alles in einem Schritt
 # ein - OHNE Admin-Rechte:

@@ -44,8 +44,12 @@ Desktop-Verknüpfung an, die beim Start automatisch aktualisiert:
 
 - **Windows:** [CendovaPlan-Installer-Windows.zip](https://github.com/cendova/cendova-plan/releases/latest/download/CendovaPlan-Installer-Windows.zip)
   — entpacken, „Installieren.cmd" doppelklicken
-- **macOS:** [CendovaPlan-Installer-macOS.zip](https://github.com/cendova/cendova-plan/releases/latest/download/CendovaPlan-Installer-macOS.zip)
-  — entpacken, Rechtsklick auf „install-mac.command" → „Öffnen"
+- **macOS:** Terminal öffnen und den Einzeiler ausführen:
+  `curl -fsSL https://cendova.de/install-mac.sh | bash`
+  — alternativ [CendovaPlan-Installer-macOS.zip](https://github.com/cendova/cendova-plan/releases/latest/download/CendovaPlan-Installer-macOS.zip)
+  entpacken und im Terminal `bash install-mac.command` starten.
+  (Doppelklick blockiert Gatekeeper bei unsignierten Downloads:
+  „… nicht geöffnet".)
 
 Details und Hinweise für die Klinik-IT:
 [docs/klinik-installation.md](docs/klinik-installation.md)
