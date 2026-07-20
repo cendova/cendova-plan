@@ -16,6 +16,11 @@ installErrorCapture()
 void templateRegistry.initTemplateRegistry()
 void import('./state/orgProfileStore').then((m) => m.initOrgProfileSicherung())
 
+// Demo-Komfort: ?beispiel=huefte|knie lädt ein mitgeliefertes Lehr-DICOM
+// (Details/Quellen: src/lib/beispielbild.ts) — asynchron, ohne den
+// App-Start zu blockieren.
+void import('./lib/beispielbild').then((m) => m.beispielAusUrlLaden())
+
 // Dev-Helper: Stores aufs window legen, damit man sie in der Browser-
 // Konsole inspizieren/manipulieren kann (z. B. für E2E-Tests oder
 // schnelles Debugging). Nur in DEV aktiv.

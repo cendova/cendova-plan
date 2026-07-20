@@ -1,0 +1,19 @@
+Beispielbilder fuer die Demo (?beispiel=huefte | ?beispiel=knie)
+================================================================
+
+KEINE PATIENTENDATEN. Beide Dateien sind aus frei lizenzierten,
+anonymisierten Lehr-Roentgenaufnahmen von Wikimedia Commons erzeugt
+(per scripts/bild-zu-dicom.mjs als DICOM verpackt, Demo-Kopfdaten):
+
+- beispiel-knie.dcm   ("Demo, Ganzbein")
+  Quelle: "Genu varum - Roe Ganzbein 001", Autor: Hellerhoff,
+  Lizenz CC BY-SA 3.0,
+  https://commons.wikimedia.org/wiki/File:Genu_varum_-_Roe_Ganzbein_001.jpg
+
+- beispiel-huefte.dcm ("Demo, Becken")
+  Quelle: "Protrusio acetabuli rechts mehr als links 81W - CR ap - 001",
+  Autor: Hellerhoff, Lizenz CC BY-SA 4.0,
+  https://commons.wikimedia.org/wiki/File:Protrusio_acetabuli_rechts_mehr_als_links_81W_-_CR_ap_-_001.jpg
+
+Die Dateien stehen damit ebenfalls unter CC BY-SA (abgeleitete Werke) —
+unabhaengig von der Apache-2.0-Lizenz des Programmcodes.
