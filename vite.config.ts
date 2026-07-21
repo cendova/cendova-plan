@@ -21,6 +21,35 @@ export default defineConfig({
       events: 'events',
     },
   },
+  build: {
+    // Bundle-Splitting (Rolldown): den ~4 MB großen Haupt-Chunk aufteilen. Nur
+    // die OHNEHIN eager geladenen Brocken herauslösen — Cornerstone3D (~3 MB)
+    // und React — in eigene, langlebig cachebare Vendor-Chunks. Nutzen: bei
+    // App-Code-Deploys (häufig) muss der Browser den unveränderten Cornerstone-
+    // Chunk nicht neu laden; außerdem paralleler Download.
+    // BEWUSST KEINE Catch-all-`/node_modules/`-Gruppe: die würde die nur per
+    // dynamischem Import geladenen Libs (jspdf/html2canvas im pdfExport-Chunk,
+    // pdfjs) in einen eager Vendor-Chunk ziehen und das Lazy-Loading brechen.
+    // Regex mit `[\\/]` (Pfadtrenner Windows + Linux, Rolldown-Empfehlung).
+    rolldownOptions: {
+      output: {
+        advancedChunks: {
+          groups: [
+            {
+              name: 'cornerstone',
+              test: /node_modules[\\/]@cornerstonejs[\\/]/,
+              priority: 20,
+            },
+            {
+              name: 'react-vendor',
+              test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              priority: 10,
+            },
+          ],
+        },
+      },
+    },
+  },
   // Vite-Cache (vorab gebündelte Abhängigkeiten) auf LOKALE Platte legen statt
   // ins Google-Drive-gespiegelte node_modules/.vite. Cornerstone3D ist ein
   // riesiger Modulbaum; diese Chunks bei jedem Browser-Laden vom Drive-Mirror
