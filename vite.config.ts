@@ -33,10 +33,13 @@ export default defineConfig({
     // Paket/Profil schienen dann „verschwunden" (klinischer Befund). Die
     // Launcher erkennen eine laufende Instanz und öffnen nur den Browser.
     strictPort: true,
-    // Für Remote-/Cloud-Preview: Zugriff läuft über einen Proxy-Hostname statt
-    // localhost. Vites DNS-Rebinding-Schutz würde fremde Host-Header sonst mit
-    // „Blocked request. This host is not allowed." abweisen. (Test-Einstellung.)
-    allowedHosts: true,
+    // Nur an die Loopback-Schnittstelle binden — der Dev-Server ist unser
+    // lokales „Backend", er soll NIE im Netz erreichbar sein. Zusammen mit
+    // Vites (nun wieder aktivem) DNS-Rebinding-Schutz weist er fremde
+    // Host-Header ab; damit sind die lokalen Sicherungs-Endpunkte nicht mehr
+    // per DNS-Rebinding von einer fremden Origin ansprechbar
+    // (Security-Report P0: allowedHosts:true entfernt).
+    host: '127.0.0.1',
     watch: {
       // Quell-Assets (Hersteller-PDFs, Referenz-Screenshots) liegen in
       // „Templates Knee/" und sind NICHT Teil des Builds. Wenn der Google-

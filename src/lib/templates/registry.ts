@@ -212,6 +212,11 @@ export function bundledTemplatesDisabled(): boolean {
  * (gebündelte `/templates/`-URLs) läuft unverändert durch.
  */
 export function resolveTemplateImage(path: string): string {
+  // Defense-in-Depth (validateManifest lehnt solche Pfade schon beim Import
+  // ab): NIE eine externe/absolute URL laden — nur relative Pfade ohne
+  // Schema und ohne protokoll-relatives „//". Ein durchgerutschter
+  // http(s)/data:-Pfad würde sonst hier einen Netzwerk-Request auslösen.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.startsWith('//')) return ''
   if (!path.startsWith('images/')) return path
   const cached = objectUrls.get(path)
   if (cached) return cached

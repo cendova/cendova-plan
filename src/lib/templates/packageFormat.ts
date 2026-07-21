@@ -94,6 +94,24 @@ export function referencedImagePaths(m: TemplatePackageManifest): string[] {
   return paths
 }
 
+/**
+ * Ein Bildpfad darf NUR ein relativer Pfad in den ZIP-eigenen `images/`-
+ * Ordner sein. Externe URLs (`http:`, `https:`, `data:`, `javascript:`,
+ * protokoll-relativ `//`) oder Pfad-Ausbrüche (`..`) sind verboten: Sonst
+ * könnte ein manipuliertes Paket beim Rendern einen Netzwerk-Request
+ * auslösen (Beacon) und das „100 % lokal"-Versprechen unterlaufen
+ * (Security-Report §9).
+ */
+export function istSichererBildpfad(p: unknown): p is string {
+  if (typeof p !== 'string' || p.length === 0) return false
+  if (!p.startsWith('images/')) return false
+  if (p.includes('..') || p.includes('\\') || p.includes('//')) return false
+  // Kein URL-Schema (z. B. „images/x:evil") — Doppelpunkt vor dem ersten „/"
+  // gäbe es bei einem sauberen images/-Pfad nie.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(p)) return false
+  return true
+}
+
 /** Minimal-robuste Validierung eines geparsten manifest.json. */
 export function validateManifest(
   raw: unknown,
@@ -142,6 +160,17 @@ export function validateManifest(
       if (typeof deg !== 'number' || !isFinite(deg) || deg < 100 || deg > 160) {
         return { ok: false, error: `stemCcdByFolder['${folder}'] unplausibel (${String(deg)})` }
       }
+    }
+  }
+  // Alle referenzierten Bildpfade müssen sichere, ZIP-interne images/-Pfade
+  // sein — kein externer Beacon, kein Pfad-Ausbruch.
+  const unsicher = referencedImagePaths(m as TemplatePackageManifest).find(
+    (p) => !istSichererBildpfad(p),
+  )
+  if (unsicher !== undefined) {
+    return {
+      ok: false,
+      error: `Unsicherer Bildpfad im Manifest: „${unsicher}" (nur relative images/-Pfade erlaubt)`,
     }
   }
   return { ok: true, manifest: m as TemplatePackageManifest }
