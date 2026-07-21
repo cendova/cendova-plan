@@ -461,17 +461,20 @@ function labelForKind(kind: KneeImplantKind): string {
 }
 
 export function sizeLabelFor(kind: KneeImplantKind, sizeIndex: number): string {
-  const clamp = <T,>(arr: ReadonlyArray<T>, i: number) =>
-    arr[Math.max(0, Math.min(arr.length - 1, i))]
+  // Leere Tabelle → '?' statt Crash: Ein Paket kann eine Kontur liefern,
+  // ohne die zugehörige Maßtabelle zu füllen — das darf das Rendern der
+  // platzierten Schablone nicht kippen (Label zeigt dann 'Gr. ?').
+  const clamp = <T,>(arr: ReadonlyArray<T>, i: number): T | undefined =>
+    arr.length ? arr[Math.max(0, Math.min(arr.length - 1, i))] : undefined
   switch (kind) {
-    case 'legion-ps-femur':           return clamp(LEGION_PS_FEMUR, sizeIndex).size
+    case 'legion-ps-femur':           return clamp(LEGION_PS_FEMUR, sizeIndex)?.size ?? '?'
     case 'genesis-tibia-female':
-    case 'genesis-tibia-male':        return clamp(GENESIS_II_TIBIA_FEMALE_TAPERED, sizeIndex).size
-    case 'journey-uk-femur':          return clamp(JOURNEY_UK_FEMUR, sizeIndex).size
+    case 'genesis-tibia-male':        return clamp(GENESIS_II_TIBIA_FEMALE_TAPERED, sizeIndex)?.size ?? '?'
+    case 'journey-uk-femur':          return clamp(JOURNEY_UK_FEMUR, sizeIndex)?.size ?? '?'
     case 'journey-uk-tibia-medial':
-    case 'journey-uk-tibia-lateral':  return clamp(JOURNEY_UK_TIBIA_MEDIAL, sizeIndex).size
-    case 'sphere-femur':              return clamp(SPHERE_FEMUR, sizeIndex).size
-    case 'sphere-tibia-baseplate':    return clamp(SPHERE_TIBIA_BASEPLATE, sizeIndex).size
+    case 'journey-uk-tibia-lateral':  return clamp(JOURNEY_UK_TIBIA_MEDIAL, sizeIndex)?.size ?? '?'
+    case 'sphere-femur':              return clamp(SPHERE_FEMUR, sizeIndex)?.size ?? '?'
+    case 'sphere-tibia-baseplate':    return clamp(SPHERE_TIBIA_BASEPLATE, sizeIndex)?.size ?? '?'
     case 'sphere-insert':             return ''
   }
 }
