@@ -9,7 +9,7 @@
  * Datenschutz: rein lokal — es werden nur File-Objekte im Browser gelesen,
  * nichts hochgeladen.
  */
-import { unzip } from 'fflate'
+import { unzipMitGrenzen } from '../importGrenzen'
 
 /** Liest ALLE Einträge eines Verzeichnisses (readEntries liefert in Chunks
  *  von ~100 → bis leer weiterlesen). */
@@ -73,19 +73,13 @@ export async function collectFilesFromDrop(dt: DataTransfer): Promise<File[]> {
   return expandZips(collected)
 }
 
-/** fflate-unzip als Promise. */
-function unzipBytes(bytes: Uint8Array): Promise<Record<string, Uint8Array>> {
-  return new Promise((resolve, reject) => {
-    unzip(bytes, (err, data) => (err ? reject(err) : resolve(data)))
-  })
-}
-
 /**
  * Packt .zip-Dateien in der Liste aus und ersetzt sie durch die enthaltenen
  * Dateien (über die gesamte ZIP-Struktur). Nicht-ZIPs bleiben unverändert;
  * defekte/leere Archive werden übersprungen. So funktioniert „reinziehen"
  * auch mit einem ZIP — die relevante DICOM-Datei wird danach automatisch
- * gewählt (pickDicomImageFiles).
+ * gewählt (pickDicomImageFiles). Entpackt mit Ressourcengrenzen
+ * (Eintragszahl, Gesamtgröße, Kompressionsverhältnis — Security-Report §10).
  */
 export async function expandZips(files: File[]): Promise<File[]> {
   const out: File[] = []
@@ -95,7 +89,7 @@ export async function expandZips(files: File[]): Promise<File[]> {
       continue
     }
     try {
-      const entries = await unzipBytes(new Uint8Array(await f.arrayBuffer()))
+      const entries = await unzipMitGrenzen(new Uint8Array(await f.arrayBuffer()))
       for (const [path, data] of Object.entries(entries)) {
         if (path.endsWith('/') || data.length === 0) continue // Verzeichnis
         const name = path.split('/').pop() || path

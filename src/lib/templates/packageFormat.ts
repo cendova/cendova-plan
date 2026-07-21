@@ -32,6 +32,7 @@ import type {
   SphereTibiaSize,
 } from '../knee/smithNephewCatalog'
 import type { BackgroundData } from '../knee/templateBackgroundsData'
+import { MAX_PAKET_BILDER, MAX_PAKET_KATALOG } from '../importGrenzen'
 import type { KneeContour } from '../knee/kneeContours'
 
 /** Knie-Katalog (S&N + Medacta Sphere) — reine Maßtabellen. */
@@ -164,14 +165,28 @@ export function validateManifest(
   }
   // Alle referenzierten Bildpfade müssen sichere, ZIP-interne images/-Pfade
   // sein — kein externer Beacon, kein Pfad-Ausbruch.
-  const unsicher = referencedImagePaths(m as TemplatePackageManifest).find(
-    (p) => !istSichererBildpfad(p),
-  )
+  const referenzen = referencedImagePaths(m as TemplatePackageManifest)
+  const unsicher = referenzen.find((p) => !istSichererBildpfad(p))
   if (unsicher !== undefined) {
     return {
       ok: false,
       error: `Unsicherer Bildpfad im Manifest: „${unsicher}" (nur relative images/-Pfade erlaubt)`,
     }
+  }
+  // Größen-Deckel (Security-Report §10): absurde Katalog-/Bildmengen
+  // ablehnen, bevor sie Stores/IndexedDB fluten. Reale Pakete: ≪ 1000.
+  if (referenzen.length > MAX_PAKET_BILDER) {
+    return { ok: false, error: `Manifest referenziert zu viele Bilder (> ${MAX_PAKET_BILDER})` }
+  }
+  const katalogGroesse =
+    (m.medactaCatalog?.length ?? 0) +
+    Object.values(m.kneeCatalog ?? {}).reduce(
+      (n, v) => n + (Array.isArray(v) ? v.length : 0),
+      0,
+    ) +
+    Object.keys(m.kneeContours ?? {}).length
+  if (katalogGroesse > MAX_PAKET_KATALOG) {
+    return { ok: false, error: `Katalog im Manifest ist zu groß (> ${MAX_PAKET_KATALOG} Einträge)` }
   }
   return { ok: true, manifest: m as TemplatePackageManifest }
 }
