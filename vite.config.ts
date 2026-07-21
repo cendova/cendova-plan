@@ -7,6 +7,10 @@ import { lokaleSicherung } from './vite-lokale-sicherung'
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), lokaleSicherung()],
+  // Relative Asset-Pfade: Das Build läuft unverändert standalone UND unter
+  // einem Prefix (CendovaView liefert es als /plan/ mit aus — Weg B der
+  // Integration). Absolute '/assets/…'-URLs würden dort ins Leere zeigen.
+  base: './',
   // Vite-Cache (vorab gebündelte Abhängigkeiten) auf LOKALE Platte legen statt
   // ins Google-Drive-gespiegelte node_modules/.vite. Cornerstone3D ist ein
   // riesiger Modulbaum; diese Chunks bei jedem Browser-Laden vom Drive-Mirror

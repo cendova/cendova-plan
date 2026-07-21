@@ -61,6 +61,17 @@ import {
 } from '../cornerstone/viewer2'
 import { useKneePanesStore } from '../../state/kneePanesStore'
 
+/**
+ * Embedded-Modus-Haken: Wenn gesetzt (durch lib/embedded.ts, CendovaView-
+ * iframe), übernimmt er das Speichern statt des Browser-Downloads.
+ * Als Registrierung statt Import gelöst, damit KEIN Zirkelimport entsteht
+ * (embedded.ts importiert buildPlan/applyPlan von hier).
+ */
+let embeddedSaveHook: (() => void) | null = null
+export function setEmbeddedSaveHook(hook: (() => void) | null): void {
+  embeddedSaveHook = hook
+}
+
 // Version 1: nur Plan (Templates, Messungen)
 // Version 2: Plan + eingebettetes DICOM-Bild als base64
 // Version 3: + Planungsdaten (OP-Termin, Klinik, Versicherung, Reha …)
@@ -206,8 +217,18 @@ export function buildPlan(): PlanFile {
   }
 }
 
-/** Startet einen Browser-Download mit dem aktuellen Plan als JSON-Datei. */
+/**
+ * Startet einen Browser-Download mit dem aktuellen Plan als JSON-Datei.
+ *
+ * Embedded-Modus (CendovaView-iframe): Statt des Downloads geht der Plan
+ * per postMessage an den Host zurück — derselbe „Plan speichern"-Knopf,
+ * aber der automatisierte Rückimport ins Archiv (Contract v1).
+ */
 export function downloadPlan(filename?: string): void {
+  if (embeddedSaveHook) {
+    embeddedSaveHook()
+    return
+  }
   const plan = buildPlan()
   const json = JSON.stringify(plan, null, 2)
   const blob = new Blob([json], { type: 'application/json' })
