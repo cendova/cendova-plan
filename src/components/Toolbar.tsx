@@ -59,6 +59,7 @@ import {
 import { useOsteophyteStore } from '../state/osteophyteStore'
 import { useKneePanesStore } from '../state/kneePanesStore'
 import { useKneeTemplateStore } from '../state/kneeTemplateStore'
+import { useTemplatePackageStore } from '../state/templatePackageStore'
 import {
   KNEE_IMPLANT_FAMILIES,
   isHiddenKneeSize,
@@ -123,6 +124,40 @@ export function Toolbar() {
 // Modus-Sektionen
 // ----------------------------------------------------------------------
 
+// Kuratierte Reihenfolge/Beschriftung der Schablonen-Buttons in der
+// Knie-Sidebar. Ein Button erscheint nur, wenn das importierte
+// Schablonen-Paket die Familie tatsächlich enthält — KNEE_IMPLANT_FAMILIES
+// ist im öffentlichen Repo leer, die Demo zeigt daher weder Produktnamen
+// noch tote Buttons (Klick lief vorher in den stillen Kontur-Guard von
+// addKneeTemplate).
+const KNEE_SIDEBAR_TEMPLATES: ReadonlyArray<{
+  kind: KneeImplantKind
+  label: string
+  uka?: boolean
+}> = [
+  { kind: 'legion-ps-femur', label: 'Femur (Legion PS)' },
+  { kind: 'sphere-femur', label: 'Femur (GMK Sphere)' },
+  { kind: 'genesis-tibia-female', label: 'Tibia (Genesis II)' },
+  { kind: 'sphere-tibia-baseplate', label: 'Tibia (GMK Sphere)' },
+  { kind: 'journey-uk-femur', label: 'Journey UK Femur', uka: true },
+  {
+    kind: 'journey-uk-tibia-medial',
+    label: 'Journey UK Tibia medial',
+    uka: true,
+  },
+]
+
+// Gemeinsamer Hinweis für Hüfte + Knie, wenn kein Paket geladen ist
+// (Formulierung wie im rechten TemplatesPanel).
+function KeinPaketHinweis() {
+  return (
+    <p className="mx-1 mb-1 rounded border border-amber-800/60 bg-amber-950/40 px-2 py-1.5 text-[11px] leading-snug text-amber-300">
+      Kein Schablonen-Paket geladen — Schablonen sind erst nach dem Import
+      verfügbar (Paket-Symbol oben in der Kopfzeile). Messen geht auch ohne.
+    </p>
+  )
+}
+
 function HipSection({
   hasImage,
   activeKind,
@@ -146,6 +181,14 @@ function HipSection({
     (s) => s.templates.length + s.stems.length,
   )
   const hasOsteophytes = useOsteophyteStore((s) => s.regions.length > 0)
+  // Ohne Katalog (kein Schablonen-Paket) sind die Hinzufügen-Buttons
+  // deaktiviert: eine Pfanne degenerierte sonst zum 0-mm-Punkt, der Schaft
+  // zur generischen Ersatzform. pkgInfo triggert zudem das Re-Render nach
+  // Paket-Import/-Entfernen (die Katalog-Konstanten werden in-place ersetzt).
+  const pkgInfo = useTemplatePackageStore((s) => s.info)
+  const cupsVerfuegbar = cupCatalogEntries().length > 0
+  const stemsVerfuegbar = stemCatalogEntries().length > 0
+  const keinHipKatalog = !pkgInfo && !cupsVerfuegbar && !stemsVerfuegbar
   return (
     <>
       {/* Workflow-Reihenfolge: 1. Kalibrierung → 2. Messung → 3. Templating */}
@@ -185,14 +228,15 @@ function HipSection({
         defaultCollapsed={templateCount >= 2}
         statusDot={templateCount >= 2 ? 'bg-emerald-500' : 'bg-amber-500'}
       >
+        {keinHipKatalog && <KeinPaketHinweis />}
         <ToolButton
           label="Pfanne hinzufügen"
-          disabled={!hasImage}
+          disabled={!hasImage || !cupsVerfuegbar}
           onClick={addCupTemplate}
         />
         <ToolButton
           label="Schaft hinzufügen"
-          disabled={!hasImage}
+          disabled={!hasImage || !stemsVerfuegbar}
           onClick={addStemTemplate}
         />
       </CollapsibleSection>
@@ -499,6 +543,16 @@ function KneeSection({
   // Seiten-Abfrage vor dem Platzieren einer Schablone (UX-Befund P1-1).
   const [pendingSideKind, setPendingSideKind] =
     useState<KneeImplantKind | null>(null)
+  // Schablonen-Buttons nur für Familien aus dem geladenen Paket; pkgInfo
+  // triggert das Re-Render nach Import/Entfernen (die Katalog-Konstanten
+  // werden von der Registry in-place ersetzt, ohne eigenes Notify).
+  const pkgInfo = useTemplatePackageStore((s) => s.info)
+  const kneeButtons = KNEE_SIDEBAR_TEMPLATES.filter((t) =>
+    KNEE_IMPLANT_FAMILIES.some((f) => f.kind === t.kind),
+  )
+  const tkaButtons = kneeButtons.filter((t) => !t.uka)
+  const ukaButtons = kneeButtons.filter((t) => t.uka)
+  const keinKneeKatalog = !pkgInfo && kneeButtons.length === 0
 
   return (
     <>
@@ -579,40 +633,29 @@ function KneeSection({
       >
       {/* Seiten-Abfrage wie bei der Hüfte (UX-Befund P1-1: vorher war die
           Seite hart auf 'R' verdrahtet). */}
-      <ToolButton
-        label="Femur (Legion PS)"
-        disabled={!hasImage}
-        onClick={() => setPendingSideKind('legion-ps-femur')}
-      />
-      <ToolButton
-        label="Femur (GMK Sphere)"
-        disabled={!hasImage}
-        onClick={() => setPendingSideKind('sphere-femur')}
-      />
-      <ToolButton
-        label="Tibia (Genesis II)"
-        disabled={!hasImage}
-        onClick={() => setPendingSideKind('genesis-tibia-female')}
-      />
-      <ToolButton
-        label="Tibia (GMK Sphere)"
-        disabled={!hasImage}
-        onClick={() => setPendingSideKind('sphere-tibia-baseplate')}
-      />
+      {keinKneeKatalog && <KeinPaketHinweis />}
+      {tkaButtons.map((t) => (
+        <ToolButton
+          key={t.kind}
+          label={t.label}
+          disabled={!hasImage}
+          onClick={() => setPendingSideKind(t.kind)}
+        />
+      ))}
 
-      <div className="px-3 pb-0.5 pt-2 text-[10px] font-medium uppercase tracking-wider text-neutral-500">
-        Schlitten (UKA)
-      </div>
-      <ToolButton
-        label="Journey UK Femur"
-        disabled={!hasImage}
-        onClick={() => setPendingSideKind('journey-uk-femur')}
-      />
-      <ToolButton
-        label="Journey UK Tibia medial"
-        disabled={!hasImage}
-        onClick={() => setPendingSideKind('journey-uk-tibia-medial')}
-      />
+      {ukaButtons.length > 0 && (
+        <div className="px-3 pb-0.5 pt-2 text-[10px] font-medium uppercase tracking-wider text-neutral-500">
+          Schlitten (UKA)
+        </div>
+      )}
+      {ukaButtons.map((t) => (
+        <ToolButton
+          key={t.kind}
+          label={t.label}
+          disabled={!hasImage}
+          onClick={() => setPendingSideKind(t.kind)}
+        />
+      ))}
 
       {pendingSideKind && (
         <div className="mx-1 mt-1 flex items-center gap-1.5 rounded border border-sky-800 bg-sky-950/40 px-2 py-1.5 text-xs">
