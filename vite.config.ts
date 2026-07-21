@@ -33,13 +33,14 @@ export default defineConfig({
     // Paket/Profil schienen dann „verschwunden" (klinischer Befund). Die
     // Launcher erkennen eine laufende Instanz und öffnen nur den Browser.
     strictPort: true,
-    // Nur an die Loopback-Schnittstelle binden — der Dev-Server ist unser
-    // lokales „Backend", er soll NIE im Netz erreichbar sein. Zusammen mit
-    // Vites (nun wieder aktivem) DNS-Rebinding-Schutz weist er fremde
-    // Host-Header ab; damit sind die lokalen Sicherungs-Endpunkte nicht mehr
-    // per DNS-Rebinding von einer fremden Origin ansprechbar
-    // (Security-Report P0: allowedHosts:true entfernt).
-    host: '127.0.0.1',
+    // KEIN host-Override: Vites Default 'localhost' bindet ohnehin nur an
+    // die Loopback-Schnittstelle (nie im Netz erreichbar), und `--open`
+    // öffnet dann auch http://localhost:5173 — die Browser-Origin, unter
+    // der IndexedDB/localStorage (Schablonen-Paket, Profil) liegen.
+    // Lehrstück: host '127.0.0.1' ließ --open http://127.0.0.1:5173 öffnen
+    // → FREMDE Origin mit leerem Speicher, „Paket verschwunden". Der
+    // Security-Gewinn kam vom Entfernen von allowedHosts:true (Zeile oben,
+    // DNS-Rebinding-Schutz wieder aktiv) — der bleibt.
     watch: {
       // Quell-Assets (Hersteller-PDFs, Referenz-Screenshots) liegen in
       // „Templates Knee/" und sind NICHT Teil des Builds. Wenn der Google-
