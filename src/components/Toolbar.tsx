@@ -48,9 +48,9 @@ import {
   addKneeTemplate,
   addStemTemplate,
   autoPlaceKneeImplant,
-  kneeKindPlaceable,
   openCalibrationChoice,
 } from '../lib/cornerstone/viewer'
+import { kneeKindPlaceable } from '../lib/knee/kneePlaceable'
 import { useTemplateTracerStore } from '../state/templateTracerStore'
 import {
   pickHipTool,

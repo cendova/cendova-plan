@@ -22,24 +22,21 @@ export default defineConfig({
     },
   },
   build: {
-    // Bundle-Splitting (Rolldown): den ~4 MB großen Haupt-Chunk aufteilen. Nur
-    // die OHNEHIN eager geladenen Brocken herauslösen — Cornerstone3D (~3 MB)
-    // und React — in eigene, langlebig cachebare Vendor-Chunks. Nutzen: bei
-    // App-Code-Deploys (häufig) muss der Browser den unveränderten Cornerstone-
-    // Chunk nicht neu laden; außerdem paralleler Download.
-    // BEWUSST KEINE Catch-all-`/node_modules/`-Gruppe: die würde die nur per
-    // dynamischem Import geladenen Libs (jspdf/html2canvas im pdfExport-Chunk,
-    // pdfjs) in einen eager Vendor-Chunk ziehen und das Lazy-Loading brechen.
-    // Regex mit `[\\/]` (Pfadtrenner Windows + Linux, Rolldown-Empfehlung).
+    // Bundle-Splitting (Rolldown): React als langlebig cachebaren Vendor-Chunk
+    // herauslösen (App-Deploys invalidieren ihn nicht). Cornerstone3D wird NICHT
+    // mehr als manuelle Gruppe erzwungen: seit die Render-Schicht lazy geladen
+    // wird (siehe cornerstone/viewer.ts-Fassade), landet @cornerstonejs im
+    // automatischen dynamischen Chunk von viewerImpl und wird so erst beim
+    // Viewport-Mount geladen — NICHT im Initial-Bundle. Eine manuelle
+    // `cornerstone`-Gruppe würde das brechen: Rolldown legte dann den geteilten
+    // Preload-Helfer in den cornerstone-Chunk, den der Entry importiert → alle
+    // ~984 kB wieder eager.
+    // BEWUSST KEINE Catch-all-`/node_modules/`-Gruppe (zöge lazy Libs wie
+    // jspdf/html2canvas eager). Regex mit `[\\/]` (Win+Linux).
     rolldownOptions: {
       output: {
         advancedChunks: {
           groups: [
-            {
-              name: 'cornerstone',
-              test: /node_modules[\\/]@cornerstonejs[\\/]/,
-              priority: 20,
-            },
             {
               name: 'react-vendor',
               test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,

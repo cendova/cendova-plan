@@ -13,7 +13,7 @@
  *  - Hit-Priorität: Endpunkt-Griffe vor Linien-Körpern.
  */
 import { useEffect, useRef, type RefObject } from 'react'
-import { type Types } from '@cornerstonejs/core'
+import type { Types } from '@cornerstonejs/core'
 import { getViewport } from '../lib/cornerstone/viewer'
 import { MeasurementLabel } from './MeasurementLabel'
 import type { LabelOffset, LabelStyle } from '../state/hipStore'

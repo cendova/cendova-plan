@@ -9,7 +9,7 @@
  * nicht im Overlay.
  */
 import { useEffect, useRef } from 'react'
-import { type Types } from '@cornerstonejs/core'
+import type { Types } from '@cornerstonejs/core'
 import { getViewport } from '../lib/cornerstone/viewer'
 import { getViewport2 } from '../lib/cornerstone/viewer2'
 import { useViewportSync } from '../lib/cornerstone/useViewportSync'
