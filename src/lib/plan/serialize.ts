@@ -63,6 +63,7 @@ import {
   loadDicomBytesToPane2,
 } from '../cornerstone/viewer2'
 import { useKneePanesStore } from '../../state/kneePanesStore'
+import { pruefePlanGrenzen } from './planGrenzen'
 
 /**
  * Embedded-Modus-Haken: Wenn gesetzt (durch lib/embedded.ts, CendovaView-
@@ -287,6 +288,14 @@ export async function applyPlan(plan: PlanFile): Promise<
     }
   }
   // — hier könnten zukünftige Migrationen alte Versionen anheben —
+
+  // Struktur-/Grenzen-Prüfung VOR jeder Store-Mutation (Security-Report §8):
+  // kaputte Typen, absurde Array-/String-Größen und unplausible
+  // Kalibrierfaktoren werden abgelehnt, bevor sie Schaden anrichten.
+  const grenzFehler = pruefePlanGrenzen(plan)
+  if (grenzFehler) {
+    return { ok: false, error: `Plan abgelehnt: ${grenzFehler}` }
+  }
 
   // Bild zuerst laden (wenn eingebettet), DANN die Plan-Daten setzen.
   // Reihenfolge ist wichtig, weil das Image-Laden den Viewer resettet

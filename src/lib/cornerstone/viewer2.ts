@@ -37,6 +37,7 @@ import dicomImageLoader from '@cornerstonejs/dicom-image-loader'
 import { initCornerstone } from './init'
 import { extractPatientInfo } from './dicomMeta'
 import { assertImageUsable } from './textureLimit'
+import { pruefeDicomGroesse } from '../importGrenzen'
 import { useKneePanesStore } from '../../state/kneePanesStore'
 import { useKneeTemplateStore } from '../../state/kneeTemplateStore'
 import {
@@ -424,6 +425,8 @@ export async function loadFilesToPane2(files: File[]): Promise<void> {
   if (dicomFiles.length === 0) {
     throw new Error('Keine DICOM-Datei erkannt (.dcm).')
   }
+  // Größengrenze VOR dem Einlesen in den RAM (Security-Report §10).
+  pruefeDicomGroesse(dicomFiles[0].size, dicomFiles[0].name)
 
   // Patienteninfo aus den Rohbytes der ersten Datei.
   const bytes = await dicomFiles[0].arrayBuffer()

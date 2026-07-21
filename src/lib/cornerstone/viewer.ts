@@ -21,6 +21,7 @@ import dicomImageLoader from '@cornerstonejs/dicom-image-loader'
 import { initCornerstone } from './init'
 import { extractPatientInfo } from './dicomMeta'
 import { assertImageUsable } from './textureLimit'
+import { pruefeDicomGroesse } from '../importGrenzen'
 import {
   useViewerStore,
   DEFAULT_CLINICAL_BLD,
@@ -446,6 +447,9 @@ export async function loadFiles(files: File[]) {
       'Keine DICOM-Datei erkannt. Unterstützt werden derzeit .dcm-Dateien.',
     )
   }
+  // Größengrenze VOR dem Einlesen in den RAM (Security-Report §10) — die
+  // Pixel-Grenze (GPU-Textur) prüft assertImageUsable nach dem Laden.
+  pruefeDicomGroesse(dicomFiles[0].size, dicomFiles[0].name)
 
   // Erste DICOM-Datei als Rohbytes merken — wird beim Plan-Export ins
   // JSON eingebettet, damit Plan + Bild als EINE self-contained Datei

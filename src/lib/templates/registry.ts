@@ -16,7 +16,8 @@
  *    localStorage['cendova.disableBundledTemplates'] = '1' leert die
  *    eingebauten Tabellen beim Start, sofern kein Paket geladen ist.
  */
-import { unzip, zipSync, strToU8 } from 'fflate'
+import { zipSync, strToU8 } from 'fflate'
+import { unzipMitGrenzen } from '../importGrenzen'
 import { KNEE_IMAGES } from '../knee/kneeImages'
 import { KNEE_CONTOURS } from '../knee/kneeContours'
 import { MEDACTA_IMAGES } from '../hip/medactaImages'
@@ -296,11 +297,10 @@ export async function initTemplateRegistry(): Promise<void> {
   publishState()
 }
 
-/** ZIP entpacken (fflate, async) → Dateiname → Bytes. */
+/** ZIP entpacken — mit Ressourcengrenzen (Eintragszahl, entpackte
+ *  Gesamtgröße, Kompressionsverhältnis; Security-Report §10). */
 function unzipAsync(data: Uint8Array): Promise<Record<string, Uint8Array>> {
-  return new Promise((resolve, reject) => {
-    unzip(data, (err, out) => (err ? reject(err) : resolve(out)))
-  })
+  return unzipMitGrenzen(data)
 }
 
 /**
