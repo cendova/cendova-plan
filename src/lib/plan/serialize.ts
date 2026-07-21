@@ -51,7 +51,10 @@ import { ensureIdsAbove } from '../ids'
 import {
   getCurrentDicomBytes,
   getCurrentDicomFileName,
+  getGenericMeasurements,
   loadDicomFromBytes,
+  restoreGenericMeasurements,
+  type GenericMeasurementData,
 } from '../cornerstone/viewer'
 import {
   getCurrentDicomBytes2,
@@ -77,7 +80,8 @@ export function setEmbeddedSaveHook(hook: (() => void) | null): void {
 // Version 3: + Planungsdaten (OP-Termin, Klinik, Versicherung, Reha …)
 // Version 4: + Knie-Schablonen (gingen vorher beim Speichern verloren)
 // Version 5: + seitliches Bild (Knie-Zwei-Bild) + rechte Kalibrierung
-const PLAN_FORMAT_VERSION = 5
+// Version 6: + freie Längen-/Winkelmessungen (gingen vorher verloren)
+const PLAN_FORMAT_VERSION = 6
 
 export interface PlanFile {
   /** Schema-Version. Beim Laden prüfen und ggf. migrieren. */
@@ -113,6 +117,9 @@ export interface PlanFile {
   rightCalibration?: Calibration | null
   hipMeasurements: HipMeasurement[]
   kneeMeasurements: KneeMeasurement[]
+  /** Freie Längen-/Winkelmessungen (Cornerstone-Annotationen des
+   *  Haupt-Panes, Welt-Koordinaten). Optional (Pläne < v6 ohne Feld). */
+  genericMeasurements?: GenericMeasurementData[]
   templates: {
     cups: CupTemplate[]
     stems: StemTemplate[]
@@ -204,6 +211,7 @@ export function buildPlan(): PlanFile {
     rightCalibration: embeddedImageRight ? panes.rightCalibration : undefined,
     hipMeasurements: useHipStore.getState().measurements,
     kneeMeasurements: useKneeStore.getState().measurements,
+    genericMeasurements: getGenericMeasurements(),
     templates: {
       cups: useTemplateStore.getState().templates,
       stems: useTemplateStore.getState().stems,
@@ -353,6 +361,9 @@ export async function applyPlan(plan: PlanFile): Promise<
     draftPoints: [],
     placing: false,
   })
+  // Freie Längen-/Winkelmessungen (v6+): ersetzt vorhandene Annotationen;
+  // alte Pläne ohne Feld räumen sie nur ab (konsistent zum Reset oben).
+  restoreGenericMeasurements(plan.genericMeasurements ?? [])
   // ID-Zähler über alle restaurierten IDs heben — sonst kollidieren neu
   // angelegte Objekte mit geladenen (gleiche ID → Lösch-/Render-Fehler).
   ensureIdsAbove(plan.hipMeasurements)
@@ -418,6 +429,8 @@ export async function applyPlan(plan: PlanFile): Promise<
   const counts = [
     plan.hipMeasurements?.length > 0 && `${plan.hipMeasurements.length} Hüft-Messung(en)`,
     plan.kneeMeasurements?.length > 0 && `${plan.kneeMeasurements.length} Knie-Messung(en)`,
+    (plan.genericMeasurements?.length ?? 0) > 0 &&
+      `${plan.genericMeasurements!.length} freie Messung(en)`,
     plan.templates?.cups?.length > 0 && `${plan.templates.cups.length} Pfanne(n)`,
     plan.templates?.stems?.length > 0 && `${plan.templates.stems.length} Schaft/Schäfte`,
     (plan.kneeTemplates?.length ?? 0) > 0 && `${plan.kneeTemplates!.length} Knie-Schablone(n)`,

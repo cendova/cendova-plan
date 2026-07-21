@@ -656,6 +656,106 @@ function recomputeMeasurements() {
   store.setMeasurements(measurements)
 }
 
+// ----------------------------------------------------------------------
+// Freie Längen-/Winkelmessungen ↔ Plan-JSON (serialize.ts, Plan v6).
+// Diese Messungen sind rohe Cornerstone-Annotationen (kein Zustand-Store)
+// und gingen beim Plan-Speichern bisher verloren (Bug-Report).
+// ----------------------------------------------------------------------
+
+/** Rohdaten einer freien Messung fürs Plan-JSON (Welt-Koordinaten). */
+export interface GenericMeasurementData {
+  tool: 'length' | 'angle'
+  points: Types.Point3[]
+  visible: boolean
+}
+
+/** Exportiert die freien Längen-/Winkelmessungen des Haupt-Panes
+ *  (gleiche Filter wie recomputeMeasurements: keine Kalibrier-Linie,
+ *  keine Fremd-Pane-Annotationen). */
+export function getGenericMeasurements(): GenericMeasurementData[] {
+  const pendingUID = useViewerStore.getState().pendingCalibration?.annotationUID
+  const mainImageId = getViewport()?.getCurrentImageId() ?? null
+  const out: GenericMeasurementData[] = []
+  for (const ann of annotation.state.getAllAnnotations() as AnnotationLike[]) {
+    const uid = ann.annotationUID
+    const points = ann.data?.handles?.points
+    if (!uid || uid === pendingUID || !points) continue
+    const refId = ann.metadata?.referencedImageId
+    if (mainImageId && refId && refId !== mainImageId) continue
+    const toolName = ann.metadata?.toolName
+    const tool =
+      toolName === LengthTool.toolName && points.length >= 2
+        ? ('length' as const)
+        : toolName === AngleTool.toolName && points.length >= 3
+          ? ('angle' as const)
+          : null
+    if (!tool) continue
+    out.push({
+      tool,
+      points: points.map((p) => [...p] as Types.Point3),
+      visible: annotation.visibility.isAnnotationVisible(uid) !== false,
+    })
+  }
+  return out
+}
+
+/** Stellt freie Messungen aus einem Plan wieder her — ersetzt die
+ *  vorhandenen (wie applyPlan es für alle anderen Kategorien tut). */
+export function restoreGenericMeasurements(
+  list: GenericMeasurementData[],
+): void {
+  const vp = getViewport()
+  if (!vp) return
+  for (const m of useViewerStore.getState().measurements) {
+    annotation.state.removeAnnotation(m.id)
+  }
+  type CsAnnotation = Parameters<typeof annotation.state.addAnnotation>[0]
+  const camera = vp.getCamera()
+  const frameOfRef = vp.getFrameOfReferenceUID() ?? ''
+  const imageId = vp.getCurrentImageId()
+  for (const m of list) {
+    if (!m?.points?.length) continue
+    const uid = crypto.randomUUID()
+    const ann = {
+      annotationUID: uid,
+      highlighted: false,
+      invalidated: true,
+      isLocked: false,
+      isVisible: m.visible !== false,
+      metadata: {
+        toolName: m.tool === 'angle' ? AngleTool.toolName : LengthTool.toolName,
+        viewPlaneNormal: [...(camera.viewPlaneNormal ?? [0, 0, -1])],
+        viewUp: [...(camera.viewUp ?? [0, -1, 0])],
+        FrameOfReferenceUID: frameOfRef,
+        referencedImageId: imageId,
+      },
+      data: {
+        handles: {
+          points: m.points.map((p) => [...p] as Types.Point3),
+          activeHandleIndex: null,
+          textBox: {
+            hasMoved: false,
+            worldPosition: [0, 0, 0],
+            worldBoundingBox: {
+              topLeft: [0, 0, 0],
+              topRight: [0, 0, 0],
+              bottomLeft: [0, 0, 0],
+              bottomRight: [0, 0, 0],
+            },
+          },
+        },
+        label: '',
+        cachedStats: {},
+      },
+    }
+    annotation.state.addAnnotation(ann as unknown as CsAnnotation, vp.element)
+    if (m.visible === false)
+      annotation.visibility.setAnnotationVisibility(uid, false)
+  }
+  vp.render()
+  recomputeMeasurements()
+}
+
 /** Entfernt eine einzelne Messung. */
 export function removeMeasurement(id: string) {
   annotation.state.removeAnnotation(id)
