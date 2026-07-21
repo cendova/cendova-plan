@@ -767,25 +767,43 @@ export function autoPlaceKneeImplant(
   tmplStore.setCenter(id, [c[0], c[1], t.center[2]])
 }
 
+/**
+ * Existiert für (kind, view) eine zeichenbare Kontur bei der Default-Größe
+ * (sizeIndex 0)? DIESELBE Quelle wie der Renderer:
+ *   1) maßstabsgetreue Pro-Größe-Kontur (Paket/Screenshots) — der Normalfall,
+ *   2) sonst die alte Browser-Trace (abwärtskompatibel, ggf. mit Band).
+ */
+export function kneeContourAvailable(
+  kind: KneeImplantKind,
+  view: KneeView,
+): boolean {
+  if (getKneeContour(kind, view, 0)) return true
+  const band = bandForSizeIndex(kind, view, 0)?.id
+  const tracer = useTemplateTracerStore.getState()
+  return (tracer.getTrace(kind, view, band)?.length ?? 0) > 0
+}
+
+/**
+ * Lässt sich die Familie überhaupt platzieren (Kontur in mindestens einer
+ * Ansicht)? Grundlage der Dropdown-Filterung in der Toolbar: Ein Paket kann
+ * Familien im Katalog deklarieren, ohne Konturen dafür mitzubringen (z. B.
+ * Genesis II male tapered) — solche Einträge liefen sonst in den stillen
+ * Guard von addKneeTemplate.
+ */
+export function kneeKindPlaceable(kind: KneeImplantKind): boolean {
+  return kneeContourAvailable(kind, 'AP') || kneeContourAvailable(kind, 'lateral')
+}
+
 export function addKneeTemplate(
   kind: KneeImplantKind,
   side: KneeSide,
   _view?: KneeView, // ignoriert: View ergibt sich aus der Pane-Rolle
 ): string | null {
   const panes = useKneePanesStore.getState()
-  const tracer = useTemplateTracerStore.getState()
   const tmplStore = useKneeTemplateStore.getState()
-  // Existiert für diese (kind, view) eine zeichenbare Kontur bei der Default-
-  // Größe (sizeIndex 0)? DIESELBE Quelle prüfen wie der Renderer:
-  //   1) maßstabsgetreue Pro-Größe-Kontur (Screenshots) — heute der Normalfall,
-  //   2) sonst die alte Browser-Trace (abwärtskompatibel, ggf. mit Band).
-  // Sonst legte placeIn eine Schablone an, die der Renderer nicht zeichnen kann
-  // (Eintrag im Store, aber nichts im Bild) — oder, wie zuletzt, gar nichts.
-  const hasContour = (v: KneeView): boolean => {
-    if (getKneeContour(kind, v, 0)) return true
-    const band = bandForSizeIndex(kind, v, 0)?.id
-    return (tracer.getTrace(kind, v, band)?.length ?? 0) > 0
-  }
+  // Ohne zeichenbare Kontur keine Platzierung — sonst entstünde ein Eintrag
+  // im Store, den der Renderer nicht zeichnen kann.
+  const hasContour = (v: KneeView): boolean => kneeContourAvailable(kind, v)
 
   // Gemeinsame Gruppen-ID für das AP+lateral-Paar aus DIESEM Klick — so
   // synchronisiert setSizeIndex/setSide später beide Schablonen.

@@ -48,8 +48,10 @@ import {
   addKneeTemplate,
   addStemTemplate,
   autoPlaceKneeImplant,
+  kneeKindPlaceable,
   openCalibrationChoice,
 } from '../lib/cornerstone/viewer'
+import { useTemplateTracerStore } from '../state/templateTracerStore'
 import {
   pickHipTool,
   pickKneeTool,
@@ -564,13 +566,21 @@ function KneeSection({
     useState<KneeImplantKind | null>(null)
   // Dropdown-Einträge je Knochen aus dem Paket-Katalog; pkgInfo triggert
   // das Re-Render nach Import/Entfernen (die Katalog-Konstanten werden
-  // von der Registry in-place ersetzt, ohne eigenes Notify).
+  // von der Registry in-place ersetzt, ohne eigenes Notify). Die Trace-
+  // Subscription aktualisiert die Liste, sobald im Tracer eine Kontur
+  // entsteht (macht eine Familie platzierbar → Eintrag erscheint).
   const pkgInfo = useTemplatePackageStore((s) => s.info)
+  useTemplateTracerStore((s) => s.traces)
+  // Nur PLATZIERBARE Familien anbieten (Kontur vorhanden): Pakete können
+  // Familien deklarieren, ohne Konturen mitzuliefern (z. B. Genesis II
+  // male tapered) — die liefen sonst in den stillen Guard.
+  const zeigbar = (f: KneeImplantFamily) =>
+    f.kind !== 'sphere-insert' && kneeKindPlaceable(f.kind)
   const femurFamilien = KNEE_IMPLANT_FAMILIES.filter(
-    (f) => f.bone === 'Femur' && f.kind !== 'sphere-insert',
+    (f) => f.bone === 'Femur' && zeigbar(f),
   )
   const tibiaFamilien = KNEE_IMPLANT_FAMILIES.filter(
-    (f) => f.bone === 'Tibia' && f.kind !== 'sphere-insert',
+    (f) => f.bone === 'Tibia' && zeigbar(f),
   )
   const keinKneeKatalog =
     !pkgInfo && femurFamilien.length === 0 && tibiaFamilien.length === 0
