@@ -96,19 +96,22 @@ export function referencedImagePaths(m: TemplatePackageManifest): string[] {
 }
 
 /**
- * Ein Bildpfad darf NUR ein relativer Pfad in den ZIP-eigenen `images/`-
- * Ordner sein. Externe URLs (`http:`, `https:`, `data:`, `javascript:`,
- * protokoll-relativ `//`) oder Pfad-Ausbrüche (`..`) sind verboten: Sonst
+ * Ein Bildpfad muss LOKAL sein: entweder ZIP-intern (`images/…`) oder ein
+ * gebündelter App-Pfad (z. B. `/templates/…` — resolveTemplateImage lässt
+ * solche Pfade unverändert durch, reale Pakete referenzieren sie).
+ * Verboten sind externe URLs (`http:`, `https:`, `data:`, `javascript:`,
+ * protokoll-relativ `//…`) und Pfad-Ausbrüche (`..`, Backslash): Sonst
  * könnte ein manipuliertes Paket beim Rendern einen Netzwerk-Request
  * auslösen (Beacon) und das „100 % lokal"-Versprechen unterlaufen
- * (Security-Report §9).
+ * (Security-Report §9). NICHT strenger prüfen — ein `images/`-Zwang lehnte
+ * echte Pakete ab (Regression: „Paket verschwunden" nach App-Update).
  */
 export function istSichererBildpfad(p: unknown): p is string {
   if (typeof p !== 'string' || p.length === 0) return false
-  if (!p.startsWith('images/')) return false
-  if (p.includes('..') || p.includes('\\') || p.includes('//')) return false
-  // Kein URL-Schema (z. B. „images/x:evil") — Doppelpunkt vor dem ersten „/"
-  // gäbe es bei einem sauberen images/-Pfad nie.
+  if (p.includes('..') || p.includes('\\')) return false
+  // Protokoll-relative URL (`//host/…`) wäre ein Netz-Fetch.
+  if (p.startsWith('//')) return false
+  // Kein URL-Schema am Anfang (http:, https:, data:, javascript:, …).
   if (/^[a-z][a-z0-9+.-]*:/i.test(p)) return false
   return true
 }
