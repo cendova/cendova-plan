@@ -856,6 +856,9 @@ export async function triggerPdfExport(): Promise<void> {
     await exportPlanPdf(roots)
     setStatus('PDF wurde gespeichert.')
   } catch (err) {
+    // Voller Fehler in die Konsole — die Statuszeile zeigt nur die Message,
+    // für die Diagnose (Bug-Reports) braucht es den Stack.
+    console.error('PDF-Export fehlgeschlagen:', err)
     setStatus(
       `PDF-Export fehlgeschlagen: ${
         err instanceof Error ? err.message : 'Unbekannt'

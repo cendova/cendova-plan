@@ -122,9 +122,20 @@ export function HeaderTools() {
       usePlanningStore.getState().setWarnOpen(true)
       return
     }
-    // Lazy: jspdf + html2canvas (~400 kB) erst beim ersten Export laden.
-    const { triggerPdfExport } = await import('../lib/plan/pdfExport')
-    await triggerPdfExport()
+    try {
+      // Lazy: jspdf + html2canvas (~400 kB) erst beim ersten Export laden.
+      const { triggerPdfExport } = await import('../lib/plan/pdfExport')
+      await triggerPdfExport()
+    } catch (err) {
+      // Ohne dieses Netz stürbe z. B. ein fehlgeschlagener Chunk-Load
+      // lautlos — der Button wirkte dann „tot" (Bug-Report PDF-Export).
+      console.error('PDF-Export:', err)
+      setStatus(
+        `PDF-Export fehlgeschlagen: ${
+          err instanceof Error ? err.message : 'Unbekannt'
+        }`,
+      )
+    }
   }
 
   // Ein Left-Tool gilt nur als „aktiv", wenn KEIN Mess- oder Notiz-Tool
