@@ -34,7 +34,7 @@
     "@vitejs/plugin-react": "^4.4.0",
     "dxf-parser": "^1.1.2",
     "marked": "^18.0.5",
-    "pdfjs-dist": "^5.7.284",
+    "pdfjs-dist": "^6.1.200",
     "playwright-core": "^1.60.0",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.8.0",
