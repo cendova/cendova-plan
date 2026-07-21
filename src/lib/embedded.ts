@@ -73,7 +73,12 @@ export function initEmbeddedBridge(): void {
   setEmbeddedSaveHook(() => void exportPlanToHost())
 
   window.addEventListener('message', (event: MessageEvent) => {
+    // Origin UND Quelle prüfen: Nachrichten dürfen nur vom einbettenden
+    // Host-Fenster kommen. Ohne die source-Prüfung könnte ein anderes Frame
+    // gleicher Origin (z. B. ein weiteres iframe) Bilder/Pläne einschleusen
+    // (Security-Report §12).
     if (event.origin !== window.location.origin) return
+    if (event.source !== window.parent) return
     const data = event.data as Partial<LoadImageMsg | LoadPlanMsg> | null
     if (!data || typeof data !== 'object') return
     if (data.type === 'cendova:loadImage') {

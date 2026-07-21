@@ -32,6 +32,12 @@ const DATEIEN: Record<string, { datei: string; typ: string }> = {
   paket: { datei: 'schablonen-paket.zip', typ: 'application/zip' },
   profil: { datei: 'profil.json', typ: 'application/json' },
 }
+// Obergrenze für einen PUT-Body: Schablonen-Pakete sind Bild-lastig, aber
+// selten > ~100 MB; das Profil ist winzig. Ohne Limit puffert der Server den
+// ganzen Body im RAM (Buffer.concat) — ein Runaway-/böswilliger PUT könnte
+// den Node-Prozess aufblähen (Security-Report §10, DoS). Bei Überschreitung
+// fail closed mit 413 statt weiter zu sammeln.
+const MAX_PUT_BYTES = 128 * 1024 * 1024
 
 function behandle(req: IncomingMessage, res: ServerResponse, next: () => void): void {
   const m = /^\/__cendova\/sicherung\/(paket|profil)$/.exec(req.url ?? '')
@@ -54,8 +60,24 @@ function behandle(req: IncomingMessage, res: ServerResponse, next: () => void): 
     }
     if (req.method === 'PUT') {
       const chunks: Buffer[] = []
-      req.on('data', (c: Buffer) => chunks.push(c))
+      let gesamt = 0
+      let abgebrochen = false
+      req.on('data', (c: Buffer) => {
+        if (abgebrochen) return
+        gesamt += c.length
+        if (gesamt > MAX_PUT_BYTES) {
+          // Streaming abbrechen, sobald das Limit reißt — nicht erst am Ende.
+          abgebrochen = true
+          chunks.length = 0
+          res.statusCode = 413
+          res.end()
+          req.destroy()
+          return
+        }
+        chunks.push(c)
+      })
       req.on('end', () => {
+        if (abgebrochen) return
         try {
           mkdirSync(DATEN_DIR, { recursive: true })
           writeFileSync(pfad, Buffer.concat(chunks))

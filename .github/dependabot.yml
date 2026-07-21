@@ -1,0 +1,22 @@
+# Automatische Update-PRs für Abhängigkeiten und GitHub Actions
+# (Security-Report P1). Gruppiert und wöchentlich, damit die PR-Last klein
+# bleibt; Merge bleibt manuelle Entscheidung.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Patch-/Minor-Updates gebündelt — ein PR statt vieler.
+      abhaengigkeiten:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
