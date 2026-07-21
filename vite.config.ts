@@ -11,6 +11,16 @@ export default defineConfig({
   // einem Prefix (CendovaView liefert es als /plan/ mit aus — Weg B der
   // Integration). Absolute '/assets/…'-URLs würden dort ins Leere zeigen.
   base: './',
+  resolve: {
+    // Cornerstone3D v5 (dicom-image-loader) zieht `xmlbuilder2`, dessen
+    // Streaming-Builder `class … extends EventEmitter` aus dem Node-Builtin
+    // `events` ableitet. Vite externalisiert `events` im Browser → EventEmitter
+    // ist undefined → App crasht beim Mount ("Class extends value undefined").
+    // Auf den Browser-Shim `events` umbiegen, damit EventEmitter real existiert.
+    alias: {
+      events: 'events',
+    },
+  },
   // Vite-Cache (vorab gebündelte Abhängigkeiten) auf LOKALE Platte legen statt
   // ins Google-Drive-gespiegelte node_modules/.vite. Cornerstone3D ist ein
   // riesiger Modulbaum; diese Chunks bei jedem Browser-Laden vom Drive-Mirror
