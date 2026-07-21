@@ -70,6 +70,7 @@ import {
   JOURNEY_UK_FEMUR,
   JOURNEY_UK_TIBIA_MEDIAL,
   TIBIA_INSERT,
+  type KneeImplantFamily,
   type KneeImplantKind,
 } from '../lib/knee/smithNephewCatalog'
 import { renderKneeTemplate } from '../lib/knee/templates'
@@ -124,28 +125,46 @@ export function Toolbar() {
 // Modus-Sektionen
 // ----------------------------------------------------------------------
 
-// Kuratierte Reihenfolge/Beschriftung der Schablonen-Buttons in der
-// Knie-Sidebar. Ein Button erscheint nur, wenn das importierte
-// Schablonen-Paket die Familie tatsächlich enthält — KNEE_IMPLANT_FAMILIES
-// ist im öffentlichen Repo leer, die Demo zeigt daher weder Produktnamen
-// noch tote Buttons (Klick lief vorher in den stillen Kontur-Guard von
-// addKneeTemplate).
-const KNEE_SIDEBAR_TEMPLATES: ReadonlyArray<{
-  kind: KneeImplantKind
+// Knie-Schablonen-Auswahl als Dropdown je Knochen — gleiche Optik wie die
+// Familie-Selects der Hüft-Panels. Einträge und Beschriftungen kommen
+// vollständig aus dem Katalog des importierten Pakets
+// (KNEE_IMPLANT_FAMILIES, im öffentlichen Repo leer). Poly-Inserts werden
+// nicht separat platziert (TIBIA_INSERT-Regler am Tibia-Template) und
+// erscheinen deshalb nicht in der Auswahl.
+function KneeFamilienDropdown({
+  label,
+  familien,
+  disabled,
+  onWahl,
+}: {
   label: string
-  uka?: boolean
-}> = [
-  { kind: 'legion-ps-femur', label: 'Femur (Legion PS)' },
-  { kind: 'sphere-femur', label: 'Femur (GMK Sphere)' },
-  { kind: 'genesis-tibia-female', label: 'Tibia (Genesis II)' },
-  { kind: 'sphere-tibia-baseplate', label: 'Tibia (GMK Sphere)' },
-  { kind: 'journey-uk-femur', label: 'Journey UK Femur', uka: true },
-  {
-    kind: 'journey-uk-tibia-medial',
-    label: 'Journey UK Tibia medial',
-    uka: true,
-  },
-]
+  familien: KneeImplantFamily[]
+  disabled: boolean
+  onWahl: (kind: KneeImplantKind) => void
+}) {
+  return (
+    <div className="px-1">
+      <label className="mb-1 block text-[10px] text-neutral-400">{label}</label>
+      {/* value="" hält das Select auf dem Platzhalter — so löst auch die
+          erneute Wahl derselben Familie wieder ein onChange aus. */}
+      <select
+        value=""
+        disabled={disabled}
+        onChange={(e) => {
+          if (e.target.value) onWahl(e.target.value as KneeImplantKind)
+        }}
+        className="mb-2 w-full rounded border border-neutral-700 bg-neutral-950 px-1 py-1 text-xs disabled:opacity-50"
+      >
+        <option value="">Familie wählen …</option>
+        {familien.map((f) => (
+          <option key={f.kind} value={f.kind}>
+            {f.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
 
 // Gemeinsamer Hinweis für Hüfte + Knie, wenn kein Paket geladen ist
 // (Formulierung wie im rechten TemplatesPanel).
@@ -543,16 +562,18 @@ function KneeSection({
   // Seiten-Abfrage vor dem Platzieren einer Schablone (UX-Befund P1-1).
   const [pendingSideKind, setPendingSideKind] =
     useState<KneeImplantKind | null>(null)
-  // Schablonen-Buttons nur für Familien aus dem geladenen Paket; pkgInfo
-  // triggert das Re-Render nach Import/Entfernen (die Katalog-Konstanten
-  // werden von der Registry in-place ersetzt, ohne eigenes Notify).
+  // Dropdown-Einträge je Knochen aus dem Paket-Katalog; pkgInfo triggert
+  // das Re-Render nach Import/Entfernen (die Katalog-Konstanten werden
+  // von der Registry in-place ersetzt, ohne eigenes Notify).
   const pkgInfo = useTemplatePackageStore((s) => s.info)
-  const kneeButtons = KNEE_SIDEBAR_TEMPLATES.filter((t) =>
-    KNEE_IMPLANT_FAMILIES.some((f) => f.kind === t.kind),
+  const femurFamilien = KNEE_IMPLANT_FAMILIES.filter(
+    (f) => f.bone === 'Femur' && f.kind !== 'sphere-insert',
   )
-  const tkaButtons = kneeButtons.filter((t) => !t.uka)
-  const ukaButtons = kneeButtons.filter((t) => t.uka)
-  const keinKneeKatalog = !pkgInfo && kneeButtons.length === 0
+  const tibiaFamilien = KNEE_IMPLANT_FAMILIES.filter(
+    (f) => f.bone === 'Tibia' && f.kind !== 'sphere-insert',
+  )
+  const keinKneeKatalog =
+    !pkgInfo && femurFamilien.length === 0 && tibiaFamilien.length === 0
 
   return (
     <>
@@ -634,57 +655,59 @@ function KneeSection({
       {/* Seiten-Abfrage wie bei der Hüfte (UX-Befund P1-1: vorher war die
           Seite hart auf 'R' verdrahtet). */}
       {keinKneeKatalog && <KeinPaketHinweis />}
-      {tkaButtons.map((t) => (
-        <ToolButton
-          key={t.kind}
-          label={t.label}
+      {femurFamilien.length > 0 && (
+        <KneeFamilienDropdown
+          label="Femur"
+          familien={femurFamilien}
           disabled={!hasImage}
-          onClick={() => setPendingSideKind(t.kind)}
+          onWahl={setPendingSideKind}
         />
-      ))}
-
-      {ukaButtons.length > 0 && (
-        <div className="px-3 pb-0.5 pt-2 text-[10px] font-medium uppercase tracking-wider text-neutral-500">
-          Schlitten (UKA)
-        </div>
       )}
-      {ukaButtons.map((t) => (
-        <ToolButton
-          key={t.kind}
-          label={t.label}
+      {tibiaFamilien.length > 0 && (
+        <KneeFamilienDropdown
+          label="Tibia"
+          familien={tibiaFamilien}
           disabled={!hasImage}
-          onClick={() => setPendingSideKind(t.kind)}
+          onWahl={setPendingSideKind}
         />
-      ))}
+      )}
 
       {pendingSideKind && (
-        <div className="mx-1 mt-1 flex items-center gap-1.5 rounded border border-sky-800 bg-sky-950/40 px-2 py-1.5 text-xs">
-          <span className="text-sky-200">Seite?</span>
-          <button
-            onClick={() => {
-              addKneeTemplate(pendingSideKind, 'R')
-              setPendingSideKind(null)
-            }}
-            className="rounded bg-sky-700 px-2 py-0.5 font-medium text-white transition hover:bg-sky-600"
-          >
-            Rechts
-          </button>
-          <button
-            onClick={() => {
-              addKneeTemplate(pendingSideKind, 'L')
-              setPendingSideKind(null)
-            }}
-            className="rounded bg-sky-700 px-2 py-0.5 font-medium text-white transition hover:bg-sky-600"
-          >
-            Links
-          </button>
-          <button
-            onClick={() => setPendingSideKind(null)}
-            title="Abbrechen"
-            className="ml-auto rounded px-1 text-neutral-400 transition hover:text-neutral-200"
-          >
-            ✕
-          </button>
+        <div className="mx-1 mt-1 rounded border border-sky-800 bg-sky-950/40 px-2 py-1.5 text-xs">
+          {/* Gewählte Familie anzeigen — bei den Dropdowns ist die Wahl
+              sonst nicht mehr sichtbar, sobald das Select zurückspringt. */}
+          <div className="mb-1 truncate text-sky-200">
+            {KNEE_IMPLANT_FAMILIES.find((f) => f.kind === pendingSideKind)
+              ?.label ?? 'Schablone'}{' '}
+            — Seite?
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                addKneeTemplate(pendingSideKind, 'R')
+                setPendingSideKind(null)
+              }}
+              className="rounded bg-sky-700 px-2 py-0.5 font-medium text-white transition hover:bg-sky-600"
+            >
+              Rechts
+            </button>
+            <button
+              onClick={() => {
+                addKneeTemplate(pendingSideKind, 'L')
+                setPendingSideKind(null)
+              }}
+              className="rounded bg-sky-700 px-2 py-0.5 font-medium text-white transition hover:bg-sky-600"
+            >
+              Links
+            </button>
+            <button
+              onClick={() => setPendingSideKind(null)}
+              title="Abbrechen"
+              className="ml-auto rounded px-1 text-neutral-400 transition hover:text-neutral-200"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
       </CollapsibleSection>
