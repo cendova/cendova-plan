@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { type Types } from '@cornerstonejs/core'
+import type { Types } from '@cornerstonejs/core'
 import { logDiagnostic } from '../lib/diagnostics'
 import {
   finishCupPlacement,
