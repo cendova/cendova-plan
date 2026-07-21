@@ -37,6 +37,7 @@ import {
 } from './ToolIcon'
 import { useOrgProfileStore } from '../state/orgProfileStore'
 import { downloadPlan, loadPlanFromFile, findPlanFile } from '../lib/plan/serialize'
+import { isEmbedded } from '../lib/embedded'
 import { usePlanningStore, isPlanningEmpty } from '../state/planningStore'
 import {
   exportTemplatePackage,
@@ -95,6 +96,13 @@ export function HeaderTools() {
   function handlePlanSave() {
     try {
       downloadPlan()
+      // Embedded-Modus (CendovaView-iframe): downloadPlan übergibt den Plan
+      // an den Host statt einen Download zu starten — die Meldung muss das
+      // sagen, sonst sucht der Nutzer eine JSON-Datei, die es nicht gibt.
+      if (isEmbedded()) {
+        setStatus('Planung an CendovaView übergeben — dort am Study gespeichert.')
+        return
+      }
       // Defensiv: Bilder kommen seit dem Entfall der Beispiel-URLs immer
       // als Datei-Bytes — der Else-Zweig bleibt als Absicherung.
       const cur = useViewerStore.getState().currentImageId
