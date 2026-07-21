@@ -136,20 +136,41 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-info '[5/5] Desktop-Verknuepfung anlegen ...'
+info '[5/5] Start-Verknuepfungen anlegen ...'
 LAUNCHER="$HOME/Desktop/CendovaPlan.command"
+STARTER="$INSTALL_DIR/CendovaPlan.command"
+# Start-Skript zuerst IM Installationsordner anlegen (immer beschreibbar) -
+# der Schreibtisch kann durch den macOS-Datenschutz (TCC) gesperrt sein,
+# und ein stilles Scheitern dort darf die Installation nicht kippen.
+printf '#!/bin/bash\nexec /bin/bash "%s/scripts/start-local-mac.command"\n' "$INSTALL_DIR" > "$STARTER"
+chmod +x "$STARTER" "$INSTALL_DIR/scripts/start-local-mac.command" 2>/dev/null
 # Alte Verknuepfung aus frueheren Installationen entfernen.
-rm -f "$HOME/Desktop/CendovaPlan starten.command"
-printf '#!/bin/bash\nexec /bin/bash "%s/scripts/start-local-mac.command"\n' "$INSTALL_DIR" > "$LAUNCHER"
-chmod +x "$LAUNCHER" "$INSTALL_DIR/scripts/start-local-mac.command" 2>/dev/null
-ok "  Verknuepfung erstellt: $LAUNCHER"
+rm -f "$HOME/Desktop/CendovaPlan starten.command" 2>/dev/null
+# Kopie auf den Schreibtisch MIT Erfolgskontrolle: beim ersten Zugriff
+# fragt macOS um Erlaubnis ("Terminal moechte auf den Schreibtisch-Ordner
+# zugreifen") - bei "Nicht erlauben" schlaegt cp fehl.
+START_HINWEIS='Doppelklick auf "CendovaPlan" (Desktop).'
+if cp "$STARTER" "$LAUNCHER" 2>/dev/null && [ -s "$LAUNCHER" ]; then
+  chmod +x "$LAUNCHER" 2>/dev/null
+  ok "  Verknuepfung erstellt: $LAUNCHER"
+else
+  warn '  Schreibtisch nicht beschreibbar (macOS-Datenschutz?).'
+  step '  Freigeben: Systemeinstellungen > Datenschutz & Sicherheit >'
+  step '  Dateien und Ordner > Terminal > "Schreibtisch-Ordner" aktivieren -'
+  step '  danach den Installer einfach noch einmal ausfuehren.'
+  ok "  Start-Skript liegt bereit: $STARTER"
+  step '  (Es laesst sich per Doppelklick starten oder von dort auf den'
+  step '   Schreibtisch / ins Dock ziehen - der Finder zeigt es gleich an.)'
+  START_HINWEIS="Doppelklick auf CendovaPlan.command in $INSTALL_DIR"
+  open -R "$STARTER" 2>/dev/null || true
+fi
 
 echo
 ok '====================================================='
 ok '  Fertig - CendovaPlan ist eingerichtet.'
 ok '====================================================='
 echo "  Installiert in : $INSTALL_DIR (Branch: $BRANCH)"
-echo '  Starten        : Doppelklick auf "CendovaPlan" (Desktop).'
+echo "  Starten        : $START_HINWEIS"
 echo '  Update         : passiert beim Start automatisch (git pull).'
 echo
 echo '  Hinweis: CendovaPlan laeuft rein lokal im Browser (localhost) -'
