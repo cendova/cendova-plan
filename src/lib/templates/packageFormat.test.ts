@@ -3,6 +3,7 @@
 // Lockerungen/Verschärfungen hier müssen bewusst geschehen.
 import { describe, expect, it } from 'vitest'
 import {
+  istSichererBildpfad,
   mergeManifests,
   referencedImagePaths,
   validateManifest,
@@ -140,5 +141,58 @@ describe('stemCcdByFolder (Paket-CCD-Winkel)', () => {
       const bad = { ...addon, stemCcdByFolder: { X: deg } }
       expect(validateManifest(JSON.parse(JSON.stringify(bad))).ok).toBe(false)
     }
+  })
+})
+
+// --- Bildpfad-Regel (Security-Fix §9) -------------------------------------
+// Externe URLs bleiben verboten, aber gebündelte App-Pfade (kein images/-
+// Präfix) sind LEGITIM — reale Pakete referenzieren sie. Regression:
+// ein images/-Zwang lehnte echte Pakete ab („Paket verschwunden").
+
+const mitKneeImagePfad = (path: string) => ({
+  format: 'cendova-templates',
+  formatVersion: 1,
+  name: 'Pfad-Testpaket',
+  kneeImages: { 'legion-ps-femur|AP|0': { path, wMm: 60, hMm: 40 } },
+})
+
+describe('istSichererBildpfad', () => {
+  it('erlaubt ZIP-interne images/-Pfade', () => {
+    expect(istSichererBildpfad('images/Legion ap.png')).toBe(true)
+    expect(
+      istSichererBildpfad('images/MEDACTA INTERNATIONAL - [Stem] - Quadra-P STD/40.png'),
+    ).toBe(true)
+  })
+  it('erlaubt gebündelte App-Pfade (kein images/-Präfix)', () => {
+    expect(istSichererBildpfad('/templates/knee/legion-ap.png')).toBe(true)
+    expect(istSichererBildpfad('templates/knee/legion-ap.png')).toBe(true)
+  })
+  it('verbietet externe URLs und Schemata', () => {
+    expect(istSichererBildpfad('https://example.com/beacon.png')).toBe(false)
+    expect(istSichererBildpfad('http://example.com/x.png')).toBe(false)
+    expect(istSichererBildpfad('data:image/png;base64,AAAA')).toBe(false)
+    expect(istSichererBildpfad('javascript:alert(1)')).toBe(false)
+    expect(istSichererBildpfad('//example.com/x.png')).toBe(false)
+  })
+  it('verbietet Pfad-Ausbrüche und Backslashes', () => {
+    expect(istSichererBildpfad('images/../../etc/x.png')).toBe(false)
+    expect(istSichererBildpfad('images\\x.png')).toBe(false)
+    expect(istSichererBildpfad('')).toBe(false)
+  })
+})
+
+describe('validateManifest — Bildpfade', () => {
+  it('akzeptiert images/-Pfade', () => {
+    expect(validateManifest(mitKneeImagePfad('images/legion.png')).ok).toBe(true)
+  })
+  it('akzeptiert gebündelte App-Pfade (Nutzer-Regression)', () => {
+    expect(
+      validateManifest(mitKneeImagePfad('/templates/knee/legion-ap.png')).ok,
+    ).toBe(true)
+  })
+  it('lehnt externe URLs ab', () => {
+    const r = validateManifest(mitKneeImagePfad('https://example.com/beacon.png'))
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/Unsicherer Bildpfad/)
   })
 })
