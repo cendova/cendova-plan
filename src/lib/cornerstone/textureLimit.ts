@@ -89,14 +89,29 @@ export function assertImageUsable(
           : ' · Header nicht lesbar (evtl. keine DICOM-Datei)'),
     )
     if (hdr && (hdr.rows > 0 || hdr.columns > 0)) {
-      throw new Error(
+      // Unkomprimierte Transfersyntaxen: Implicit/Explicit VR LE + Explicit
+      // VR BE. Bei denen ist der Rat „als unkomprimiert exportieren" falsch
+      // (ist schon unkomprimiert) — dann liegt es NICHT am Codec, sondern
+      // eher an der Laufzeit (z. B. veralteter Dev-Bundle-Cache).
+      const unkomprimiert = new Set([
+        '1.2.840.10008.1.2',
+        '1.2.840.10008.1.2.1',
+        '1.2.840.10008.1.2.2',
+      ]).has(hdr.transferSyntaxUid ?? '')
+      const kopf =
         `Bild konnte nicht dekodiert werden. Der DICOM-Header meldet ` +
-          `${hdr.columns}×${hdr.rows} px in der Transfersyntax ` +
-          `${hdr.transferSyntaxUid ?? '?'} (${hdr.transferSyntaxName})` +
-          `${hdr.photometric ? `, ${hdr.photometric}` : ''}` +
-          `${hdr.bitsAllocated ? `, ${hdr.bitsAllocated} bit` : ''}. ` +
-          `Dieses Format/dieser Codec wird vom Viewer derzeit nicht ` +
-          `unterstützt — bitte das Bild als unkomprimiertes DICOM exportieren.`,
+        `${hdr.columns}×${hdr.rows} px in der Transfersyntax ` +
+        `${hdr.transferSyntaxUid ?? '?'} (${hdr.transferSyntaxName})` +
+        `${hdr.photometric ? `, ${hdr.photometric}` : ''}` +
+        `${hdr.bitsAllocated ? `, ${hdr.bitsAllocated} bit` : ''}. `
+      throw new Error(
+        kopf +
+          (unkomprimiert
+            ? `Das Bild ist bereits unkomprimiert — der Fehler liegt nicht ` +
+              `am Format. Bitte die App einmal neu starten (aktualisiert den ` +
+              `Zwischenspeicher); besteht der Fehler fort, bitte melden.`
+            : `Dieses Format/dieser Codec wird vom Viewer derzeit nicht ` +
+              `unterstützt — bitte das Bild als unkomprimiertes DICOM exportieren.`),
       )
     }
     throw new Error(
