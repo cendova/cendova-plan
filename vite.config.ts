@@ -95,18 +95,11 @@ export default defineConfig({
     format: 'es',
   },
   optimizeDeps: {
-    // Den DICOM-Loader im Dev-Modus VORBÜNDELN (nicht mehr excluden): In
-    // Cornerstone v5 teilt der wadouri-Loader seinen Pixeldaten-Cache über
-    // einen modulinternen metaData-Singleton. Als NICHT vorgebündelte
-    // (exkludierte) Dep lieferte Vite ihn im Dev als rohes Mehr-Modul-ESM →
-    // die Frame-Daten-Registrierung (addDicomPart10Instance) und die Abfrage
-    // (COMPRESSED_FRAME_DATA) liefen in VERSCHIEDENEN Modulinstanzen → Fehler
-    // „no pixel data in NATURALIZED" (Bild scheinbar „nicht dekodiert", 0×0).
-    // Im Build passiert das nicht (einmal gebündelt). Vorbündeln vereinheit-
-    // licht Dev und Build auf EINE Instanz. Die WASM-Codecs bleiben explizit
-    // eingeschlossen (CommonJS → esbuild-ESM-Interop).
+    // Der DICOM-Loader bringt eigene Web-Worker mit und wird nicht vorab
+    // gebündelt. Seine WASM-Codecs sind aber CommonJS-Module und brauchen
+    // die ESM-Interop von esbuild — daher explizit einschließen.
+    exclude: ['@cornerstonejs/dicom-image-loader'],
     include: [
-      '@cornerstonejs/dicom-image-loader',
       'dicom-parser',
       '@cornerstonejs/codec-charls/decodewasmjs',
       '@cornerstonejs/codec-libjpeg-turbo-8bit/decodewasmjs',
