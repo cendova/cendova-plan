@@ -16,6 +16,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { createRequire } from 'node:module'
+import { genDicomUid } from './lib/dicom-uid.mjs'
 
 const require = createRequire(import.meta.url)
 const { loadImage, createCanvas } = require('@napi-rs/canvas')
@@ -66,9 +67,7 @@ const ROOT = '1.2.826.0.1.3680043.8.498'
 // Kein Date.now()/Math.random() nötig zur Reproduzierbarkeit? Der Generator
 // nutzt Zufalls-UIDs; hier ebenso ok — die Datei ist ein Wegwerf-Testbild.
 function genUid() {
-  let s = ROOT
-  while (s.length < 48) s += '.' + Math.floor(Math.random() * 1e6)
-  return s.slice(0, 48)
+  return genDicomUid(ROOT)
 }
 const LONG_VRS = new Set(['OB', 'OW', 'OF', 'SQ', 'UT', 'UN'])
 function element(group, elem, vr, value) {

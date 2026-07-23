@@ -10,6 +10,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { genDicomUid } from './lib/dicom-uid.mjs'
 
 const COLS = 1200
 const ROWS = 1000
@@ -176,9 +177,7 @@ const DX_IMAGE_STORAGE = '1.2.840.10008.5.1.4.1.1.1.1'
 const ROOT = '1.2.826.0.1.3680043.8.498'
 
 function genUid() {
-  let s = ROOT
-  while (s.length < 48) s += '.' + Math.floor(Math.random() * 1e6)
-  return s.slice(0, 48)
+  return genDicomUid(ROOT)
 }
 
 const LONG_VRS = new Set(['OB', 'OW', 'OF', 'SQ', 'UT', 'UN'])

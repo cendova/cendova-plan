@@ -39,9 +39,38 @@ const DATEIEN: Record<string, { datei: string; typ: string }> = {
 // fail closed mit 413 statt weiter zu sammeln.
 const MAX_PUT_BYTES = 128 * 1024 * 1024
 
+/**
+ * Cross-Origin-Zugriffe auf die Sicherungs-Endpunkte abweisen (Defense-in-
+ * Depth, Security-Report §7): Nur die App SELBST (same-origin) darf sie
+ * ansprechen. Der Browser sendet bei App-eigenen Fetches `Sec-Fetch-Site:
+ * same-origin`; eine fremde Origin-Seite bekommt `cross-site`/`same-site`
+ * bzw. eine nicht passende `Origin`. Fehlt der Header (direkte Navigation,
+ * Nicht-Browser), wird nicht blockiert — das deckt kein lokaler-Prozess-
+ * Angreifer ab, wehrt aber Browser-Cross-Origin/DNS-Rebinding zusätzlich
+ * zum host-Filter ab.
+ */
+function fremdeOrigin(req: IncomingMessage): boolean {
+  const site = req.headers['sec-fetch-site']
+  if (typeof site === 'string' && site !== 'same-origin' && site !== 'none') {
+    return true
+  }
+  const origin = req.headers['origin']
+  if (typeof origin === 'string' && origin.length > 0) {
+    const host = req.headers['host']
+    // Origin ist scheme://host[:port]; nur der host-Teil muss passen.
+    if (!host || !origin.endsWith(`//${host}`)) return true
+  }
+  return false
+}
+
 function behandle(req: IncomingMessage, res: ServerResponse, next: () => void): void {
   const m = /^\/__cendova\/sicherung\/(paket|profil)$/.exec(req.url ?? '')
   if (!m) return next()
+  if (fremdeOrigin(req)) {
+    res.statusCode = 403
+    res.end()
+    return
+  }
   const { datei, typ } = DATEIEN[m[1]]
   const pfad = join(DATEN_DIR, datei)
   try {
