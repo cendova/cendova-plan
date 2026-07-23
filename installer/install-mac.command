@@ -22,6 +22,7 @@
 #      in Launchpad/Spotlight, Start per Doppelklick (holt bei jedem Start die
 #      neueste Version); zusaetzlich, wenn der macOS-Datenschutz es zulaesst,
 #      eine Kopie auf dem Schreibtisch.
+#   6. startet CendovaPlan direkt nach der Installation (neues Fenster + Browser).
 #
 # Idempotent: erneutes Ausfuehren aktualisiert nur.
 #
@@ -227,5 +228,14 @@ echo '  Update         : passiert beim Start automatisch (git pull).'
 echo
 echo '  Hinweis: CendovaPlan laeuft rein lokal im Browser (localhost) -'
 echo '           es verlassen KEINE Patientendaten den Rechner.'
+echo
+# Direkt starten: oeffnet ein neues Terminal-Fenster (mit Server-Ausgabe) und
+# den Browser. Start ueber das App-Bundle - so wird zugleich der Doppelklick-
+# Weg getestet; faellt bei Bedarf auf den direkten Skriptstart zurueck.
+info '  Starte CendovaPlan jetzt (neues Fenster, Browser oeffnet sich) ...'
+open "$APP_DIR" 2>/dev/null \
+  || open -a Terminal "$INSTALL_DIR/scripts/start-local-mac.command" 2>/dev/null \
+  || warn '  Auto-Start nicht moeglich - bitte das Icon „CendovaPlan" anklicken.'
+echo '  (Dieses Installer-Fenster kann jetzt geschlossen werden.)'
 echo
 read -r -p 'Enter zum Schliessen '
