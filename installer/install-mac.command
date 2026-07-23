@@ -18,8 +18,11 @@
 #      gelegt (kein System-Installer, kein sudo),
 #   4. installiert die Programmbibliotheken (npm install) und erzeugt das
 #      private Schablonen-Paket (cendova-schablonen-*.zip),
-#   5. legt die Desktop-Verknuepfung "CendovaPlan.command" an
-#      (Start = Doppelklick; holt bei jedem Start die neueste Version).
+#   5. legt eine echte App "CendovaPlan.app" in ~/Applications an - mit Icon
+#      in Launchpad/Spotlight, Start per Doppelklick (holt bei jedem Start die
+#      neueste Version); zusaetzlich, wenn der macOS-Datenschutz es zulaesst,
+#      eine Kopie auf dem Schreibtisch.
+#   6. startet CendovaPlan direkt nach der Installation (neues Fenster + Browser).
 #
 # Idempotent: erneutes Ausfuehren aktualisiert nur.
 #
@@ -136,33 +139,83 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-info '[5/5] Start-Verknuepfungen anlegen ...'
-LAUNCHER="$HOME/Desktop/CendovaPlan.command"
+info '[5/5] App-Icon "CendovaPlan.app" anlegen ...'
+APP_DIR="$HOME/Applications/CendovaPlan.app"
 STARTER="$INSTALL_DIR/CendovaPlan.command"
-# Start-Skript zuerst IM Installationsordner anlegen (immer beschreibbar) -
-# der Schreibtisch kann durch den macOS-Datenschutz (TCC) gesperrt sein,
-# und ein stilles Scheitern dort darf die Installation nicht kippen.
+
+# Alt-Lasten frueherer Installationen entfernen (blanke .command-Dateien mit
+# generischem Unix-Icon; die App ersetzt sie).
+rm -f "$HOME/Desktop/CendovaPlan.command" \
+      "$HOME/Desktop/CendovaPlan starten.command" 2>/dev/null
+
+# Start-Skript weiterhin IM Projektordner (immer beschreibbar) - manueller
+# Notnagel und Ziel der App.
 printf '#!/bin/bash\nexec /bin/bash "%s/scripts/start-local-mac.command"\n' "$INSTALL_DIR" > "$STARTER"
 chmod +x "$STARTER" "$INSTALL_DIR/scripts/start-local-mac.command" 2>/dev/null
-# Alte Verknuepfung aus frueheren Installationen entfernen.
-rm -f "$HOME/Desktop/CendovaPlan starten.command" 2>/dev/null
-# Kopie auf den Schreibtisch MIT Erfolgskontrolle: beim ersten Zugriff
-# fragt macOS um Erlaubnis ("Terminal moechte auf den Schreibtisch-Ordner
-# zugreifen") - bei "Nicht erlauben" schlaegt cp fehl.
-START_HINWEIS='Doppelklick auf "CendovaPlan" (Desktop).'
-if cp "$STARTER" "$LAUNCHER" 2>/dev/null && [ -s "$LAUNCHER" ]; then
-  chmod +x "$LAUNCHER" 2>/dev/null
-  ok "  Verknuepfung erstellt: $LAUNCHER"
+
+# --- Echtes .app-Bundle in ~/Applications ----------------------------------
+# ~/Applications ist NICHT TCC-geschuetzt (anders als Desktop/Dokumente/
+# Downloads) -> kein Datenschutz-Dialog, kein stilles Scheitern. Lokal erzeugt
+# = keine Quarantaene -> Gatekeeper blockt den Doppelklick nicht. Die App
+# erscheint mit Icon in Launchpad + Spotlight ("Cendova" tippen).
+mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
+
+# Launcher: oeffnet den Start im Terminal (sichtbares Fenster mit Server-
+# Ausgabe; der Browser oeffnet via `npm run dev -- --open`).
+cat > "$APP_DIR/Contents/MacOS/CendovaPlan" <<LAUNCH
+#!/bin/bash
+exec open -a Terminal "$INSTALL_DIR/scripts/start-local-mac.command"
+LAUNCH
+chmod +x "$APP_DIR/Contents/MacOS/CendovaPlan"
+
+# Info.plist (minimal, gueltig) - verweist auf Executable und Icon.
+cat > "$APP_DIR/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>CendovaPlan</string>
+  <key>CFBundleDisplayName</key><string>CendovaPlan</string>
+  <key>CFBundleIdentifier</key><string>de.cendova.plan.launcher</string>
+  <key>CFBundleVersion</key><string>1.0</string>
+  <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleExecutable</key><string>CendovaPlan</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>LSMinimumSystemVersion</key><string>10.13</string>
+  <key>NSHighResolutionCapable</key><true/>
+</dict>
+</plist>
+PLIST
+
+# Icon einsetzen (liegt fertig im Repo; kein macOS-`iconutil` noetig).
+if [ -f "$INSTALL_DIR/installer/CendovaPlan.icns" ]; then
+  cp "$INSTALL_DIR/installer/CendovaPlan.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 else
-  warn '  Schreibtisch nicht beschreibbar (macOS-Datenschutz?).'
-  step '  Freigeben: Systemeinstellungen > Datenschutz & Sicherheit >'
-  step '  Dateien und Ordner > Terminal > "Schreibtisch-Ordner" aktivieren -'
-  step '  danach den Installer einfach noch einmal ausfuehren.'
-  ok "  Start-Skript liegt bereit: $STARTER"
-  step '  (Es laesst sich per Doppelklick starten oder von dort auf den'
-  step '   Schreibtisch / ins Dock ziehen - der Finder zeigt es gleich an.)'
-  START_HINWEIS="Doppelklick auf CendovaPlan.command in $INSTALL_DIR"
-  open -R "$STARTER" 2>/dev/null || true
+  warn '  Icon-Datei fehlt - App startet trotzdem (nur ohne eigenes Icon).'
+fi
+touch "$APP_DIR"
+
+# Bei LaunchServices registrieren -> Spotlight/Launchpad finden die App sofort,
+# Icon-Cache wird frisch gezogen.
+LSREG='/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister'
+[ -x "$LSREG" ] && "$LSREG" -f "$APP_DIR" >/dev/null 2>&1
+ok "  App angelegt: $APP_DIR"
+step '  (In Launchpad/Spotlight als „CendovaPlan"; das Icon kann 1-2 s brauchen.)'
+
+# --- Bonus: dieselbe App zusaetzlich auf den Schreibtisch ------------------
+# Best effort. Scheitert der TCC-Zugriff (Datenschutz), liegt die App ohnehin
+# in Launchpad - die Installation gilt trotzdem als erfolgreich.
+START_HINWEIS='Launchpad/Spotlight -> „CendovaPlan" (oder Doppelklick auf dem Desktop).'
+DESK_APP="$HOME/Desktop/CendovaPlan.app"
+rm -rf "$DESK_APP" 2>/dev/null
+if cp -R "$APP_DIR" "$DESK_APP" 2>/dev/null && [ -d "$DESK_APP/Contents" ]; then
+  touch "$DESK_APP"
+  ok "  Zusaetzlich auf dem Schreibtisch: $DESK_APP"
+else
+  step '  Schreibtisch nicht beschreibbar (macOS-Datenschutz) - kein Problem:'
+  step '  „CendovaPlan" liegt in Launchpad. Bei Bedarf aus dem Finder-Ordner'
+  step '  „Programme" ins Dock oder auf den Schreibtisch ziehen.'
 fi
 
 echo
@@ -175,5 +228,14 @@ echo '  Update         : passiert beim Start automatisch (git pull).'
 echo
 echo '  Hinweis: CendovaPlan laeuft rein lokal im Browser (localhost) -'
 echo '           es verlassen KEINE Patientendaten den Rechner.'
+echo
+# Direkt starten: oeffnet ein neues Terminal-Fenster (mit Server-Ausgabe) und
+# den Browser. Start ueber das App-Bundle - so wird zugleich der Doppelklick-
+# Weg getestet; faellt bei Bedarf auf den direkten Skriptstart zurueck.
+info '  Starte CendovaPlan jetzt (neues Fenster, Browser oeffnet sich) ...'
+open "$APP_DIR" 2>/dev/null \
+  || open -a Terminal "$INSTALL_DIR/scripts/start-local-mac.command" 2>/dev/null \
+  || warn '  Auto-Start nicht moeglich - bitte das Icon „CendovaPlan" anklicken.'
+echo '  (Dieses Installer-Fenster kann jetzt geschlossen werden.)'
 echo
 read -r -p 'Enter zum Schliessen '

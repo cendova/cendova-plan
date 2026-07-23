@@ -39,8 +39,9 @@ verarbeitet — kein Server, keine Übertragung. Siehe [DISCLAIMER.md](DISCLAIME
 
 ## Installation (eigener Rechner / Klinik-PC)
 
-Ein-Klick-Installer — richtet Git und Node.js selbst ein und legt eine
-Desktop-Verknüpfung an, die beim Start automatisch aktualisiert:
+Ein-Klick-Installer — richtet Git und Node.js selbst ein und legt ein
+anklickbares Startsymbol an (Windows: Desktop-Verknüpfung; macOS: App
+„CendovaPlan" in Launchpad/Spotlight), das beim Start automatisch aktualisiert:
 
 - **Windows:** [CendovaPlan-Installer-Windows.zip](https://github.com/cendova/cendova-plan/releases/latest/download/CendovaPlan-Installer-Windows.zip)
   — entpacken, „Installieren.cmd" doppelklicken

@@ -69,3 +69,13 @@ Installation auf macOS (gleicher Ablauf, ohne Admin-Rechte)
   ist davon nicht betroffen und identisch sicher - das Skript ist
   oeffentlich einsehbar (github.com/cendova/cendova-plan, Ordner
   installer/).
+
+  Direkt nach der Installation startet CendovaPlan automatisch (neues
+  Terminal-Fenster, der Browser oeffnet sich). Fuer kuenftige Starts legt
+  die Installation die App "CendovaPlan" (mit Icon) an - zu finden in
+  Launchpad und ueber Spotlight (cmd+Leertaste, "Cendova" tippen). Ein
+  Klick darauf startet CendovaPlan und oeffnet den Browser; die neueste
+  Version wird bei jedem Start automatisch geholt.
+  Wenn der macOS-Datenschutz es zulaesst, liegt zusaetzlich ein Icon auf
+  dem Schreibtisch. (Die App liegt in ~/Applications, nicht im System-
+  Programme-Ordner - daher ohne Admin-Rechte.)
