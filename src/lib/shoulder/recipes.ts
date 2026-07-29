@@ -3,10 +3,11 @@
  * `hip/recipes.ts` und `knee/recipes.ts` — dadurch verarbeiten Viewport,
  * Overlay, Werteliste und PDF-Export die Schulter ohne Sonderfall.
  *
- * Stand: Winkel-Set umgesetzt (CSA, Akromion-Index, Glenoid-Inklination,
- * Hals-Schaft-Winkel) — alle vier ohne Kalibrierung nutzbar. Es folgen
- * (Plan `docs/schulter-modul-plan.md`, Schritte 4–5) die Längenmaße AHD
- * und Humeruskopf sowie die RSA-Bilanz (DSA/LSA).
+ * Stand: Winkel-Set (CSA, Akromion-Index, Glenoid-Inklination,
+ * Hals-Schaft-Winkel) und Längenmaße (AHD, Humeruskopf) umgesetzt. Die
+ * Winkel brauchen keine Kalibrierung, die Längenmaße schon. Es folgt
+ * (Plan `docs/schulter-modul-plan.md`, Schritt 5) die RSA-Bilanz
+ * (DSA/LSA).
  *
  * Fachliche Leitplanke (siehe Plan A.0): Es werden ausschließlich Größen
  * abgebildet, die auf einer echten a.p.-Aufnahme valide messbar sind.
@@ -18,6 +19,7 @@ import {
   add,
   angleAtVertex,
   angleBetweenVectors,
+  circleFrom3Points,
   closestPointOnLine,
   dist,
   dot,
@@ -29,11 +31,16 @@ import {
 } from '../geometry'
 import { beurteileCsa } from './csa'
 import { beurteileAcromionIndex } from './acromionIndex'
+import { beurteileAhd } from './ahd'
 
 type P = Types.Point3
 
 function deg(v: number): string {
   return `${v.toFixed(1)}°`
+}
+
+function mm(v: number): string {
+  return `${v.toFixed(1)} mm`
 }
 
 /**
@@ -342,16 +349,114 @@ const neckShaftAngle: ShoulderRecipe = {
   },
 }
 
+// ----------------------------------------------------------------------
+// AHD — akromiohumeraler Abstand (in mm, BRAUCHT KALIBRIERUNG)
+//
+// Kürzester Abstand zwischen der Unterfläche des Akromions und der
+// Humeruskopf-Kontur. Erste Schulter-Messung mit echtem Maßstab: ohne
+// Kalibrierung wäre der Zahlenwert bedeutungslos, deshalb
+// `needsCalibration: true` — die Oberfläche kennzeichnet solche
+// Messungen als „unkalibriert", solange kein Maßstab gesetzt ist.
+// ----------------------------------------------------------------------
+const ahd: ShoulderRecipe = {
+  kind: 'ahd',
+  label: 'AHD (akromiohumeraler Abstand)',
+  needsCalibration: true,
+  steps: ['Akromion — Unterrand', 'Humeruskopf — Oberrand'],
+  lineGroups: [[0, 1]],
+  compute: (points, factor) => {
+    const [akromionUnten, kopfOben] = points
+    const abstand = dist(akromionUnten, kopfOben) * factor
+    // OHNE Maßstab KEINE Einordnung: Der Aufrufer übergibt den Faktor 1,
+    // solange keine Kalibrierung gesetzt ist — die Zahl ist dann eine
+    // Welt-Einheit, kein Millimeterwert. Eine Aussage wie „im üblichen
+    // Bereich (≥ 6 mm)" wäre darauf schlicht unbegründet. Den gemessenen
+    // Wert zeigen wir weiter (die Oberfläche kennzeichnet ihn als
+    // unkalibriert), nur die Beurteilung entfällt.
+    // Grenzfall bewusst in Kauf genommen: Bei einer echten 1:1-
+    // Kalibrierung fehlt die Einordnung ebenfalls — keine Aussage ist
+    // besser als eine womöglich falsche.
+    const beurteilbar = factor !== 1
+    return {
+      values: [
+        { label: 'AHD', value: mm(abstand) },
+        beurteilbar
+          ? { label: 'Beurteilung', value: beurteileAhd(abstand).hinweis }
+          : {
+              label: 'Beurteilung',
+              value: 'ohne Kalibrierung nicht beurteilbar',
+            },
+      ],
+      geometry: {
+        lines: [{ from: akromionUnten, to: kopfOben }],
+        circles: [],
+        labels: [
+          { at: midpoint(akromionUnten, kopfOben), text: `AHD ${mm(abstand)}` },
+        ],
+      },
+    }
+  },
+}
+
+// ----------------------------------------------------------------------
+// Humeruskopf — Zentrum und Durchmesser aus drei Konturpunkten
+//
+// Nutzt dieselbe Primitive wie der Hüftkopf (`circleFrom3Points`) samt
+// ihrer Kollinearitäts-Warnung: Liegen die drei Punkte fast auf einer
+// Linie, ist das Zentrum numerisch instabil. Klinische Festlegung wie
+// bei der Hüfte — warnen, nicht blockieren.
+//
+// Der Durchmesser ist die Grundlage für die spätere Kopf-/Prothesen-
+// größenwahl und braucht deshalb einen echten Maßstab.
+// ----------------------------------------------------------------------
+const humeralHead: ShoulderRecipe = {
+  kind: 'humeralHead',
+  label: 'Humeruskopf (Zentrum/Größe)',
+  needsCalibration: true,
+  steps: [
+    'Humeruskopf-Kontur — Punkt 1',
+    'Humeruskopf-Kontur — Punkt 2',
+    'Humeruskopf-Kontur — Punkt 3',
+  ],
+  lineGroups: [],
+  compute: (points, factor) => {
+    const [k1, k2, k3] = points
+    const { center, radius, degenerate } = circleFrom3Points(k1, k2, k3)
+    const durchmesser = 2 * radius * factor
+    return {
+      values: [
+        ...(degenerate
+          ? [
+              {
+                label: '⚠ Humeruskopf',
+                value: 'Punkte fast kollinear — neu setzen',
+              },
+            ]
+          : []),
+        { label: 'Durchmesser', value: mm(durchmesser) },
+        { label: 'Radius', value: mm(radius * factor) },
+      ],
+      geometry: {
+        lines: [],
+        circles: [{ center, radius }],
+        labels: [{ at: center, text: `Ø ${mm(durchmesser)}` }],
+      },
+    }
+  },
+}
+
 /**
  * Registry der implementierten Rezepte. `Partial`, weil `ShoulderKind`
  * bereits alle geplanten Typen kennt, die Umsetzung aber schrittweise
- * erfolgt (Plan `docs/schulter-modul-plan.md`, Schritte 4–5).
+ * erfolgt (Plan `docs/schulter-modul-plan.md`, Schritt 5).
  */
 export const SHOULDER_RECIPES: Partial<Record<ShoulderKind, ShoulderRecipe>> = {
   csa,
   acromionIndex,
   glenoidInclination,
   neckShaftAngle,
+  ahd,
+  humeralHead,
 }
 
 /** Alle aktuell benutzbaren Rezepte (Reihenfolge = Anzeige im Panel). */
@@ -360,6 +465,8 @@ export const AVAILABLE_SHOULDER_RECIPES: ShoulderRecipe[] = [
   acromionIndex,
   glenoidInclination,
   neckShaftAngle,
+  ahd,
+  humeralHead,
 ]
 
 export function getShoulderRecipe(kind: ShoulderKind): ShoulderRecipe | undefined {
