@@ -30,6 +30,7 @@ import {
 } from '../../state/viewerStore'
 import { useHipStore } from '../../state/hipStore'
 import { useKneeStore } from '../../state/kneeStore'
+import { useShoulderStore } from '../../state/shoulderStore'
 import { useNoteStore } from '../../state/noteStore'
 import { useTemplateStore } from '../../state/templateStore'
 import { usePlanningStore } from '../../state/planningStore'
@@ -52,7 +53,7 @@ import {
 import { contourGeomImage, getKneeContour } from '../knee/kneeContours'
 import { kneeContourAvailable } from '../knee/kneePlaceable'
 import { getKneeImage, type KneeImage } from '../knee/kneeImages'
-import { angleAtVertex, dist as distance3 } from '../hip/geometry'
+import { angleAtVertex, dist as distance3 } from '../geometry'
 import { applyToolBindings } from './toolBindings'
 import {
   extractWorkflowAxes,
@@ -348,6 +349,7 @@ export function resetPlanning(): void {
   annotation.state.removeAllAnnotations()
   useHipStore.getState().reset()
   useKneeStore.getState().reset()
+  useShoulderStore.getState().reset()
   useKneeTemplateStore.getState().reset()
   useNoteStore.getState().reset()
   useTemplateStore.getState().reset()
@@ -373,6 +375,7 @@ function updateStoreForLoadedImage(
   annotation.state.removeAllAnnotations()
   useHipStore.getState().reset()
   useKneeStore.getState().reset()
+  useShoulderStore.getState().reset()
   useKneeTemplateStore.getState().reset()
   useNoteStore.getState().reset()
   useTemplateStore.getState().reset()
@@ -584,7 +587,7 @@ export function getCurrentDicomFileName(): string | null {
 }
 
 // ----------------------------------------------------------------------
-// Messungen (Geometrie: dist/angleAtVertex aus ../hip/geometry — eine
+// Messungen (Geometrie: dist/angleAtVertex aus ../geometry — eine
 // Quelle statt Kopien in viewer/viewer2, Audit-Befund A8)
 // ----------------------------------------------------------------------
 

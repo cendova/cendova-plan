@@ -45,7 +45,7 @@ import {
   type LeftTool,
   type Measurement,
 } from '../../state/viewerStore'
-import { angleAtVertex, dist } from '../hip/geometry'
+import { angleAtVertex, dist } from '../geometry'
 import { applyToolBindings } from './toolBindings'
 
 const RENDERING_ENGINE_ID_2 = 'cendova-engine-2'
@@ -306,7 +306,7 @@ type AnnLike = {
   metadata?: { toolName?: string; referencedImageId?: string }
 }
 
-// Geometrie aus ../hip/geometry (eine Quelle, Audit-Befund A8) — die
+// Geometrie aus ../geometry (eine Quelle, Audit-Befund A8) — die
 // Annotations-API liefert lose number[]-Punkte, daher schmale Adapter.
 type P3 = [number, number, number]
 const dist3 = (a: number[], b: number[]): number => dist(a as P3, b as P3)

@@ -32,6 +32,7 @@ import {
   useKneeStore,
   type KneeMeasurement,
 } from '../../state/kneeStore'
+import { useShoulderStore } from '../../state/shoulderStore'
 import {
   useTemplateStore,
   type CupTemplate,
@@ -334,6 +335,10 @@ export async function applyPlan(plan: PlanFile): Promise<
   // Alte Daten zurücksetzen
   useHipStore.getState().removeAll()
   useKneeStore.getState().removeAll()
+  // Schulter mit aufräumen, obwohl das Plan-Format ihre Messungen noch
+  // nicht speichert (kommt mit Plan v7, Schritt 6): Sonst blieben beim
+  // Laden eines Plans Schulter-Messungen des VORIGEN Falls stehen.
+  useShoulderStore.getState().removeAll()
   useTemplateStore.getState().reset()
   useKneeTemplateStore.getState().reset()
   useNoteStore.getState().reset()

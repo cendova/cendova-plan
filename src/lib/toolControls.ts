@@ -6,9 +6,14 @@
  * Funktionen arbeiten direkt auf den Stores (.getState()) — kein React-
  * Hook nötig, damit sie auch aus Event-Handlern und Tests aufrufbar sind.
  */
-import { useViewerStore, type LeftTool } from '../state/viewerStore'
+import {
+  useViewerStore,
+  type LeftTool,
+  type PlanningMode,
+} from '../state/viewerStore'
 import { useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
+import { useShoulderStore } from '../state/shoulderStore'
 import { useNoteStore } from '../state/noteStore'
 import { useOsteophyteStore } from '../state/osteophyteStore'
 import { useTemplateStore } from '../state/templateStore'
@@ -92,15 +97,24 @@ export function toggleOsteophyteTool() {
 }
 
 /**
- * Wechselt den Planungs-Modus (Hüfte ↔ Knie). Bricht laufende Werkzeuge
- * im jeweils anderen Modus ab, lässt fertige Messungen/Templates aber
- * sichtbar — sonst würde der Tab-Wechsel Daten „verschwinden lassen".
+ * Wechselt den Planungs-Modus (Hüfte / Knie / Schulter). Bricht laufende
+ * Werkzeuge ALLER anderen Module ab, lässt fertige Messungen/Templates
+ * aber sichtbar — sonst würde der Tab-Wechsel Daten „verschwinden lassen".
+ *
+ * Bewusst als Abbruch-Schleife über alle Fremd-Module statt als
+ * if/else-Paar: Mit dem dritten Modus hätte ein `if (hip) … else …` nur
+ * je EIN anderes Werkzeug abgeräumt — beim Wechsel auf die Schulter wäre
+ * ein laufendes Knie-Werkzeug „scharf" geblieben und hätte Klicks
+ * abgefangen, die der Schulter gelten.
  */
-export function setPlanningMode(mode: 'hip' | 'knee') {
-  if (mode === 'hip') {
-    useKneeStore.getState().cancelTool()
-  } else {
-    useHipStore.getState().cancelTool()
+export function setPlanningMode(mode: PlanningMode) {
+  const abbrechen: Record<PlanningMode, () => void> = {
+    hip: () => useHipStore.getState().cancelTool(),
+    knee: () => useKneeStore.getState().cancelTool(),
+    shoulder: () => useShoulderStore.getState().cancelTool(),
+  }
+  for (const m of Object.keys(abbrechen) as PlanningMode[]) {
+    if (m !== mode) abbrechen[m]()
   }
   useViewerStore.getState().setPlanningMode(mode)
 }

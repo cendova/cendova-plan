@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useViewerStore } from '../state/viewerStore'
 import { useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
+import { useShoulderStore } from '../state/shoulderStore'
 import { useUiStore } from '../state/uiStore'
 import { Hint } from './Hint'
 import {
@@ -97,20 +98,25 @@ export function Toolbar() {
           active={planningMode === 'knee'}
           onClick={() => setPlanningMode('knee')}
         />
+        <TabButton
+          label="Schulter"
+          active={planningMode === 'shoulder'}
+          onClick={() => setPlanningMode('shoulder')}
+        />
       </div>
 
       <div className="flex flex-col gap-1 overflow-y-auto p-2">
-        {planningMode === 'hip' ? (
-          <HipSection
-            hasImage={hasImage}
-            activeKind={hipActiveKind}
-          />
-        ) : (
-          <KneeSection
-            hasImage={hasImage}
-            activeKind={kneeActiveKind}
-          />
+        {/* Bewusst je Modus EIN eigener Zweig statt eines Ternaries:
+            Ein `mode === 'hip' ? Hüfte : Knie` hätte den Schulter-Modus
+            still in die Knie-Sektion fallen lassen — der Compiler warnt
+            bei einem Ternary nicht. */}
+        {planningMode === 'hip' && (
+          <HipSection hasImage={hasImage} activeKind={hipActiveKind} />
         )}
+        {planningMode === 'knee' && (
+          <KneeSection hasImage={hasImage} activeKind={kneeActiveKind} />
+        )}
+        {planningMode === 'shoulder' && <ShoulderSection />}
       </div>
 
       <Hint>
@@ -1062,6 +1068,99 @@ function KneeSelect<T extends string | number>({
 // ----------------------------------------------------------------------
 // Gemeinsame UI-Bausteine
 // ----------------------------------------------------------------------
+
+/**
+ * Schulter-Sektion. Stand: Gerüst (Plan `docs/schulter-modul-plan.md`,
+ * Schritt 1) — die beiden Einstellungen stehen schon, weil sie festlegen,
+ * WIE nachfolgende Messungen ausgewertet werden:
+ *  - Seite: „lateral" ist auf der a.p.-Aufnahme seitenabhängig (CSA,
+ *    Akromion-Index). Die Seite wird beim Anlegen jeder Messung
+ *    eingefroren, ein späteres Umschalten deutet Bestehendes NICHT um.
+ *  - Prothesentyp: filtert nur das Rezept-Angebot (die Bilanz-Winkel
+ *    DSA/LSA gelten nur invers) — nie die Rechenlogik.
+ */
+function ShoulderSection() {
+  const side = useShoulderStore((s) => s.side)
+  const setSide = useShoulderStore((s) => s.setSide)
+  const prosthesis = useShoulderStore((s) => s.prosthesis)
+  const setProsthesis = useShoulderStore((s) => s.setProsthesis)
+  const messungen = useShoulderStore((s) => s.measurements.length)
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+          Seite
+        </div>
+        <div className="flex gap-1">
+          <SegmentButton
+            label="Rechts"
+            active={side === 'R'}
+            onClick={() => setSide('R')}
+          />
+          <SegmentButton
+            label="Links"
+            active={side === 'L'}
+            onClick={() => setSide('L')}
+          />
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+          Prothese
+        </div>
+        <div className="flex gap-1">
+          <SegmentButton
+            label="Anatomisch"
+            active={prosthesis === 'anatomic'}
+            onClick={() => setProsthesis('anatomic')}
+          />
+          <SegmentButton
+            label="Invers"
+            active={prosthesis === 'reverse'}
+            onClick={() => setProsthesis('reverse')}
+          />
+        </div>
+      </div>
+
+      <div className="rounded border border-neutral-700 bg-neutral-800/50 p-2 text-xs leading-relaxed text-neutral-400">
+        Messwerkzeuge folgen im nächsten Schritt (zuerst der CSA).
+        {messungen > 0 && ` — ${messungen} Messung(en) vorhanden.`}
+        <div className="mt-1.5 text-neutral-500">
+          Vorgesehen für die echte a.p.-Aufnahme; Glenoid-Version und
+          Walch-Typ bleiben dem CT vorbehalten.
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Kleiner Zwei-/Mehrfach-Umschalter (Seite, Prothesentyp). */
+function SegmentButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={[
+        'flex-1 rounded border px-2 py-1.5 text-xs font-medium transition',
+        active
+          ? 'border-sky-600 bg-sky-950/60 text-sky-200'
+          : 'border-neutral-700 bg-neutral-800 text-neutral-400 hover:text-neutral-200',
+      ].join(' ')}
+    >
+      {label}
+    </button>
+  )
+}
 
 function TabButton({
   label,

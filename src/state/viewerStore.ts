@@ -8,7 +8,20 @@ export type LeftTool = 'WindowLevel' | 'Pan' | 'Zoom' | 'Length' | 'Angle'
  * nur das gerade laufende Mess-Werkzeug wird abgebrochen (siehe
  * `setPlanningMode` im Toolbar/State-Übergang).
  */
-export type PlanningMode = 'hip' | 'knee'
+/**
+ * Alle gültigen Modi — die Liste ist die QUELLE, der Typ wird daraus
+ * abgeleitet. Wichtig: Andersherum (Typ von Hand, Liste daneben) wäre das
+ * Vergessen der Liste ein stiller Fehler, den kein Compiler meldet — der
+ * neue Modus fiele beim nächsten Start auf 'hip' zurück. Genau das war
+ * vor dem Schulter-Modus der Fall (`v === 'knee' ? 'knee' : 'hip'`).
+ */
+export const PLANNING_MODES = ['hip', 'knee', 'shoulder'] as const
+
+export type PlanningMode = (typeof PLANNING_MODES)[number]
+
+function istPlanningMode(v: unknown): v is PlanningMode {
+  return typeof v === 'string' && (PLANNING_MODES as readonly string[]).includes(v)
+}
 
 const PLANNING_MODE_KEY = 'cendova.planningMode'
 /** Vor dem Rename verwendeter Schlüssel (Alt-Arbeitsname) — wird beim
@@ -27,7 +40,7 @@ function loadInitialPlanningMode(): PlanningMode {
         localStorage.removeItem(PLANNING_MODE_KEY_ALT)
       }
     }
-    return v === 'knee' ? 'knee' : 'hip'
+    return istPlanningMode(v) ? v : 'hip'
   } catch {
     return 'hip'
   }
