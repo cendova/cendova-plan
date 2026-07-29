@@ -6,15 +6,23 @@
 // der a.p.-Aufnahme hängen CSA und Akromion-Index daran, welche Richtung
 // „lateral" ist (Plan `docs/schulter-modul-plan.md`, B.9).
 //
-// Da die echten Rezepte erst in Schritt 2 ff. dazukommen, speist dieser
-// Test ein minimales Prüf-Rezept in die Registry ein.
+// Damit die Store-Logik unabhängig von der echten Rechnung prüfbar bleibt,
+// speist dieser Test ein minimales Prüf-Rezept in die Registry ein.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useShoulderStore } from './shoulderStore'
 import {
   SHOULDER_RECIPES,
+  type ShoulderKind,
   type ShoulderRecipe,
 } from '../lib/shoulder/recipes'
 import type { Types } from '@cornerstonejs/core'
+
+// Die Registry ist seit Schritt 5 vollständig (`Record` statt
+// `Partial<Record>`), Einträge sind also nicht mehr optional. Für den Test
+// wird sie bewusst als lückenhaft behandelt — nur so lässt sich der
+// Fehlt-das-Rezept-Zweig des Stores überhaupt ansteuern.
+const REGISTRY = SHOULDER_RECIPES as Partial<Record<ShoulderKind, ShoulderRecipe>>
+const ECHTES_CSA = SHOULDER_RECIPES.csa
 
 const p = (x: number, y: number): Types.Point3 => [x, y, 0]
 
@@ -36,7 +44,9 @@ describe('shoulderStore', () => {
     useShoulderStore.getState().setProsthesis('anatomic')
   })
   afterEach(() => {
-    delete SHOULDER_RECIPES.csa
+    // Echtes Rezept zurücklegen statt löschen — die Registry ist nach dem
+    // Test wieder vollständig, so wie der Typ es zusagt.
+    SHOULDER_RECIPES.csa = ECHTES_CSA
   })
 
   it('friert die Seite beim Anlegen der Messung ein', () => {
@@ -92,10 +102,11 @@ describe('shoulderStore', () => {
     expect(useShoulderStore.getState().draftPoints).toHaveLength(1)
   })
 
-  it('ohne hinterlegtes Rezept passiert nichts (Gerüst-Zustand)', () => {
-    // Solange ein Messtyp nur deklariert, aber nicht implementiert ist,
-    // darf ein Klick keine unvollständige Messung erzeugen.
-    delete SHOULDER_RECIPES.csa
+  it('ohne hinterlegtes Rezept passiert nichts', () => {
+    // Findet der Store kein Rezept, darf ein Klick keine unvollständige
+    // Messung erzeugen. Der Fall ist seit Schritt 5 typseitig
+    // ausgeschlossen; der Schutzzweig bleibt trotzdem geprüft.
+    delete REGISTRY.csa
     useShoulderStore.getState().toggleTool('csa')
     useShoulderStore.getState().addDraftPoint(p(0, 0))
     expect(useShoulderStore.getState().measurements).toHaveLength(0)

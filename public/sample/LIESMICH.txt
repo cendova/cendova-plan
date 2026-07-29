@@ -1,4 +1,5 @@
-Beispielbilder fuer die Demo (?beispiel=huefte | ?beispiel=knie)
+Beispielbilder fuer die Demo
+(?beispiel=huefte | ?beispiel=knie | ?beispiel=schulter)
 ================================================================
 
 KEINE PATIENTENDATEN. Beide Dateien sind aus frei lizenzierten,
@@ -15,5 +16,26 @@ anonymisierten Lehr-Roentgenaufnahmen von Wikimedia Commons erzeugt
   Autor: Hellerhoff, Lizenz CC BY-SA 4.0,
   https://commons.wikimedia.org/wiki/File:Protrusio_acetabuli_rechts_mehr_als_links_81W_-_CR_ap_-_001.jpg
 
-Die Dateien stehen damit ebenfalls unter CC BY-SA (abgeleitete Werke) —
+- beispiel-schulter.dcm ("Demo, Schulter")
+  Quelle: "Anteroposterior glenoid (Grashey view) X-ray of a normal
+  shoulder", Autor: Mikael Haeggstroem, Lizenz CC0 (Public Domain),
+  https://commons.wikimedia.org/wiki/File:Anteroposterior_glenoid_(Grashey_view)_X-ray_of_a_normal_shoulder.jpg
+  Echte a.p.-Einstellung (Grashey) — genau die Projektion, die das
+  Schultermodul voraussetzt.
+
+Die aus CC-BY-SA-Quellen abgeleiteten Dateien stehen ebenfalls unter
+CC BY-SA; die Schulter-Datei ist als CC0-Ableitung gemeinfrei —
 unabhaengig von der Apache-2.0-Lizenz des Programmcodes.
+
+PIXELABSTAND: Die in den DICOM-Kopfdaten hinterlegten mm/px sind
+PLAUSIBLE ANNAHMEN fuer die Demo, keine gemessenen Werte (die Quellbilder
+tragen keine Massstabsinformation). Fuer echte Laengenmessungen im
+Programm immer selbst kalibrieren.
+
+Herleitung fuer die Schulter (0,1 mm/px): Ein erster Versuch mit 0,25
+mm/px lieferte im Programm einen Humeruskopf-Durchmesser von ueber 90 mm
+— anatomisch unmoeglich. Ueber einen Kreis durch Kopfscheitel sowie
+lateralen und medialen Gelenkflaechenrand misst der Kopf im Bild rund
+480 px; bei einem realen Durchmesser von etwa 46-48 mm ergibt das rund
+0,1 mm/px. Das Bildfeld liegt damit bei etwa 11,9 x 18,0 cm, was zu
+einer auf die Schulter beschnittenen Aufnahme passt.

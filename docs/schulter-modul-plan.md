@@ -189,9 +189,18 @@ weiter laden; das prüft ein Test.
 | **2** ✅ | **CSA** als erstes Rezept (3 Punkte, keine Kalibrierung, Seiten-Snapshot) | erledigt — inkl. Overlay, Werteliste, PDF **und Plan v7** (s. u.) |
 | **3** ✅ | Akromion-Index, Glenoid-Inklination, Hals-Schaft-Winkel | erledigt — Winkel-Set komplett, alle vier ohne Kalibrierung; Undo/Redo nachgezogen |
 | **4** ✅ | **AHD** (braucht Kalibrierung) + Humeruskopf-Kreis | erledigt — erste Maße mit Maßstab; ohne Kalibrierung wird bewusst NICHT beurteilt |
-| **5** | **RSA-Bilanz** (DSA/LSA, prä/geplant/post) — nur bei `prosthesis === 'reverse'` | Analogon zur Beinlängen-Bilanz |
+| **5** ✅ | **RSA-Bilanz** (DSA/LSA) — nur bei `prosthesis === 'reverse'` | erledigt — beide Winkel messbar; der Soll/Ist-Vergleich hängt an Schritt 7 (s. u.) |
 | **6** ✅ | ~~Plan v7~~ (vorgezogen nach Schritt 2) und ~~Undo/Redo~~ (nachgezogen in Schritt 3) | erledigt |
 | **7** | Schablonen-Schnittstelle je Typ, sobald Material da ist | Templating |
+
+> **Was Schritt 5 bewusst NICHT liefert:** DSA und LSA sind als Messung
+> fertig, der ursprünglich mitgeplante Vergleich *prä / geplant / post* aber
+> nicht. Er braucht einen Soll-Wert, und den erzeugt erst eine platzierte
+> Schablone — also Schritt 7. Anders als die Beinlängen-Bilanz, die beide
+> Seiten auf EINEM Becken-Bild vergleicht, liegen die Schulter-Zeitpunkte auf
+> verschiedenen Aufnahmen; ein Vergleich über Bilder hinweg ist im Programm
+> bisher nirgends vorgesehen und wäre eine eigene Entscheidung, keine
+> Nebenwirkung dieses Schritts.
 
 > **Warum Plan v7 vorgezogen wurde:** Sobald es echte Messungen gibt, wäre ein
 > Plan-Format ohne Schulter-Feld stiller Datenverlust — gemessen, gespeichert,

@@ -3,11 +3,12 @@
  * `hip/recipes.ts` und `knee/recipes.ts` — dadurch verarbeiten Viewport,
  * Overlay, Werteliste und PDF-Export die Schulter ohne Sonderfall.
  *
- * Stand: Winkel-Set (CSA, Akromion-Index, Glenoid-Inklination,
- * Hals-Schaft-Winkel) und Längenmaße (AHD, Humeruskopf) umgesetzt. Die
- * Winkel brauchen keine Kalibrierung, die Längenmaße schon. Es folgt
- * (Plan `docs/schulter-modul-plan.md`, Schritt 5) die RSA-Bilanz
- * (DSA/LSA).
+ * Stand: alle geplanten Messungen umgesetzt — Winkel (CSA,
+ * Akromion-Index, Glenoid-Inklination, Hals-Schaft-Winkel), Längenmaße
+ * (AHD, Humeruskopf) und die Bilanz-Winkel der inversen Prothese
+ * (DSA/LSA). Nur die Längenmaße brauchen eine Kalibrierung. Offen bleibt
+ * die Schablonen-Schnittstelle (Plan `docs/schulter-modul-plan.md`,
+ * Schritt 7).
  *
  * Fachliche Leitplanke (siehe Plan A.0): Es werden ausschließlich Größen
  * abgebildet, die auf einer echten a.p.-Aufnahme valide messbar sind.
@@ -445,18 +446,121 @@ const humeralHead: ShoulderRecipe = {
   },
 }
 
+// ----------------------------------------------------------------------
+// RSA-Bilanz — DSA und LSA (nur inverse Prothese, `onlyFor: 'reverse'`)
+//
+// Beide Winkel teilen dieselbe Referenz: die Achse der Skapulaspina.
+//   DSA (Distalization): Spina-Achse ↔ Linie Akromion-Spitze →
+//       Tuberculum majus. Maß für die Distalisierung/Deltaspannung.
+//   LSA (Lateralization): Spina-Achse ↔ Linie Akromion-Spitze →
+//       Humerusschaft-Achse. Maß für die Lateralisierung.
+//
+// BEWUSST OHNE ZIELBEREICHE: Für beide Winkel gibt es publizierte
+// Richtwerte, die sich je nach Implantat-Design unterscheiden; eine
+// belastbare, allgemein gültige Trennlinie ließ sich nicht belegen.
+// Statt erfundener Schwellen steht deshalb nur die gut belegte RICHTUNG
+// als Referenzzeile: In einer Kohorte von 216 Grammont-Prothesen war
+// mehr Distalisierung mit besseren, mehr Lateralisierung mit
+// schlechteren Ergebnissen assoziiert (Clinker et al., JSES 2024,
+// doi:10.1016/j.jse.2024.03.049). Für andere Designs gilt das nicht
+// unbesehen.
+//
+// Hinweis zur „Bilanz" im Wortsinn (prä → geplant → post, wie die
+// Beinlängen-Bilanz der Hüfte): Sie setzt eine PLATZIERTE Schablone
+// voraus, aus der sich der geplante Zustand ableiten lässt. Schulter-
+// Schablonen kommen erst mit Schritt 7 — bis dahin liefern DSA und LSA
+// den gemessenen Ist-Wert.
+// ----------------------------------------------------------------------
+const SPINA_SCHRITTE = [
+  'Skapulaspina — medialer Punkt',
+  'Skapulaspina — lateraler Punkt (Akromion-Spitze)',
+]
+
+/** Gemeinsame Rechnung beider Bilanz-Winkel: Spina-Achse gegen eine
+ *  Linie, die an der Akromion-Spitze beginnt. */
+function bilanzWinkel(
+  spinaMedial: P,
+  spinaLateral: P,
+  zielPunkt: P,
+): number {
+  return angleAtVertex(spinaMedial, spinaLateral, zielPunkt)
+}
+
+const dsa: ShoulderRecipe = {
+  kind: 'dsa',
+  label: 'DSA (Distalisierung)',
+  needsCalibration: false,
+  onlyFor: 'reverse',
+  steps: [...SPINA_SCHRITTE, 'Tuberculum majus — oberster Punkt'],
+  lineGroups: [[0, 1]],
+  compute: (points) => {
+    const [spinaMedial, spinaLateral, tuberculum] = points
+    const winkel = bilanzWinkel(spinaMedial, spinaLateral, tuberculum)
+    return {
+      values: [
+        { label: 'DSA', value: deg(winkel) },
+        {
+          label: 'Referenz',
+          value: 'mehr Distalisierung war mit besseren Ergebnissen assoziiert',
+        },
+      ],
+      geometry: {
+        lines: [
+          { from: spinaMedial, to: spinaLateral },
+          { from: spinaLateral, to: tuberculum },
+        ],
+        circles: [],
+        labels: [{ at: spinaLateral, text: `DSA ${deg(winkel)}` }],
+      },
+    }
+  },
+}
+
+const lsa: ShoulderRecipe = {
+  kind: 'lsa',
+  label: 'LSA (Lateralisierung)',
+  needsCalibration: false,
+  onlyFor: 'reverse',
+  steps: [...SPINA_SCHRITTE, 'Humerusschaft — proximaler Achsenpunkt'],
+  lineGroups: [[0, 1]],
+  compute: (points) => {
+    const [spinaMedial, spinaLateral, schaft] = points
+    const winkel = bilanzWinkel(spinaMedial, spinaLateral, schaft)
+    return {
+      values: [
+        { label: 'LSA', value: deg(winkel) },
+        {
+          label: 'Referenz',
+          value: 'mehr Lateralisierung war mit schlechteren Ergebnissen assoziiert',
+        },
+      ],
+      geometry: {
+        lines: [
+          { from: spinaMedial, to: spinaLateral },
+          { from: spinaLateral, to: schaft },
+        ],
+        circles: [],
+        labels: [{ at: spinaLateral, text: `LSA ${deg(winkel)}` }],
+      },
+    }
+  },
+}
+
 /**
- * Registry der implementierten Rezepte. `Partial`, weil `ShoulderKind`
- * bereits alle geplanten Typen kennt, die Umsetzung aber schrittweise
- * erfolgt (Plan `docs/schulter-modul-plan.md`, Schritt 5).
+ * Registry der Rezepte — ab jetzt `Record` statt `Partial<Record>`, genau
+ * wie `RECIPES` (Hüfte) und `KNEE_RECIPES` (Knie): alle in `ShoulderKind`
+ * deklarierten Typen sind umgesetzt. Ein künftiger neuer Messtyp ohne
+ * Rezept ist damit ein Typfehler und fällt nicht erst zur Laufzeit auf.
  */
-export const SHOULDER_RECIPES: Partial<Record<ShoulderKind, ShoulderRecipe>> = {
+export const SHOULDER_RECIPES: Record<ShoulderKind, ShoulderRecipe> = {
   csa,
   acromionIndex,
   glenoidInclination,
   neckShaftAngle,
   ahd,
   humeralHead,
+  dsa,
+  lsa,
 }
 
 /** Alle aktuell benutzbaren Rezepte (Reihenfolge = Anzeige im Panel). */
@@ -467,6 +571,8 @@ export const AVAILABLE_SHOULDER_RECIPES: ShoulderRecipe[] = [
   neckShaftAngle,
   ahd,
   humeralHead,
+  dsa,
+  lsa,
 ]
 
 export function getShoulderRecipe(kind: ShoulderKind): ShoulderRecipe | undefined {
