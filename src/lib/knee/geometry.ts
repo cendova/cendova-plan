@@ -1,39 +1,30 @@
 /**
  * Knie-spezifische Geometrie-Helfer. Reine Re-Exports + ein paar knie-
- * eigene Funktionen, die in der Hüfte nicht gebraucht werden.
+ * eigene Funktionen, die in den anderen Modulen nicht gebraucht werden.
  *
- * Designentscheidung: Wir importieren NICHT in jeder Recipe-Datei
- * `'../hip/geometry'`, sondern leiten alles über dieses Modul. So bleibt
- * der Knie-Code auch dann konsistent, wenn die Hüft-Geometrie später
- * woandershin wandert.
+ * Designentscheidung: Wir importieren NICHT in jeder Recipe-Datei die
+ * Basis-Mathematik direkt, sondern leiten alles über dieses Modul. So
+ * bleibt der Knie-Code konsistent, egal wo die Primitiven liegen.
+ * (Sie lagen früher in `../hip/geometry` und stehen seit dem Schulter-
+ * Vorbereitungs-Refactor in `../geometry` — dieser Import ist die
+ * einzige Stelle, die davon wusste.)
  */
 import type { Types } from '@cornerstonejs/core'
+// Nur das, was die knie-EIGENEN Funktionen unten selbst brauchen — die
+// Weitergabe an den übrigen Knie-Code läuft über `export *`.
 import {
   add,
   angleBetweenVectors,
-  closestPointOnLine,
-  dist,
   dot,
   len,
   midpoint,
   scale,
   sub,
-  unit,
-} from '../hip/geometry'
+} from '../geometry'
 
-export {
-  add,
-  angleBetweenVectors,
-  closestPointOnLine,
-  dist,
-  dot,
-  len,
-  midpoint,
-  scale,
-  sub,
-  unit,
-}
-export { circleFrom3Points, angleBetweenLines, perpendicularDistance } from '../hip/geometry'
+// `export *` statt Einzelliste — siehe Begründung in hip/geometry.ts.
+// (Die frühere Liste hier war unvollständig: `angleAtVertex` fehlte.)
+export * from '../geometry'
 
 type P = Types.Point3
 
