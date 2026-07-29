@@ -4,6 +4,14 @@
 **Ziel:** Drittes Planungsmodul (Schulter) konsistent zu Hüfte und Knie.
 **Schablonen:** kommen später vom Autor — der Plan hält die Schnittstelle frei.
 
+**Festgelegt (Rückmeldung 2026-07-29):**
+1. **Beides** — anatomische TSA **und** Reverse (RSA).
+2. **Seiten-Flag** statt getrennter Ansichten.
+3. **Nur true a.p.** — weitere Ebenen später.
+
+→ Konsequenzen ausgearbeitet in **B.8** (Prothesentyp), **B.9** (Seite),
+**B.10** (Aufnahme-Ebene); die Reihenfolge in B.5 ist entsprechend angepasst.
+
 > ⚠️ Unverändert gültig: CendovaPlan ist **kein Medizinprodukt**
 > (Lern-/Forschungsprojekt, nicht für die klinische Anwendung).
 
@@ -54,7 +62,7 @@ mahnt aber **korrekt eingestellte Aufnahmen** an und bewertet den prognostischen
 Nutzen als noch offen ([DOI](https://doi.org/10.1016/j.jseint.2023.11.002)).
 → **UI-Konsequenz:** Hinweis „true AP erforderlich" beim Start der CSA-Messung.
 
-### A.2 Reverse-Prothese (RSA): postoperative Bilanz-Parameter — Stufe 2
+### A.2 Reverse-Prothese (RSA): Bilanz-Parameter — gleichrangiges Ziel
 
 Hier liegt der eigentliche konzeptionelle Zwilling zur **Beinlängen-Bilanz** der
 Hüfte: zwei Winkel, prä/post vergleichbar, direkt planungsrelevant.
@@ -177,16 +185,20 @@ weiter laden; das prüft ein Test.
 | Schritt | Inhalt | Ergebnis |
 |---|---|---|
 | **0** | Geometrie-Primitiven nach `lib/geometry/` heben (reiner Move) | 127 Tests bleiben grün |
-| **1** | `PlanningMode` + `shoulderStore` + leerer Schulter-Modus | Umschalter zeigt leeres Panel |
-| **2** | **CSA** als erstes Rezept (3 Punkte, keine Kalibrierung) | Erste echte Messung, End-to-End-Beweis |
-| **3** | Akromion-Index, Glenoid-Inklination, Hals-Schaft-Winkel | Winkel-Set komplett |
+| **1** | `PlanningMode` + `shoulderStore` (inkl. `side: 'R'\|'L'` und `prosthesis`) + leerer Schulter-Modus | Umschalter zeigt leeres Panel mit Seiten-/Typ-Schalter |
+| **2** | **CSA** als erstes Rezept (3 Punkte, keine Kalibrierung, Seiten-Snapshot) | Erste echte Messung, End-to-End-Beweis |
+| **3** | Akromion-Index, Glenoid-Inklination, Hals-Schaft-Winkel | Winkel-Set komplett (gilt für TSA **und** RSA) |
 | **4** | **AHD** (braucht Kalibrierung) + Humeruskopf-Kreis | Längenmaße |
-| **5** | **RSA-Bilanz** (DSA/LSA, prä/geplant/post) | Analogon zur Beinlängen-Bilanz |
-| **6** | Plan v7 + PDF-Abschnitt Schulter | Speichern/Drucken |
-| **7** | Schablonen-Schnittstelle, sobald Material da ist | Templating |
+| **5** | **RSA-Bilanz** (DSA/LSA, prä/geplant/post) — nur bei `prosthesis === 'reverse'` | Analogon zur Beinlängen-Bilanz |
+| **6** | Plan v7 (`shoulderMeasurements` + `side` + `prosthesis`) + PDF-Abschnitt | Speichern/Drucken |
+| **7** | Schablonen-Schnittstelle je Typ, sobald Material da ist | Templating |
 
 **Warum CSA zuerst:** wenige Punkte, keine Kalibrierung, klar definiert, gut
-belegt — die kürzeste Strecke bis „es funktioniert im echten Bild".
+belegt — die kürzeste Strecke bis „es funktioniert im echten Bild". Er ist
+zudem für **beide** Prothesentypen relevant, trägt also unabhängig von der
+Typ-Entscheidung.
+
+**Schritte 0–2 sind jetzt vollständig spezifiziert und startklar.**
 
 ### B.6 Testpflicht (CLAUDE.md)
 
@@ -199,25 +211,84 @@ Humeruskopf-Punkte (`degenerate`), Links/Rechts-Spiegelung.
 
 Hüfte und Knie trennen bereits sauber **Katalog** (Größen/Maße) von
 **Geometrie** (Form) von **Bild** (Hintergrund-PNG). Für die Schulter gilt
-dieselbe Dreiteilung, mit den Bausteinen: Glenoid-Komponente/Glenosphäre,
-Humerus-Schaft, Inlay/Kopf. Da Schablonen ohnehin über das Paket-Format
+dieselbe Dreiteilung — die Bausteine hängen am Prothesentyp (B.8):
+**anatomisch** Humeruskopf + Glenoid-Komponente, **revers** Glenosphäre +
+Inlay/Humerus-Schaft. Da Schablonen ohnehin über das Paket-Format
 importiert werden (`templates/packageFormat.ts`) und **nicht** im Repo liegen
 (Hersteller-Material), ist hier vorerst **nichts zu tun außer der
 Typ-Definition** — die Paket-Pipeline steht schon.
 
 ---
 
-## Offene Punkte für dich
+### B.8 Entscheidung 1 — TSA **und** Reverse
 
-1. **Indikations-Schwerpunkt:** anatomische TSA, Reverse (RSA) — oder beides?
-   Das entscheidet, ob die RSA-Bilanz (Schritt 5) vorgezogen wird.
-2. **Seiten-Konvention:** Wird links/rechts wie beim Knie über getrennte
-   Ansichten gelöst oder über ein Seiten-Flag?
-3. **Aufnahme-Typen:** Nur true a.p. — oder später auch die axiale/Y-Aufnahme
-   als zweite Ansicht (wie die Knie-Split-View)?
+Beide Prothesentypen im selben Modul, unterschieden durch einen Schalter im
+Schulter-Panel:
 
-Ohne diese Antworten ist Schritt 0–2 trotzdem startklar: Sie sind von allen
-drei Fragen unabhängig.
+```ts
+export type ShoulderProsthesis = 'anatomic' | 'reverse'
+```
+
+**Was der Schalter steuert — und was nicht:**
+
+| Bereich | anatomisch (TSA) | revers (RSA) |
+|---|---|---|
+| CSA, Akromion-Index, Glenoid-Inklination, AHD, Hals-Schaft-Winkel, Kopfkreis | ✅ identisch | ✅ identisch |
+| **DSA / LSA-Bilanz** | ausgeblendet | ✅ Kernstück |
+| Schablonen-Slots (später) | Kopf + Glenoid-Komponente | Glenosphäre + Inlay/Humerus |
+
+Die **präoperative Analyse ist also gemeinsam** — nur die Bilanz und die
+Schablonen-Slots hängen am Typ. Das hält die Rezepte frei von Sonderfällen:
+Der Typ filtert, welche Rezepte das Panel *anbietet*, er verändert **keine**
+Rechenlogik. (Muster: `kneeKindPlaceable` filtert schon heute die angebotenen
+Knie-Familien.)
+
+**Folge für die Reihenfolge:** Die RSA-Bilanz ist damit kein optionales
+Extra mehr, sondern gleichrangiges Ziel — sie bleibt in der Abfolge aber
+hinter den Winkeln, weil sie auf der Skapulaspina-Achse aufbaut, die die
+Winkel ohnehin einführen.
+
+### B.9 Entscheidung 2 — Seiten-Flag
+
+**Konvention aus dem Projekt übernehmen:** `hip/lldCalculation.ts` verwendet
+bereits durchgehend `side: 'R' | 'L'` (inkl. Vorzeichen- und Label-Logik).
+Das Schultermodul nutzt **denselben Typ** — kein zweites Vokabular
+(`'left'|'right'`) einführen.
+
+```ts
+side: 'R' | 'L'        // shoulderStore, modul-global
+```
+
+**Warum überhaupt nötig:** Auf der a.p.-Aufnahme ist „lateral" seitenabhängig.
+CSA (lateralster Akromionpunkt), Akromion-Index und die DSA/LSA-Richtung sind
+ohne Seitenkenntnis nicht eindeutig orientierbar.
+
+> **Fallstrick, der eingeplant werden muss:** Ist `side` modul-global und der
+> Nutzer schaltet es **nachträglich** um, würden bereits gesetzte Messungen
+> still umgedeutet. Deshalb: `side` beim **Anlegen** jeder Messung in die
+> Messung hineinkopieren (Snapshot), so wie die Hüfte die Seite an der
+> jeweiligen Schablone führt. Das globale Flag ist dann nur die *Vorbelegung*
+> für neue Messungen. Ein Test muss das absichern.
+
+**Optionaler Komfort (nicht Stufe 1):** DICOM-Tag `Laterality (0020,0060)`
+bzw. `ImageLaterality (0020,0062)` zur Vorbelegung auslesen. Aktuell liest die
+Render-Schicht nur `imagePlaneModule`; das Tag ist bei Projektionsaufnahmen
+zudem oft leer oder unzuverlässig gepflegt. Also: **als Vorschlag verwenden,
+nie als Wahrheit** — der Umschalter bleibt immer sichtbar und überschreibbar.
+
+### B.10 Entscheidung 3 — nur true a.p.
+
+Vereinfacht das Modul spürbar:
+
+- **Keine Split-View.** Die knie-spezifische Zweit-Ansicht
+  (`planningMode === 'knee' && splitView` in `Viewport.tsx`/`App.tsx`,
+  `kneePanesStore`) bleibt **unangetastet** — Schulter rendert einen Viewport.
+- **Ein Aufnahme-Hinweis genügt:** Beim Start jeder Winkelmessung ein Hinweis
+  „echte a.p.-Aufnahme (Skapula-Ebene) erforderlich" — fachlich geboten, weil
+  die CSA-Literatur die Reliabilität ausdrücklich an korrekt eingestellte
+  Aufnahmen knüpft ([DOI](https://doi.org/10.1016/j.jseint.2023.11.002)).
+- **Später erweiterbar:** Kommt die axiale/Y-Aufnahme dazu, ist der
+  Knie-Split-View das fertige Muster. Nichts im jetzigen Zuschnitt verbaut das.
 
 ---
 
