@@ -5,7 +5,9 @@
  *   - Universelle Tools (Bild laden, Pan/Zoom/Window-Level, Kalibrierung,
  *     Length/Angle, Notiz) leben jetzt im Header (siehe `HeaderTools`).
  *   - Diese Sidebar zeigt NUR den Block für den aktiven Planungs-Modus
- *     (Hüfte ODER Knie). Modus-Wechsel via Tabs oben in der Sidebar.
+ *     (Hüfte, Knie ODER Schulter). Modus-Wechsel via Tabs oben in der
+ *     Sidebar. Jeder Modus hat einen eigenen Zweig — siehe Begründung
+ *     unten an der Panel-Auswahl.
  *
  * Fertige Messungen und Templates bleiben über den Modus-Wechsel hinweg
  * sichtbar (`MeasurementPanel` rechts zeigt beide Modi); nur die
@@ -86,7 +88,8 @@ export function Toolbar() {
 
   return (
     <aside className="flex w-52 flex-col border-r border-neutral-700 bg-neutral-900">
-      {/* Tab-Leiste oben: schaltet zwischen Hüft- und Knie-Werkzeugen um. */}
+      {/* Tab-Leiste oben: schaltet zwischen Hüft-, Knie- und
+          Schulter-Werkzeugen um. */}
       <div className="flex border-b border-neutral-700 bg-neutral-950">
         <TabButton
           label="Hüfte"
