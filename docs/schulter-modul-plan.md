@@ -1,6 +1,6 @@
 # Schultermodul — Recherche & Umsetzungsplan
 
-**Stand:** 2026-07-29 · **Status:** Schritte 0–2 umgesetzt, ab Schritt 3 offen
+**Stand:** 2026-07-29 · **Status:** Schritte 0–3 umgesetzt, ab Schritt 4 offen
 **Ziel:** Drittes Planungsmodul (Schulter) konsistent zu Hüfte und Knie.
 **Schablonen:** kommen später vom Autor — der Plan hält die Schnittstelle frei.
 
@@ -187,10 +187,10 @@ weiter laden; das prüft ein Test.
 | **0** ✅ | Geometrie-Primitiven nach `lib/geometry/` heben (reiner Move) | erledigt — 127 Tests unverändert grün, Bundle identisch |
 | **1** ✅ | `PlanningMode` + `shoulderStore` (inkl. `side: 'R'\|'L'` und `prosthesis`) + leerer Schulter-Modus | erledigt — Tab, Seiten-/Typ-Schalter, Modus überlebt Reload |
 | **2** ✅ | **CSA** als erstes Rezept (3 Punkte, keine Kalibrierung, Seiten-Snapshot) | erledigt — inkl. Overlay, Werteliste, PDF **und Plan v7** (s. u.) |
-| **3** | Akromion-Index, Glenoid-Inklination, Hals-Schaft-Winkel | Winkel-Set komplett (gilt für TSA **und** RSA) |
+| **3** ✅ | Akromion-Index, Glenoid-Inklination, Hals-Schaft-Winkel | erledigt — Winkel-Set komplett, alle vier ohne Kalibrierung; Undo/Redo nachgezogen |
 | **4** | **AHD** (braucht Kalibrierung) + Humeruskopf-Kreis | Längenmaße |
 | **5** | **RSA-Bilanz** (DSA/LSA, prä/geplant/post) — nur bei `prosthesis === 'reverse'` | Analogon zur Beinlängen-Bilanz |
-| **6** | ~~Plan v7~~ **vorgezogen nach Schritt 2** — offen bleibt: Undo/Redo (`historyStore`) kennt die Schulter noch nicht | teilweise erledigt |
+| **6** ✅ | ~~Plan v7~~ (vorgezogen nach Schritt 2) und ~~Undo/Redo~~ (nachgezogen in Schritt 3) | erledigt |
 | **7** | Schablonen-Schnittstelle je Typ, sobald Material da ist | Templating |
 
 > **Warum Plan v7 vorgezogen wurde:** Sobald es echte Messungen gibt, wäre ein

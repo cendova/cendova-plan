@@ -3,10 +3,10 @@
  * `hip/recipes.ts` und `knee/recipes.ts` — dadurch verarbeiten Viewport,
  * Overlay, Werteliste und PDF-Export die Schulter ohne Sonderfall.
  *
- * Stand: CSA umgesetzt. Es folgen schrittweise (Plan
- * `docs/schulter-modul-plan.md`, Schritte 3–5) Akromion-Index /
- * Glenoid-Inklination / Hals-Schaft-Winkel, danach die Längenmaße (AHD,
- * Humeruskopf) und zuletzt die RSA-Bilanz (DSA/LSA).
+ * Stand: Winkel-Set umgesetzt (CSA, Akromion-Index, Glenoid-Inklination,
+ * Hals-Schaft-Winkel) — alle vier ohne Kalibrierung nutzbar. Es folgen
+ * (Plan `docs/schulter-modul-plan.md`, Schritte 4–5) die Längenmaße AHD
+ * und Humeruskopf sowie die RSA-Bilanz (DSA/LSA).
  *
  * Fachliche Leitplanke (siehe Plan A.0): Es werden ausschließlich Größen
  * abgebildet, die auf einer echten a.p.-Aufnahme valide messbar sind.
@@ -14,8 +14,21 @@
  * CT und bleiben bewusst außerhalb dieses Moduls.
  */
 import type { Types } from '@cornerstonejs/core'
-import { add, angleAtVertex, dist, scale, sub, unit } from '../geometry'
+import {
+  add,
+  angleAtVertex,
+  angleBetweenVectors,
+  closestPointOnLine,
+  dist,
+  dot,
+  midpoint,
+  perpendicularDistance,
+  scale,
+  sub,
+  unit,
+} from '../geometry'
 import { beurteileCsa } from './csa'
+import { beurteileAcromionIndex } from './acromionIndex'
 
 type P = Types.Point3
 
@@ -145,17 +158,209 @@ const csa: ShoulderRecipe = {
   },
 }
 
+// ----------------------------------------------------------------------
+// Akromion-Index (AI) nach Nyffeler et al. 2006
+//
+//   AI = Abstand(Glenoidebene → lateraler Akromionrand)
+//        ────────────────────────────────────────────
+//        Abstand(Glenoidebene → lateralster Humeruskopfpunkt)
+//
+// Beide Abstände senkrecht zur Glenoidebene. Weil sich der Maßstab
+// herauskürzt, ist der Index DIMENSIONSLOS — er braucht keine
+// Kalibrierung und ist gegen Vergrößerungsfehler unempfindlich.
+// ----------------------------------------------------------------------
+const acromionIndex: ShoulderRecipe = {
+  kind: 'acromionIndex',
+  label: 'Akromion-Index',
+  needsCalibration: false,
+  steps: [
+    'Glenoid — oberer Rand',
+    'Glenoid — unterer Rand',
+    'Akromion — lateralster Punkt',
+    'Humeruskopf — lateralster Punkt',
+  ],
+  lineGroups: [[0, 1]],
+  compute: (points) => {
+    const [glenoidOben, glenoidUnten, akromion, humeruskopf] = points
+    const ga = perpendicularDistance(akromion, glenoidOben, glenoidUnten)
+    const gh = perpendicularDistance(humeruskopf, glenoidOben, glenoidUnten)
+    // Degeneriert: Liegt der Humeruskopf-Punkt AUF der Glenoidebene, ist
+    // der Index nicht definiert. Warnen statt NaN oder Unendlich zeigen.
+    if (gh < 1e-6) {
+      return {
+        values: [
+          {
+            label: '⚠ Akromion-Index',
+            value: 'Humeruskopf-Punkt liegt auf der Glenoidebene',
+          },
+        ],
+        geometry: {
+          lines: [{ from: glenoidOben, to: glenoidUnten }],
+          circles: [],
+          labels: [{ at: glenoidUnten, text: 'AI —' }],
+        },
+      }
+    }
+    const ai = ga / gh
+    const befund = beurteileAcromionIndex(ai)
+
+    // Lotfußpunkte auf der Glenoidebene: zeigen im Bild, WELCHE beiden
+    // Strecken ins Verhältnis gesetzt werden.
+    const fussAkromion = closestPointOnLine(akromion, glenoidOben, glenoidUnten)
+    const fussKopf = closestPointOnLine(humeruskopf, glenoidOben, glenoidUnten)
+
+    return {
+      values: [
+        { label: 'Akromion-Index', value: ai.toFixed(2).replace('.', ',') },
+        { label: 'Beurteilung', value: befund.hinweis },
+      ],
+      geometry: {
+        lines: [
+          // Glenoidebene als Referenz.
+          { from: glenoidOben, to: glenoidUnten },
+          // Die beiden gemessenen Abstände.
+          { from: fussAkromion, to: akromion },
+          { from: fussKopf, to: humeruskopf, dashed: true },
+        ],
+        circles: [],
+        labels: [
+          { at: akromion, text: `AI ${ai.toFixed(2).replace('.', ',')}` },
+        ],
+      },
+    }
+  },
+}
+
+// ----------------------------------------------------------------------
+// Glenoid-Inklination (β-Winkel n. Maurer)
+//
+// Winkel zwischen der Achse der Skapulaspina (Boden der Fossa
+// supraspinata, von MEDIAL nach LATERAL) und der Glenoidlinie (von
+// KAUDAL nach KRANIAL). Anatomisch etwa 80°.
+//
+// Die Richtungsfestlegung ist wichtig und seitenneutral: Bei einer
+// gespiegelten (linken) Schulter drehen beide Vektoren mit, der Winkel
+// bleibt gleich. Deshalb braucht dieses Rezept keine Seiten-Kenntnis.
+// ----------------------------------------------------------------------
+const glenoidInclination: ShoulderRecipe = {
+  kind: 'glenoidInclination',
+  label: 'Glenoid-Inklination (β)',
+  needsCalibration: false,
+  steps: [
+    'Skapulaspina — medialer Punkt (Fossa-Boden)',
+    'Skapulaspina — lateraler Punkt',
+    'Glenoid — oberer Rand',
+    'Glenoid — unterer Rand',
+  ],
+  lineGroups: [
+    [0, 1],
+    [2, 3],
+  ],
+  compute: (points) => {
+    const [spinaMedial, spinaLateral, glenoidOben, glenoidUnten] = points
+    const spinaRichtung = sub(spinaLateral, spinaMedial)
+    // Glenoid nach KRANIAL — sonst käme der Supplementwinkel heraus.
+    const glenoidRichtung = sub(glenoidOben, glenoidUnten)
+    const beta = angleBetweenVectors(spinaRichtung, glenoidRichtung)
+    return {
+      values: [
+        { label: 'β-Winkel', value: deg(beta) },
+        { label: 'Referenz', value: 'anatomisch etwa 80°' },
+      ],
+      geometry: {
+        lines: [
+          { from: spinaMedial, to: spinaLateral },
+          { from: glenoidUnten, to: glenoidOben },
+        ],
+        circles: [],
+        labels: [{ at: spinaLateral, text: `β ${deg(beta)}` }],
+      },
+    }
+  },
+}
+
+// ----------------------------------------------------------------------
+// Humeraler Hals-Schaft-Winkel — Gegenstück zum Hüft-CCD
+//
+// Winkel zwischen der Schaftachse und der Senkrechten auf die anatomische
+// Hals-Ebene (Kopf-Hals-Achse). Anatomisch etwa 130–135°.
+//
+// Wie beim CCD wird die STUMPFE Variante gewählt: Der Winkel ist
+// anatomisch immer stumpf, und die Senkrechte auf eine Ebene hat zwei
+// Richtungen — die Stumpfwahl macht das Ergebnis unabhängig davon, in
+// welcher Reihenfolge die beiden Hals-Punkte gesetzt wurden.
+// ----------------------------------------------------------------------
+const neckShaftAngle: ShoulderRecipe = {
+  kind: 'neckShaftAngle',
+  label: 'Hals-Schaft-Winkel',
+  needsCalibration: false,
+  steps: [
+    'Anatomischer Hals — medialer Punkt',
+    'Anatomischer Hals — lateraler Punkt',
+    'Humerusschaft-Achse — proximaler Punkt',
+    'Humerusschaft-Achse — distaler Punkt',
+  ],
+  lineGroups: [
+    [0, 1],
+    [2, 3],
+  ],
+  compute: (points) => {
+    const [halsMedial, halsLateral, schaftProx, schaftDistal] = points
+    const hals = sub(halsLateral, halsMedial)
+    // Senkrechte auf die Hals-Ebene in der Bildebene = Kopf-Hals-Achse.
+    const kopfHalsAchse: P = [-hals[1], hals[0], 0]
+    const schaft = sub(schaftDistal, schaftProx)
+    const roh = angleBetweenVectors(kopfHalsAchse, schaft)
+    const winkel = roh >= 90 ? roh : 180 - roh
+
+    // Kopf-Hals-Achse durch die Mitte der Hals-Ebene zeichnen, in
+    // Richtung Kopf (also weg vom Schaft), Länge an der Hals-Ebene
+    // orientiert.
+    const halsMitte = midpoint(halsMedial, halsLateral)
+    const richtung = unit(kopfHalsAchse)
+    const zumKopf = dot(richtung, unit(schaft)) > 0 ? -1 : 1
+    const achsenEnde = add(
+      halsMitte,
+      scale(richtung, zumKopf * 0.8 * dist(halsMedial, halsLateral)),
+    )
+
+    return {
+      values: [
+        { label: 'Hals-Schaft-Winkel', value: deg(winkel) },
+        { label: 'Referenz', value: 'anatomisch etwa 130–135°' },
+      ],
+      geometry: {
+        lines: [
+          { from: halsMedial, to: halsLateral },
+          { from: schaftProx, to: schaftDistal },
+          { from: halsMitte, to: achsenEnde, dashed: true },
+        ],
+        circles: [],
+        labels: [{ at: halsMitte, text: `NSA ${deg(winkel)}` }],
+      },
+    }
+  },
+}
+
 /**
  * Registry der implementierten Rezepte. `Partial`, weil `ShoulderKind`
  * bereits alle geplanten Typen kennt, die Umsetzung aber schrittweise
- * erfolgt (Plan `docs/schulter-modul-plan.md`, Schritte 2–5).
+ * erfolgt (Plan `docs/schulter-modul-plan.md`, Schritte 4–5).
  */
 export const SHOULDER_RECIPES: Partial<Record<ShoulderKind, ShoulderRecipe>> = {
   csa,
+  acromionIndex,
+  glenoidInclination,
+  neckShaftAngle,
 }
 
 /** Alle aktuell benutzbaren Rezepte (Reihenfolge = Anzeige im Panel). */
-export const AVAILABLE_SHOULDER_RECIPES: ShoulderRecipe[] = [csa]
+export const AVAILABLE_SHOULDER_RECIPES: ShoulderRecipe[] = [
+  csa,
+  acromionIndex,
+  glenoidInclination,
+  neckShaftAngle,
+]
 
 export function getShoulderRecipe(kind: ShoulderKind): ShoulderRecipe | undefined {
   return SHOULDER_RECIPES[kind]

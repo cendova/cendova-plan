@@ -1,5 +1,9 @@
 import { create } from 'zustand'
 import { useHipStore, type HipMeasurement } from './hipStore'
+import {
+  useShoulderStore,
+  type ShoulderMeasurement,
+} from './shoulderStore'
 import { useKneeStore, type KneeMeasurement } from './kneeStore'
 import {
   useKneeTemplateStore,
@@ -25,6 +29,7 @@ import type { Types } from '@cornerstonejs/core'
 interface Snapshot {
   hipMeasurements: HipMeasurement[]
   kneeMeasurements: KneeMeasurement[]
+  shoulderMeasurements: ShoulderMeasurement[]
   kneeTemplates: KneeTemplate[]
   templates: CupTemplate[]
   /** Schaft-Schablonen. MUSS hier mit erfasst werden — sonst werden
@@ -44,6 +49,7 @@ function takeSnapshot(): Snapshot {
   return {
     hipMeasurements: useHipStore.getState().measurements,
     kneeMeasurements: useKneeStore.getState().measurements,
+    shoulderMeasurements: useShoulderStore.getState().measurements,
     kneeTemplates: useKneeTemplateStore.getState().templates,
     templates: useTemplateStore.getState().templates,
     stems: useTemplateStore.getState().stems,
@@ -58,6 +64,7 @@ function snapsEqual(a: Snapshot, b: Snapshot): boolean {
   // Referenzen identisch.
   return (
     a.hipMeasurements === b.hipMeasurements &&
+    a.shoulderMeasurements === b.shoulderMeasurements &&
     a.kneeMeasurements === b.kneeMeasurements &&
     a.kneeTemplates === b.kneeTemplates &&
     a.templates === b.templates &&
@@ -84,6 +91,7 @@ function restore(snap: Snapshot) {
     })
     useHipStore.setState({ measurements: snap.hipMeasurements })
     useKneeStore.setState({ measurements: snap.kneeMeasurements })
+    useShoulderStore.setState({ measurements: snap.shoulderMeasurements })
     useKneeTemplateStore.setState({ templates: snap.kneeTemplates })
     useNoteStore.setState({ notes: snap.notes })
   } finally {
@@ -165,6 +173,7 @@ function scheduleCapture() {
 
 const unsubHip = useHipStore.subscribe(scheduleCapture)
 const unsubKnee = useKneeStore.subscribe(scheduleCapture)
+const unsubShoulder = useShoulderStore.subscribe(scheduleCapture)
 const unsubKneeTpl = useKneeTemplateStore.subscribe(scheduleCapture)
 const unsubTemplate = useTemplateStore.subscribe(scheduleCapture)
 const unsubNote = useNoteStore.subscribe(scheduleCapture)
@@ -174,6 +183,7 @@ if (import.meta.hot) {
     if (captureTimer) clearTimeout(captureTimer)
     unsubHip()
     unsubKnee()
+    unsubShoulder()
     unsubKneeTpl()
     unsubTemplate()
     unsubNote()

@@ -1151,8 +1151,8 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
       </div>
 
       <div className="rounded border border-neutral-700 bg-neutral-800/50 p-2 text-xs leading-relaxed text-neutral-400">
-        Weitere Messungen folgen (Akromion-Index, Glenoid-Inklination,
-        AHD, RSA-Bilanz).
+        Es folgen noch die Längenmaße (AHD, Humeruskopf) und die
+        RSA-Bilanz.
         {messungen > 0 && ` — ${messungen} Messung(en) gesetzt.`}
         <div className="mt-1.5 text-neutral-500">
           Gilt für die echte a.p.-Aufnahme; Glenoid-Version und Walch-Typ
