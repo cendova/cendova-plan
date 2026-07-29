@@ -3,10 +3,10 @@
  * `hip/recipes.ts` und `knee/recipes.ts` — dadurch verarbeiten Viewport,
  * Overlay, Werteliste und PDF-Export die Schulter ohne Sonderfall.
  *
- * Stand: Gerüst. Die Rezepte selbst folgen schrittweise (Plan
- * `docs/schulter-modul-plan.md`, Schritte 2–5): CSA zuerst, dann
- * Akromion-Index / Glenoid-Inklination / Hals-Schaft-Winkel, danach die
- * Längenmaße (AHD, Humeruskopf) und zuletzt die RSA-Bilanz (DSA/LSA).
+ * Stand: CSA umgesetzt. Es folgen schrittweise (Plan
+ * `docs/schulter-modul-plan.md`, Schritte 3–5) Akromion-Index /
+ * Glenoid-Inklination / Hals-Schaft-Winkel, danach die Längenmaße (AHD,
+ * Humeruskopf) und zuletzt die RSA-Bilanz (DSA/LSA).
  *
  * Fachliche Leitplanke (siehe Plan A.0): Es werden ausschließlich Größen
  * abgebildet, die auf einer echten a.p.-Aufnahme valide messbar sind.
@@ -14,8 +14,14 @@
  * CT und bleiben bewusst außerhalb dieses Moduls.
  */
 import type { Types } from '@cornerstonejs/core'
+import { add, angleAtVertex, dist, scale, sub, unit } from '../geometry'
+import { beurteileCsa } from './csa'
 
 type P = Types.Point3
+
+function deg(v: number): string {
+  return `${v.toFixed(1)}°`
+}
 
 /**
  * Alle Schulter-Messtypen. Der Typ ist bereits vollständig deklariert,
@@ -82,15 +88,74 @@ export interface ShoulderRecipe {
 /** Prothesentyp des Schultermoduls (Plan B.8: beide werden unterstützt). */
 export type ShoulderProsthesis = 'anatomic' | 'reverse'
 
+// ----------------------------------------------------------------------
+// CSA — Critical Shoulder Angle
+//
+// Winkel AM UNTEREN GLENOIDRAND zwischen zwei Schenkeln:
+//   1. Glenoidlinie   unterer Glenoidrand → oberer Glenoidrand
+//   2. Akromionlinie  unterer Glenoidrand → lateralster Akromionpunkt
+//
+// Reiner Winkel → keine Kalibrierung nötig. Die Reihenfolge der Punkte
+// folgt der Mess-Praxis (Glenoid zuerst, Akromion zuletzt).
+//
+// Seitenunabhängig in der RECHNUNG: Der Nutzer setzt den lateralen
+// Akromionpunkt selbst, damit ist die Richtung durch die Punkte bestimmt.
+// Die im Store gespeicherte Seite dient der Dokumentation (welche
+// Schulter), nicht der Berechnung.
+// ----------------------------------------------------------------------
+const csa: ShoulderRecipe = {
+  kind: 'csa',
+  label: 'CSA (Critical Shoulder Angle)',
+  needsCalibration: false,
+  steps: [
+    'Glenoid — oberer Rand',
+    'Glenoid — unterer Rand',
+    'Akromion — lateralster Punkt',
+  ],
+  // Die Glenoidlinie ist als Ganzes verschiebbar.
+  lineGroups: [[0, 1]],
+  compute: (points) => {
+    const [glenoidOben, glenoidUnten, akromion] = points
+    // Scheitel ist der UNTERE Glenoidrand.
+    const winkel = angleAtVertex(glenoidOben, glenoidUnten, akromion)
+    const befund = beurteileCsa(winkel)
+
+    // Glenoidlinie etwas über den oberen Rand hinaus verlängern, damit
+    // der Winkel im Bild gut ablesbar bleibt (wie beim CCD die Halsachse).
+    const glenoidRichtung = unit(sub(glenoidOben, glenoidUnten))
+    const glenoidEnde = add(
+      glenoidUnten,
+      scale(glenoidRichtung, 1.15 * dist(glenoidUnten, glenoidOben)),
+    )
+
+    return {
+      values: [
+        { label: 'CSA', value: deg(winkel) },
+        { label: 'Beurteilung', value: befund.hinweis },
+      ],
+      geometry: {
+        lines: [
+          { from: glenoidUnten, to: glenoidEnde },
+          { from: glenoidUnten, to: akromion },
+        ],
+        circles: [],
+        labels: [{ at: glenoidUnten, text: `CSA ${deg(winkel)}` }],
+      },
+    }
+  },
+}
+
 /**
- * Registry der implementierten Rezepte. Noch leer — wird in Schritt 2 ff.
- * befüllt. `Partial`, weil `ShoulderKind` bereits alle geplanten Typen
- * kennt, die Umsetzung aber schrittweise erfolgt.
+ * Registry der implementierten Rezepte. `Partial`, weil `ShoulderKind`
+ * bereits alle geplanten Typen kennt, die Umsetzung aber schrittweise
+ * erfolgt (Plan `docs/schulter-modul-plan.md`, Schritte 2–5).
  */
-export const SHOULDER_RECIPES: Partial<Record<ShoulderKind, ShoulderRecipe>> = {}
+export const SHOULDER_RECIPES: Partial<Record<ShoulderKind, ShoulderRecipe>> = {
+  csa,
+}
 
 /** Alle aktuell benutzbaren Rezepte (Reihenfolge = Anzeige im Panel). */
-export const AVAILABLE_SHOULDER_RECIPES: ShoulderRecipe[] = []
+export const AVAILABLE_SHOULDER_RECIPES: ShoulderRecipe[] = [csa]
 
 export function getShoulderRecipe(kind: ShoulderKind): ShoulderRecipe | undefined {
   return SHOULDER_RECIPES[kind]

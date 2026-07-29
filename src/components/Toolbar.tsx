@@ -19,6 +19,7 @@ import { useViewerStore } from '../state/viewerStore'
 import { useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
 import { useShoulderStore } from '../state/shoulderStore'
+import { recipesForProsthesis } from '../lib/shoulder/recipes'
 import { useUiStore } from '../state/uiStore'
 import { Hint } from './Hint'
 import {
@@ -58,6 +59,7 @@ import { useTemplateTracerStore } from '../state/templateTracerStore'
 import {
   pickHipTool,
   pickKneeTool,
+  pickShoulderTool,
   setPlanningMode,
   toggleOsteophyteTool,
 } from '../lib/toolControls'
@@ -119,7 +121,7 @@ export function Toolbar() {
         {planningMode === 'knee' && (
           <KneeSection hasImage={hasImage} activeKind={kneeActiveKind} />
         )}
-        {planningMode === 'shoulder' && <ShoulderSection />}
+        {planningMode === 'shoulder' && <ShoulderSection hasImage={hasImage} />}
       </div>
 
       <Hint>
@@ -1082,12 +1084,16 @@ function KneeSelect<T extends string | number>({
  *  - Prothesentyp: filtert nur das Rezept-Angebot (die Bilanz-Winkel
  *    DSA/LSA gelten nur invers) — nie die Rechenlogik.
  */
-function ShoulderSection() {
+function ShoulderSection({ hasImage }: { hasImage: boolean }) {
   const side = useShoulderStore((s) => s.side)
   const setSide = useShoulderStore((s) => s.setSide)
   const prosthesis = useShoulderStore((s) => s.prosthesis)
   const setProsthesis = useShoulderStore((s) => s.setProsthesis)
   const messungen = useShoulderStore((s) => s.measurements.length)
+  const activeKind = useShoulderStore((s) => s.activeKind)
+  // Angebot haengt am Prothesentyp: die Bilanz-Winkel (DSA/LSA) sind nur
+  // bei der inversen Prothese sinnvoll. Die Rechnung kennt den Typ nicht.
+  const rezepte = recipesForProsthesis(prosthesis)
 
   return (
     <div className="flex flex-col gap-3">
@@ -1127,12 +1133,30 @@ function ShoulderSection() {
         </div>
       </div>
 
+      <div>
+        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+          Messungen
+        </div>
+        <div className="flex flex-col gap-1">
+          {rezepte.map((r) => (
+            <ToolButton
+              key={r.kind}
+              label={r.label}
+              active={activeKind === r.kind}
+              disabled={!hasImage}
+              onClick={() => pickShoulderTool(r.kind)}
+            />
+          ))}
+        </div>
+      </div>
+
       <div className="rounded border border-neutral-700 bg-neutral-800/50 p-2 text-xs leading-relaxed text-neutral-400">
-        Messwerkzeuge folgen im nächsten Schritt (zuerst der CSA).
-        {messungen > 0 && ` — ${messungen} Messung(en) vorhanden.`}
+        Weitere Messungen folgen (Akromion-Index, Glenoid-Inklination,
+        AHD, RSA-Bilanz).
+        {messungen > 0 && ` — ${messungen} Messung(en) gesetzt.`}
         <div className="mt-1.5 text-neutral-500">
-          Vorgesehen für die echte a.p.-Aufnahme; Glenoid-Version und
-          Walch-Typ bleiben dem CT vorbehalten.
+          Gilt für die echte a.p.-Aufnahme; Glenoid-Version und Walch-Typ
+          bleiben dem CT vorbehalten.
         </div>
       </div>
     </div>

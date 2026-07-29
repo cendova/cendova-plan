@@ -7,6 +7,8 @@ import { useKneeStore } from '../state/kneeStore'
 import { useTemplateStore } from '../state/templateStore'
 import { getRecipe } from '../lib/hip/recipes'
 import { computeWorkflowRaw, getKneeRecipe } from '../lib/knee/recipes'
+import { getShoulderRecipe } from '../lib/shoulder/recipes'
+import { useShoulderStore } from '../state/shoulderStore'
 import { computeCpak } from '../lib/knee/cpak'
 import {
   extractWorkflowAxes,
@@ -48,6 +50,10 @@ export function MeasurementPanel() {
   const removeKnee = useKneeStore((s) => s.removeMeasurement)
   const removeAllKnee = useKneeStore((s) => s.removeAll)
   const setKneeVisible = useKneeStore((s) => s.setVisible)
+  const shoulderMeasurements = useShoulderStore((s) => s.measurements)
+  const removeShoulder = useShoulderStore((s) => s.removeMeasurement)
+  const removeAllShoulder = useShoulderStore((s) => s.removeAll)
+  const setShoulderVisible = useShoulderStore((s) => s.setVisible)
   // Platzierte Knie-Schablonen — für die „geplante" (post-OP) CPAK aus der
   // Implantat-Position. Reaktiv, damit der geplante Punkt live mitwandert.
   const kneeTemplates = useKneeTemplateStore((s) => s.templates)
@@ -110,6 +116,7 @@ export function MeasurementPanel() {
     measurements.length > 0 ||
     hipMeasurements.length > 0 ||
     kneeMeasurements.length > 0 ||
+    shoulderMeasurements.length > 0 ||
     deltas.length > 0 ||
     rightMeasurements.length > 0
 
@@ -117,6 +124,7 @@ export function MeasurementPanel() {
     removeAllMeasurements()
     removeAllHip()
     removeAllKnee()
+    removeAllShoulder()
     rightMeasurements.forEach((m) => removeRightMeasurement(m.id))
   }
   // Bestätigung vor dem Sammel-Löschen (UX-Befund P1-5: Länge/Winkel und
@@ -156,7 +164,8 @@ export function MeasurementPanel() {
         {!hasAny && (
           <Hint>
             <p className="px-1 py-1 text-xs text-neutral-500">
-              Noch keine Messungen. Ein Mess-, Hüft- oder Knie-Werkzeug wählen
+              Noch keine Messungen. Ein Mess-, Hüft-, Knie- oder
+              Schulter-Werkzeug wählen
               und im Bild platzieren.
             </p>
           </Hint>
@@ -367,6 +376,55 @@ export function MeasurementPanel() {
                     <div className="flex flex-col">
                       <span className="text-[11px] text-neutral-400">
                         {recipe.label}
+                        {recipe.needsCalibration && !calibration && (
+                          <span className="ml-1 text-amber-500">
+                            · unkalibriert
+                          </span>
+                        )}
+                      </span>
+                      {values.map((v, i) => (
+                        <span key={i} className="tabular-nums">
+                          {values.length > 1 && (
+                            <span className="text-neutral-500">
+                              {v.label}:{' '}
+                            </span>
+                          )}
+                          {v.value}
+                        </span>
+                      ))}
+                    </div>
+                  }
+                />
+              )
+            })}
+          </ul>
+        )}
+
+        {/* Schulter-Messungen. Zeigt zusaetzlich die SEITE, weil sie pro
+            Messung eingefroren wird: Ein spaeteres Umschalten in der
+            Toolbar deutet bestehende Messungen bewusst nicht um, also
+            muss am Wert ablesbar sein, fuer welche Schulter er gilt. */}
+        {shoulderMeasurements.length > 0 && (
+          <ul className="mt-1 flex flex-col gap-1">
+            {shoulderMeasurements.map((m) => {
+              const recipe = getShoulderRecipe(m.kind)
+              if (!recipe) return null
+              const { values } = recipe.compute(m.points, factor)
+              return (
+                <Row
+                  key={m.id}
+                  badge="S"
+                  badgeColor="text-emerald-300"
+                  visible={m.visible}
+                  onToggleVisible={() => setShoulderVisible(m.id, !m.visible)}
+                  onDelete={() => removeShoulder(m.id)}
+                  main={
+                    <div className="flex flex-col">
+                      <span className="text-[11px] text-neutral-400">
+                        {recipe.label}
+                        <span className="ml-1 text-neutral-500">
+                          · {m.side === 'R' ? 'rechts' : 'links'}
+                        </span>
                         {recipe.needsCalibration && !calibration && (
                           <span className="ml-1 text-amber-500">
                             · unkalibriert

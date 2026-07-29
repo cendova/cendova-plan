@@ -32,6 +32,7 @@ export function pruefePlanGrenzen(plan: PlanFile): string | null {
   const checks: Array<string | null> = [
     arrayOk(plan.hipMeasurements, 'hipMeasurements'),
     arrayOk(plan.kneeMeasurements, 'kneeMeasurements'),
+    arrayOk(plan.shoulderMeasurements, 'shoulderMeasurements'),
     arrayOk(plan.genericMeasurements, 'genericMeasurements'),
     arrayOk(plan.templates?.cups, 'templates.cups'),
     arrayOk(plan.templates?.stems, 'templates.stems'),

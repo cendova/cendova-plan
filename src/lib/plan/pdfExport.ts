@@ -21,6 +21,7 @@ import html2canvas from 'html2canvas-pro'
 import { useViewerStore } from '../../state/viewerStore'
 import { useKneePanesStore } from '../../state/kneePanesStore'
 import { useHipStore } from '../../state/hipStore'
+import { useShoulderStore } from '../../state/shoulderStore'
 import { useKneeStore } from '../../state/kneeStore'
 import { useTemplateStore } from '../../state/templateStore'
 import { useNoteStore } from '../../state/noteStore'
@@ -44,6 +45,7 @@ import {
   operatedSideOf,
   formatLldForSide,
 } from '../hip/lldCalculation'
+import { getShoulderRecipe } from '../shoulder/recipes'
 import { getKneeRecipe, computeWorkflowRaw } from '../knee/recipes'
 import { computeCpak } from '../knee/cpak'
 
@@ -510,6 +512,7 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
   const factor = calibration?.mmPerWorldUnit ?? 1
   const hipMeasurements = useHipStore.getState().measurements
   const kneeMeasurements = useKneeStore.getState().measurements
+  const shoulderMeasurements = useShoulderStore.getState().measurements
   const cups = useTemplateStore.getState().templates
   const stems = useTemplateStore.getState().stems
   const notes = useNoteStore.getState().notes
@@ -519,6 +522,7 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
   const hasSummary =
     hipMeasurements.length +
       kneeMeasurements.length +
+      shoulderMeasurements.length +
       cups.length +
       stems.length +
       notes.length >
@@ -690,6 +694,37 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
         }
       }
       writeSection('Knie-Messungen', lines)
+    }
+
+    // Schulter-Messungen. Zwei bewusste Abweichungen vom Knie-Block:
+    //  - Die SEITE steht dabei; sie ist pro Messung eingefroren, weil
+    //    „lateral" auf der a.p.-Aufnahme seitenabhängig ist.
+    //  - IMMER eine Zeile je Wert (nie die Einzeiler-Variante): Der CSA
+    //    liefert neben der Zahl einen längeren Beurteilungstext. Als
+    //    Einzeiler überschritte die Zeile die nutzbare Blattbreite —
+    //    `pdf.text` bricht nicht um und clippt nicht, der Text liefe
+    //    über den Rand hinaus.
+    if (shoulderMeasurements.length > 0) {
+      const lines: string[] = []
+      for (const m of shoulderMeasurements) {
+        const recipe = getShoulderRecipe(m.kind)
+        if (!recipe) continue
+        const seite = m.side === 'R' ? 'rechts' : 'links'
+        if (m.points.length < recipe.steps.length) {
+          lines.push(
+            `• ${recipe.label} (${seite}): unvollständig (${m.points.length}/${recipe.steps.length} Punkte)`,
+          )
+          continue
+        }
+        try {
+          const { values } = recipe.compute(m.points, factor)
+          lines.push(`• ${recipe.label} (${seite}):`)
+          for (const v of values) lines.push(`   ${v.label}: ${v.value}`)
+        } catch {
+          lines.push(`• ${recipe.label} (${seite}): Wert nicht berechenbar`)
+        }
+      }
+      writeSection('Schulter-Messungen', lines)
     }
 
     // Pfannen — mit klinischer Inklination statt SVG-Rotation. Die

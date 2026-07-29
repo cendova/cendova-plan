@@ -10,10 +10,12 @@ import {
 import { useViewerStore } from '../state/viewerStore'
 import { useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
+import { useShoulderStore } from '../state/shoulderStore'
 import { useNoteStore } from '../state/noteStore'
 import { useTemplateStore } from '../state/templateStore'
 import { HipOverlay } from './HipOverlay'
 import { KneeOverlay } from './KneeOverlay'
+import { ShoulderOverlay } from './ShoulderOverlay'
 import { KneeTemplateOverlay } from './KneeTemplateOverlay'
 import { TemplateOverlay } from './TemplateOverlay'
 import { OsteophyteOverlay } from './OsteophyteOverlay'
@@ -44,6 +46,7 @@ function viewportCursorClass(args: {
   leftTool: string
   hipActive: boolean
   kneeActive: boolean
+  shoulderActive: boolean
   placingNote: boolean
   placingCup: boolean
   placingOsteophyte: boolean
@@ -53,6 +56,7 @@ function viewportCursorClass(args: {
   if (
     args.hipActive ||
     args.kneeActive ||
+    args.shoulderActive ||
     args.placingNote ||
     args.placingCup ||
     args.placingOsteophyte
@@ -80,6 +84,7 @@ export function Viewport() {
   const setStatus = useViewerStore((s) => s.setStatus)
   const hipActive = useHipStore((s) => s.activeKind != null)
   const kneeActive = useKneeStore((s) => s.activeKind != null)
+  const shoulderActive = useShoulderStore((s) => s.activeKind != null)
   const placingNote = useNoteStore((s) => s.placing)
   const placingCup = useTemplateStore((s) => s.pending != null)
   const placingOsteophyte = useOsteophyteStore((s) => s.placing)
@@ -133,6 +138,7 @@ export function Viewport() {
     leftTool,
     hipActive,
     kneeActive,
+    shoulderActive,
     placingNote,
     placingCup,
     placingOsteophyte,
@@ -311,6 +317,7 @@ export function Viewport() {
 
       {hasImage && <HipOverlay />}
       {hasImage && <KneeOverlay />}
+      {hasImage && <ShoulderOverlay />}
       {hasImage && <KneeTemplateOverlay />}
       {hasImage && <TemplateOverlay />}
       {hasImage && <OsteophyteOverlay />}
