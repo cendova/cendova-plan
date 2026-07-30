@@ -89,7 +89,11 @@ export function Toolbar() {
   const kneeActiveKind = useKneeStore((s) => s.activeKind)
 
   return (
-    <aside className="flex w-52 flex-col border-r border-neutral-700 bg-neutral-900">
+    // w-60 statt w-52: bei 208px brachen die längsten Sektions-Titel selbst
+    // ohne Modul-Präfix noch um (gemessenes Titel-Budget 133px neben einem
+    // Status-Punkt). 240px kosten ~3% Bildfläche und lassen JEDEN Titel
+    // samt Badge einzeilig — inklusive Reserve für kommende Rubriken.
+    <aside className="flex w-60 flex-col border-r border-neutral-700 bg-neutral-900">
       {/* Tab-Leiste oben: schaltet zwischen Hüft-, Knie- und
           Schulter-Werkzeugen um. */}
       <div className="flex border-b border-neutral-700 bg-neutral-950">
@@ -208,9 +212,12 @@ function HipSection({
   const hasOsteotomy = useHipStore((s) =>
     s.measurements.some((m) => m.kind === 'osteotomy'),
   )
-  // ≥ 2 Komponenten platziert (Pfanne + Schaft) = Templating erledigt.
-  const templateCount = useTemplateStore(
-    (s) => s.templates.length + s.stems.length,
+  // Pfanne UND Schaft platziert = Schablonen-Schritt erledigt.
+  // Vorher stand hier `templates.length + stems.length >= 2` — zwei Pfannen
+  // ohne Schaft meldeten damit „fertig". Das Knie prüft seit jeher auf zwei
+  // verschiedene KOMPONENTEN (Gruppen); die Hüfte tut das jetzt auch.
+  const templatesFertig = useTemplateStore(
+    (s) => s.templates.length > 0 && s.stems.length > 0,
   )
   const hasOsteophytes = useOsteophyteStore((s) => s.regions.length > 0)
   // Ohne Katalog (kein Schablonen-Paket) sind die Hinzufügen-Buttons
@@ -223,7 +230,10 @@ function HipSection({
   const keinHipKatalog = !pkgInfo && !cupsVerfuegbar && !stemsVerfuegbar
   return (
     <>
-      {/* Workflow-Reihenfolge: 1. Kalibrierung → 2. Messung → 3. Templating */}
+      {/* Ablauf: 1 Kalibrierung → 2 Messungen → 3 Schablonen, danach die
+          beiden optionalen Zusatzschritte 4 Osteotomie und 5 Osteophyten.
+          Optional heisst hier: emerald wenn getan, sonst gar kein Punkt —
+          amber wäre die Behauptung, es stünde noch etwas aus. */}
       <CollapsibleSection
         id="hip-cal"
         title="1 · Kalibrierung"
@@ -237,7 +247,7 @@ function HipSection({
 
       <CollapsibleSection
         id="hip-measure"
-        title="2 · Hüft-Messungen"
+        title="2 · Messungen"
         defaultCollapsed={hasHipMeasurement}
         statusDot={hasHipMeasurement ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -256,9 +266,9 @@ function HipSection({
 
       <CollapsibleSection
         id="hip-templates"
-        title="3 · Hüft-Schablonen"
-        defaultCollapsed={templateCount >= 2}
-        statusDot={templateCount >= 2 ? 'bg-emerald-500' : 'bg-amber-500'}
+        title="3 · Schablonen"
+        defaultCollapsed={templatesFertig}
+        statusDot={templatesFertig ? 'bg-emerald-500' : 'bg-amber-500'}
       >
         {keinHipKatalog && <KeinPaketHinweis />}
         <ToolButton
@@ -280,7 +290,7 @@ function HipSection({
       <Divider />
 
       <CollapsibleSection
-        id="hip-osteo"
+        id="hip-osteotomy"
         title="4 · Osteotomie"
         defaultCollapsed={hasOsteotomy}
         statusDot={hasOsteotomy ? 'bg-emerald-500' : undefined}
@@ -560,15 +570,20 @@ function KneeSection({
     (rightCal.referenceMm > 0 || (rightCal.magnificationFactor ?? 1) !== 1.0)
   const allCalibrated =
     leftCalibrated && (!splitView || !rightHasImage || rightExplicitCal)
-  // Einzel-Messungen sind nach einer Vollvermessung obsolet (G2) — dann
-  // klappt die Sektion standardmäßig zu, bleibt aber per Klick erreichbar.
+  // Erledigt-Kriterium der Vollvermessung (Sektion 3).
   const hasWorkflow = useKneeStore((s) =>
     s.measurements.some((m) => m.kind === 'workflow'),
   )
-  // Auto-Einklappen (Debug-Runde 2): irgendeine Knie-Messung → Einzel-
-  // Messungen zu; ≥ 2 Implantat-Komponenten (Femur + Tibia; ein Klick
-  // platziert AP+seitlich als EINE Gruppe) → Schablonen zu.
-  const hasAnyKneeMeasurement = useKneeStore((s) => s.measurements.length > 0)
+  // EIGENER Fortschritt der Mess-Sektion (4) — die Vollvermessung zählt
+  // bewusst NICHT mit. Vorher lief beides über `measurements.length > 0`,
+  // wodurch der Status-Punkt fremden Fortschritt gemeldet hätte. Die Hüfte
+  // filtert an derselben Stelle die Osteotomie heraus; das Knie tut es
+  // jetzt genauso.
+  const hatEinzelmessung = useKneeStore((s) =>
+    s.measurements.some((m) => m.kind !== 'workflow'),
+  )
+  // ≥ 2 Implantat-Komponenten (Femur + Tibia; ein Klick platziert
+  // AP + seitlich als EINE Gruppe) → Schablonen erledigt.
   const kneeComponentCount = useKneeTemplateStore(
     (s) => new Set(s.templates.map((t) => t.groupId)).size,
   )
@@ -598,11 +613,19 @@ function KneeSection({
 
   return (
     <>
-      {/* „Ansicht" gilt als erledigt, sobald beide Bilder da sind. */}
+      {/* Ablauf: 1 Ansicht → 2 Kalibrierung → 3 Vollvermessung →
+          4 Messungen → 5 Schablonen. „Ansicht" steht VOR der Kalibrierung,
+          weil man ein zweites Bild erst laden muss, um es kalibrieren zu
+          können — sie ist damit ein echter Schritt und trägt jetzt auch
+          eine Nummer. Als EINSTELLUNG bekommt sie ein Badge statt eines
+          Punkts (Doktrin s. CollapsibleSection): eingeklappt wäre sonst
+          unsichtbar, ob eine oder zwei Aufnahmen aktiv sind — und daran
+          hängt, wo der tibiale Slope gemessen wird. */}
       <CollapsibleSection
         id="knee-view"
-        title="Ansicht"
+        title="1 · Ansicht"
         defaultCollapsed={splitView && rightHasImage}
+        badge={splitView ? 'zwei Bilder' : 'ein Bild'}
       >
         <DualViewControls />
       </CollapsibleSection>
@@ -611,7 +634,7 @@ function KneeSection({
 
       <CollapsibleSection
         id="knee-cal"
-        title="1 · Kalibrierung"
+        title="2 · Kalibrierung"
         defaultCollapsed={allCalibrated}
         statusDot={allCalibrated ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -621,8 +644,8 @@ function KneeSection({
       <Divider />
 
       <CollapsibleSection
-        id="knee-workflow"
-        title="2 · Knie-Planung"
+        id="knee-fullmeasure"
+        title="3 · Vollvermessung"
         defaultCollapsed={hasWorkflow}
         statusDot={hasWorkflow ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -648,10 +671,16 @@ function KneeSection({
 
       <Divider />
 
+      {/* OPTIONALER Schritt: nach der Vollvermessung sind die Einzelmasse
+          in der Regel obsolet — deshalb emerald-oder-nichts statt amber,
+          wie bei Osteotomie und Osteophyten der Hüfte. Der Punkt meldet
+          den EIGENEN Fortschritt; dass die Sektion auch nach einer
+          Vollvermessung zuklappt, ist Absicht und steht getrennt davon. */}
       <CollapsibleSection
-        id="knee-singles"
-        title="3 · Einzel-Messungen"
-        defaultCollapsed={hasAnyKneeMeasurement}
+        id="knee-measure"
+        title="4 · Messungen"
+        defaultCollapsed={hasWorkflow || hatEinzelmessung}
+        statusDot={hatEinzelmessung ? 'bg-emerald-500' : undefined}
       >
         {singles.map((recipe) => (
           <ToolButton
@@ -669,7 +698,7 @@ function KneeSection({
 
       <CollapsibleSection
         id="knee-templates"
-        title="4 · Schablonen"
+        title="5 · Schablonen"
         defaultCollapsed={kneeComponentCount >= 2}
         statusDot={kneeComponentCount >= 2 ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -732,10 +761,12 @@ function KneeSection({
         </div>
       )}
       </CollapsibleSection>
-
-      <Divider />
-
-      {/* Bewusst außerhalb der Sektion (s. SelectedTemplatePanel, Hüfte). */}
+      {/* Bewusst außerhalb der Sektion (s. SelectedTemplatePanel, Hüfte) —
+          aber DIREKT dahinter, ohne Trenner: das Panel gehört noch zur
+          Schablonen-Sektion. Vorher stand hier ein <Divider /> davor; ohne
+          ausgewählte Schablone liefert das Panel null, und die Leiste endete
+          mit einer Trennlinie, unter der nichts mehr kam. Regel: Trenner nur
+          ZWISCHEN Sektionen, nie am Ende. */}
       <SelectedKneeTemplatePanel />
     </>
   )
@@ -991,7 +1022,7 @@ function SelectedKneeTemplatePanel() {
             </>
           ) : (
             <p className="text-[10px] text-neutral-500">
-              Für „Mechanisch ausrichten" zuerst die Knie-Vollvermessung setzen.
+              Für „Mechanisch ausrichten" zuerst die Vollvermessung setzen.
             </p>
           )}
         </div>
@@ -1125,7 +1156,7 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
         id="shoulder-side"
         title="2 · Seite"
         defaultCollapsed={hatMessung}
-        badge={side === 'R' ? 'Rechts' : 'Links'}
+        badge={side === 'R' ? 'rechts' : 'links'}
       >
         <div className="flex gap-1 px-1">
           <SegmentButton
@@ -1147,7 +1178,7 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
         id="shoulder-prosthesis"
         title="3 · Prothese"
         defaultCollapsed={hatMessung}
-        badge={prosthesis === 'reverse' ? 'Invers' : 'Anatomisch'}
+        badge={prosthesis === 'reverse' ? 'invers' : 'anatomisch'}
       >
         <div className="flex gap-1 px-1">
           <SegmentButton
@@ -1167,7 +1198,7 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="shoulder-measure"
-        title="4 · Schulter-Messungen"
+        title="4 · Messungen"
         defaultCollapsed={hatMessung}
         statusDot={hatMessung ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -1196,7 +1227,7 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
           der Nutzer beisteuern könnte. */}
       <CollapsibleSection
         id="shoulder-templates"
-        title="5 · Schulter-Schablonen"
+        title="5 · Schablonen"
         defaultCollapsed
       >
         <p className="mx-1 mb-1 rounded border border-neutral-700 bg-neutral-800/50 px-2 py-1.5 text-[11px] leading-snug text-neutral-400">
@@ -1266,6 +1297,33 @@ function TabButton({
  * `defaultCollapsed` — darf dynamisch sein (z. B. Einzel-Messungen
  * zu, sobald eine Vollvermessung existiert).
  */
+/**
+ * DOKTRIN DER SEKTIONEN (gilt für Hüfte, Knie UND Schulter).
+ *
+ * Sie stand bisher nirgends und wurde deshalb in jedem Modul etwas anders
+ * ausgelegt. Vier Typen, mehr gibt es nicht:
+ *
+ *  SCHRITT (Pflicht)   `statusDot` amber → emerald. Der Ausdruck, der auf
+ *                      emerald schaltet, IST das `defaultCollapsed`-
+ *                      Kriterium: grün und zugeklappt bedeuten dasselbe.
+ *  SCHRITT (optional)  `statusDot` emerald ODER `undefined`. Kein amber —
+ *                      es wäre die Behauptung „hier ist noch etwas offen",
+ *                      obwohl der Schritt übersprungen werden darf.
+ *  EINSTELLUNG         `badge` statt Punkt. Ein Wert, der immer gesetzt
+ *                      ist, kann nicht „erledigt" sein; eingeklappt bliebe
+ *                      er ohne Badge unsichtbar, obwohl er die Auswertung
+ *                      mitbestimmt.
+ *  PLATZHALTER         weder noch, `defaultCollapsed` konstant. Sobald es
+ *                      Inhalt gibt, wird daraus ein SCHRITT.
+ *
+ * Die NUMMER im Titel sagt nur, an welcher Stelle des Ablaufs die Sektion
+ * steht — sie ist unabhängig vom Typ. Jede Sektion trägt eine, damit die
+ * Leiste in allen drei Modulen als durchgehende Abfolge lesbar ist.
+ *
+ * Der Titel trägt KEIN Modul-Präfix: welcher Modus aktiv ist, steht in der
+ * Tab-Leiste darüber, und es ist immer nur ein Modul sichtbar. Genau das
+ * macht die rechte Leiste seit jeher so („Messungen", „Schablonen").
+ */
 function CollapsibleSection({
   id,
   title,
@@ -1319,14 +1377,23 @@ function CollapsibleSection({
         >
           ▶
         </span>
-        <span className="flex-1">{title}</span>
+        {/* `min-w-0 truncate` ist der Umbruch-Schutz: der Titel bleibt
+            einzeilig, statt die Kopfzeile auf zwei Zeilen zu sprengen.
+            Badge und Punkt bekommen `shrink-0`, damit nicht stattdessen
+            SIE gestaucht werden. Bei den heutigen Titeln greift `truncate`
+            nie — es ist das Netz für künftige längere Rubriken. */}
+        <span className="min-w-0 flex-1 truncate" title={title}>
+          {title}
+        </span>
         {badge && (
-          <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-neutral-300">
+          <span className="shrink-0 rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-neutral-300">
             {badge}
           </span>
         )}
         {statusDot && (
-          <span className={`inline-block h-2 w-2 rounded-full ${statusDot}`} />
+          <span
+            className={`inline-block h-2 w-2 shrink-0 rounded-full ${statusDot}`}
+          />
         )}
       </button>
       {!collapsed && children}

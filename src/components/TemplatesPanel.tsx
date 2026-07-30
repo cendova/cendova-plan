@@ -77,18 +77,28 @@ export function TemplatesPanel() {
             geht auch ohne.
           </p>
         )}
-        {!hasAny && (
+        {/* Schulter-Erklärung IMMER zeigen, nicht nur im Leerzustand. Vorher
+            stand sie im `!hasAny`-Zweig — also genau dann, wenn die Liste
+            leer war und der Satz „die Liste zeigt Hüft-Schablonen" nicht
+            stimmte; sobald wirklich welche dastanden, verschwand er. Der
+            zweite Satz kommt deshalb nur, wenn tatsächlich etwas gelistet
+            wird. Neutral statt amber: es fehlt nichts, was der Nutzer
+            beisteuern könnte (gleiche Begründung wie in der linken Leiste). */}
+        {planningMode === 'shoulder' && (
+          <p className="mx-1 mb-2 rounded border border-neutral-700 bg-neutral-800/50 px-2 py-1.5 text-[11px] leading-snug text-neutral-400">
+            Schulter-Schablonen sind noch nicht verfügbar.
+            {hasAny && ' Die Liste zeigt Hüft-Schablonen.'}
+          </p>
+        )}
+        {!hasAny && planningMode !== 'shoulder' && (
           <Hint>
             {/* Der Hinweis nennt die Buttons des AKTIVEN Modus. Vorher stand
-                hier immer „Pfanne/Schaft hinzufügen" — im Knie- und im
-                Schulter-Tab gibt es die aber gar nicht. */}
+                hier immer „Pfanne/Schaft hinzufügen" — im Knie-Tab gibt es
+                die aber gar nicht. */}
             <p className="px-1 py-1 text-xs text-neutral-500">
-              {planningMode === 'hip' &&
-                'Noch keine Schablonen platziert. „Pfanne hinzufügen" oder „Schaft hinzufügen" im linken Menü.'}
-              {planningMode === 'knee' &&
-                'Noch keine Schablonen platziert. Femur oder Tibia im linken Menü auswählen.'}
-              {planningMode === 'shoulder' &&
-                'Schulter-Schablonen gibt es noch nicht — die Liste zeigt Hüft-Schablonen.'}
+              {planningMode === 'hip'
+                ? 'Noch keine Schablonen platziert. „Pfanne hinzufügen" oder „Schaft hinzufügen" in der linken Leiste.'
+                : 'Noch keine Schablonen platziert. Femur oder Tibia in der linken Leiste auswählen.'}
             </p>
           </Hint>
         )}
