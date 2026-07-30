@@ -1075,33 +1075,59 @@ function KneeSelect<T extends string | number>({
 // ----------------------------------------------------------------------
 
 /**
- * Schulter-Sektion. Stand: Gerüst (Plan `docs/schulter-modul-plan.md`,
- * Schritt 1) — die beiden Einstellungen stehen schon, weil sie festlegen,
- * WIE nachfolgende Messungen ausgewertet werden:
+ * Schulter-Sektion. Aufbau und Optik bewusst identisch zu `HipSection`
+ * und `KneeSection`: durchnummerierte, einklappbare Sektionen mit
+ * `Divider` dazwischen, Status-Punkt amber/grün und Auto-Einklappen,
+ * sobald ein Schritt erledigt ist.
+ *
+ * Reihenfolge 1 Kalibrierung → 2 Seite → 3 Prothese → 4 Messungen →
+ * 5 Schablonen. Die beiden Einstellungen stehen VOR den Messungen, weil
+ * sie festlegen, wie diese ausgewertet werden:
  *  - Seite: „lateral" ist auf der a.p.-Aufnahme seitenabhängig (CSA,
  *    Akromion-Index). Die Seite wird beim Anlegen jeder Messung
  *    eingefroren, ein späteres Umschalten deutet Bestehendes NICHT um.
  *  - Prothesentyp: filtert nur das Rezept-Angebot (die Bilanz-Winkel
  *    DSA/LSA gelten nur invers) — nie die Rechenlogik.
+ *
+ * Beide tragen deshalb ein Header-Badge mit dem aktuellen Wert: eingeklappt
+ * bliebe eine Wahl sonst unsichtbar, die das Ergebnis mitbestimmt. Ein
+ * amber/grüner Punkt wäre hier falsch — es gibt nichts zu erledigen, der
+ * Wert ist immer gesetzt.
  */
 function ShoulderSection({ hasImage }: { hasImage: boolean }) {
+  const calibrated = useViewerStore((s) => s.calibration != null)
   const side = useShoulderStore((s) => s.side)
   const setSide = useShoulderStore((s) => s.setSide)
   const prosthesis = useShoulderStore((s) => s.prosthesis)
   const setProsthesis = useShoulderStore((s) => s.setProsthesis)
-  const messungen = useShoulderStore((s) => s.measurements.length)
   const activeKind = useShoulderStore((s) => s.activeKind)
+  // „Erledigt"-Kriterium wie bei Hüfte/Knie: sobald gemessen wurde, klappen
+  // die vorgelagerten Einstellungen und die Werkzeugliste standardmäßig zu.
+  const hatMessung = useShoulderStore((s) => s.measurements.length > 0)
   // Angebot haengt am Prothesentyp: die Bilanz-Winkel (DSA/LSA) sind nur
   // bei der inversen Prothese sinnvoll. Die Rechnung kennt den Typ nicht.
   const rezepte = recipesForProsthesis(prosthesis)
 
   return (
-    <div className="flex flex-col gap-3">
-      <div>
-        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
-          Seite
-        </div>
-        <div className="flex gap-1">
+    <>
+      <CollapsibleSection
+        id="shoulder-cal"
+        title="1 · Kalibrierung"
+        defaultCollapsed={calibrated}
+        statusDot={calibrated ? 'bg-emerald-500' : 'bg-amber-500'}
+      >
+        <CalibrationButton hasImage={hasImage} />
+      </CollapsibleSection>
+
+      <Divider />
+
+      <CollapsibleSection
+        id="shoulder-side"
+        title="2 · Seite"
+        defaultCollapsed={hatMessung}
+        badge={side === 'R' ? 'Rechts' : 'Links'}
+      >
+        <div className="flex gap-1 px-1">
           <SegmentButton
             label="Rechts"
             active={side === 'R'}
@@ -1113,13 +1139,17 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
             onClick={() => setSide('L')}
           />
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div>
-        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
-          Prothese
-        </div>
-        <div className="flex gap-1">
+      <Divider />
+
+      <CollapsibleSection
+        id="shoulder-prosthesis"
+        title="3 · Prothese"
+        defaultCollapsed={hatMessung}
+        badge={prosthesis === 'reverse' ? 'Invers' : 'Anatomisch'}
+      >
+        <div className="flex gap-1 px-1">
           <SegmentButton
             label="Anatomisch"
             active={prosthesis === 'anatomic'}
@@ -1131,36 +1161,50 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
             onClick={() => setProsthesis('reverse')}
           />
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div>
-        <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
-          Messungen
-        </div>
-        <div className="flex flex-col gap-1">
-          {rezepte.map((r) => (
-            <ToolButton
-              key={r.kind}
-              label={r.label}
-              active={activeKind === r.kind}
-              disabled={!hasImage}
-              onClick={() => pickShoulderTool(r.kind)}
-            />
-          ))}
-        </div>
-      </div>
+      <Divider />
 
-      <div className="rounded border border-neutral-700 bg-neutral-800/50 p-2 text-xs leading-relaxed text-neutral-400">
-        {prosthesis === 'reverse'
-          ? 'DSA und LSA sind der inversen Prothese vorbehalten.'
-          : 'DSA/LSA erscheinen erst bei „Invers".'}
-        {messungen > 0 && ` — ${messungen} Messung(en) gesetzt.`}
-        <div className="mt-1.5 text-neutral-500">
-          Gilt für die echte a.p.-Aufnahme; Glenoid-Version und Walch-Typ
-          bleiben dem CT vorbehalten.
-        </div>
-      </div>
-    </div>
+      <CollapsibleSection
+        id="shoulder-measure"
+        title="4 · Schulter-Messungen"
+        defaultCollapsed={hatMessung}
+        statusDot={hatMessung ? 'bg-emerald-500' : 'bg-amber-500'}
+      >
+        {rezepte.map((r) => (
+          <ToolButton
+            key={r.kind}
+            label={r.label}
+            active={activeKind === r.kind}
+            disabled={!hasImage}
+            onClick={() => pickShoulderTool(r.kind)}
+          />
+        ))}
+        <Hint>
+          <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
+            Gilt für die echte a.p.-Aufnahme; Glenoid-Version und Walch-Typ
+            bleiben dem CT vorbehalten.
+          </p>
+        </Hint>
+      </CollapsibleSection>
+
+      <Divider />
+
+      {/* Platzhalter, damit der Ablauf dieselbe Gestalt hat wie bei Hüfte
+          und Knie. Bewusst NEUTRAL statt amber: amber heißt bei den anderen
+          Modulen „Paket fehlt, bitte importieren" — hier fehlt nichts, was
+          der Nutzer beisteuern könnte. */}
+      <CollapsibleSection
+        id="shoulder-templates"
+        title="5 · Schulter-Schablonen"
+        defaultCollapsed
+      >
+        <p className="mx-1 mb-1 rounded border border-neutral-700 bg-neutral-800/50 px-2 py-1.5 text-[11px] leading-snug text-neutral-400">
+          Noch nicht verfügbar. Schulter-Schablonen kommen mit eigenem
+          Material; ein Hüft-/Knie-Paket enthält sie nicht. Messen geht ohne.
+        </p>
+      </CollapsibleSection>
+    </>
   )
 }
 
@@ -1227,6 +1271,7 @@ function CollapsibleSection({
   title,
   defaultCollapsed = false,
   statusDot,
+  badge,
   children,
 }: {
   id: string
@@ -1234,6 +1279,11 @@ function CollapsibleSection({
   defaultCollapsed?: boolean
   /** Tailwind-Farbklasse für einen Status-Punkt rechts im Header. */
   statusDot?: string
+  /** Kurzer Wert im Header — für Sektionen, die eine EINSTELLUNG halten
+   *  statt eines erledigt/offen-Schritts (Schulter: Seite, Prothese).
+   *  Ohne ihn würde das Einklappen eine Wahl verbergen, an der die
+   *  Auswertung hängt. */
+  badge?: string
   children: React.ReactNode
 }) {
   const stored = useUiStore((s) => s.collapsedSections[id])
@@ -1270,6 +1320,11 @@ function CollapsibleSection({
           ▶
         </span>
         <span className="flex-1">{title}</span>
+        {badge && (
+          <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-neutral-300">
+            {badge}
+          </span>
+        )}
         {statusDot && (
           <span className={`inline-block h-2 w-2 rounded-full ${statusDot}`} />
         )}

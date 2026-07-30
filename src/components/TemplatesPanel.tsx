@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTemplateStore } from '../state/templateStore'
 import { useTemplatePackageStore } from '../state/templatePackageStore'
+import { useViewerStore } from '../state/viewerStore'
 import { Hint } from './Hint'
 import { ConfirmDialog } from './ConfirmDialog'
 import {
@@ -25,6 +26,7 @@ export function TemplatesPanel() {
   const removeAll = useTemplateStore((s) => s.removeAll)
 
   const pkgInfo = useTemplatePackageStore((s) => s.info)
+  const planningMode = useViewerStore((s) => s.planningMode)
   // Bestätigung vor dem Sammel-Löschen (UX-Befund P1-5).
   const [confirmClear, setConfirmClear] = useState(false)
   const cupEntries = cupCatalogEntries()
@@ -65,7 +67,10 @@ export function TemplatesPanel() {
       </ConfirmDialog>
 
       <div className="p-2">
-        {noCatalog && (
+        {/* Im Schulter-Modus bewusst KEIN Import-Aufruf: ein Paket enthält
+            keine Schulter-Schablonen, die Aufforderung liefe also ins Leere.
+            Den Stand erklärt dort Sektion 5 der linken Leiste. */}
+        {noCatalog && planningMode !== 'shoulder' && (
           <p className="mx-1 mb-2 rounded border border-amber-800/60 bg-amber-950/40 px-2 py-1.5 text-[11px] leading-snug text-amber-300">
             Kein Schablonen-Paket geladen — Schablonen sind erst nach dem
             Import verfügbar (Paket-Symbol oben in der Kopfzeile). Messen
@@ -74,9 +79,16 @@ export function TemplatesPanel() {
         )}
         {!hasAny && (
           <Hint>
+            {/* Der Hinweis nennt die Buttons des AKTIVEN Modus. Vorher stand
+                hier immer „Pfanne/Schaft hinzufügen" — im Knie- und im
+                Schulter-Tab gibt es die aber gar nicht. */}
             <p className="px-1 py-1 text-xs text-neutral-500">
-              Noch keine Schablonen platziert. „Pfanne hinzufügen" oder
-              „Schaft hinzufügen" im linken Menü.
+              {planningMode === 'hip' &&
+                'Noch keine Schablonen platziert. „Pfanne hinzufügen" oder „Schaft hinzufügen" im linken Menü.'}
+              {planningMode === 'knee' &&
+                'Noch keine Schablonen platziert. Femur oder Tibia im linken Menü auswählen.'}
+              {planningMode === 'shoulder' &&
+                'Schulter-Schablonen gibt es noch nicht — die Liste zeigt Hüft-Schablonen.'}
             </p>
           </Hint>
         )}
