@@ -11,11 +11,12 @@
 // Aufruf:  node scripts/export-template-package.mjs
 //          node scripts/export-template-package.mjs --out mein-paket.zip --name "Klinik-Paket"
 //
-// Technik: Die Datentabellen liegen als TypeScript-Module vor. esbuild
-// (bereits via Vite vorhanden) bündelt sie zu einem temporären ESM-File,
-// das dieses Skript dynamisch importiert — kein TS-Parsing von Hand.
+// Technik: Die Datentabellen liegen als TypeScript-Module vor. Rolldown
+// (Vites Bundler; seit Vite 8 ersetzt er esbuild in node_modules) bündelt
+// sie zu einem temporären ESM-File, das dieses Skript dynamisch
+// importiert — kein TS-Parsing von Hand.
 
-import { build } from 'esbuild'
+import { rolldown } from 'rolldown'
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate'
 import {
   mkdtempSync,
@@ -55,25 +56,29 @@ if (!existsSync(TEMPLATES_DIR)) {
   process.exit(1)
 }
 
-// --- 1) Datentabellen aus den TS-Modulen holen (esbuild-Bundle) -----------
+// --- 1) Datentabellen aus den TS-Modulen holen (Rolldown-Bundle) -----------
+// Rolldown kennt kein stdin-Entry — die Entry-Datei landet daher mit
+// absoluten Modulpfaden im Temp-Verzeichnis (Muster export-shoulder-package.mjs).
+const modulPfad = (p) => join(PROJECT_DIR, p).replaceAll('\\', '/')
 const entry = `
-export { KNEE_IMAGES } from './src/lib/knee/kneeImages'
-export { KNEE_CONTOURS } from './src/lib/knee/kneeContours'
-export { MEDACTA_IMAGES } from './src/lib/hip/medactaImages'
-export { MEDACTA_CATALOG, HEAD_OFFSETS_MM, STEM_CCD_BY_FOLDER } from './src/lib/hip/medactaCatalog'
-export { BACKGROUNDS } from './src/lib/knee/templateBackgroundsData'
-export * as sn from './src/lib/knee/smithNephewCatalog'
+export { KNEE_IMAGES } from '${modulPfad('src/lib/knee/kneeImages.ts')}'
+export { KNEE_CONTOURS } from '${modulPfad('src/lib/knee/kneeContours.ts')}'
+export { MEDACTA_IMAGES } from '${modulPfad('src/lib/hip/medactaImages.ts')}'
+export { MEDACTA_CATALOG, HEAD_OFFSETS_MM, STEM_CCD_BY_FOLDER } from '${modulPfad('src/lib/hip/medactaCatalog.ts')}'
+export { BACKGROUNDS } from '${modulPfad('src/lib/knee/templateBackgroundsData.ts')}'
+export * as sn from '${modulPfad('src/lib/knee/smithNephewCatalog.ts')}'
 `
 const tmp = mkdtempSync(join(tmpdir(), 'cendova-export-'))
+const entryFile = join(tmp, 'entry.ts')
 const bundleFile = join(tmp, 'data.mjs')
-await build({
-  stdin: { contents: entry, resolveDir: PROJECT_DIR, loader: 'ts' },
-  bundle: true,
-  format: 'esm',
-  platform: 'neutral',
-  outfile: bundleFile,
+writeFileSync(entryFile, entry)
+const bundle = await rolldown({
+  input: entryFile,
   logLevel: 'silent',
+  resolve: { tsconfigFilename: join(PROJECT_DIR, 'tsconfig.json') },
 })
+await bundle.write({ file: bundleFile, format: 'esm' })
+await bundle.close()
 const data = await import(pathToFileURL(bundleFile).href)
 rmSync(tmp, { recursive: true, force: true })
 

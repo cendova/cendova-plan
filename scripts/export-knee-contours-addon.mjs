@@ -23,7 +23,7 @@
 //
 // Aufruf:  node scripts/export-knee-contours-addon.mjs [--out datei.zip]
 
-import { build } from 'esbuild'
+import { rolldown } from 'rolldown'
 import { zipSync, strToU8 } from 'fflate'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -41,22 +41,25 @@ const argOf = (n, d) => {
 const today = new Date().toISOString().slice(0, 10)
 const OUT = argOf('--out', join(PROJECT_DIR, `cendova-addon-knie-konturen-${today}.zip`))
 
-// TS-Module per esbuild bündeln (Muster export-template-package.mjs) —
-// inkl. der Manifest-Validierung, damit das ZIP garantiert importierbar ist.
-const entry = `
-export { KNEE_CONTOURS } from './src/lib/knee/kneeContours'
-export { validateManifest } from './src/lib/templates/packageFormat'
-`
+// TS-Module per Rolldown bündeln (Muster export-shoulder-package.mjs; seit
+// Vite 8 liegt kein esbuild mehr in node_modules) — inkl. der Manifest-
+// Validierung, damit das ZIP garantiert importierbar ist.
 const tmp = mkdtempSync(join(tmpdir(), 'cendova-addon-'))
+const entryFile = join(tmp, 'entry.ts')
 const bundleFile = join(tmp, 'data.mjs')
-await build({
-  stdin: { contents: entry, resolveDir: PROJECT_DIR, loader: 'ts' },
-  bundle: true,
-  format: 'esm',
-  platform: 'neutral',
-  outfile: bundleFile,
+const modulPfad = (p) => join(PROJECT_DIR, p).replaceAll('\\', '/')
+writeFileSync(
+  entryFile,
+  `export { KNEE_CONTOURS } from '${modulPfad('src/lib/knee/kneeContours.ts')}'\n` +
+    `export { validateManifest } from '${modulPfad('src/lib/templates/packageFormat.ts')}'\n`,
+)
+const bundle = await rolldown({
+  input: entryFile,
   logLevel: 'silent',
+  resolve: { tsconfigFilename: join(PROJECT_DIR, 'tsconfig.json') },
 })
+await bundle.write({ file: bundleFile, format: 'esm' })
+await bundle.close()
 const data = await import(pathToFileURL(bundleFile).href)
 rmSync(tmp, { recursive: true, force: true })
 

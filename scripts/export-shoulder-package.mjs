@@ -14,8 +14,8 @@
 // Aufruf:  node scripts/export-shoulder-package.mjs [--out datei.zip]
 
 // Seit Vite 8 gibt es kein esbuild mehr in node_modules — gebündelt wird
-// mit Rolldown (Vites eigener Bundler; das Knie-Pendant nutzt noch esbuild
-// und ist seit dem Vite-8-Sync latent kaputt — bewusst nicht mit angefasst).
+// mit Rolldown (Vites eigener Bundler; Knie-/Template-Export nutzen
+// inzwischen dasselbe Muster).
 import { rolldown } from 'rolldown'
 import { zipSync, strToU8 } from 'fflate'
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
