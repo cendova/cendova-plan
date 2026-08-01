@@ -291,7 +291,7 @@ export function HeaderTools() {
               : 'Schablonen-Paket importieren …'
           }
           active={openPkgMenu}
-          statusDot={pkgInfo ? 'bg-emerald-400' : undefined}
+          statusDot={pkgInfo ? 'bg-emerald-500' : undefined}
           onClick={() => setOpenPkgMenu((v) => !v)}
         />
         {openPkgMenu && (

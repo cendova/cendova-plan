@@ -22,6 +22,7 @@ import { useShoulderStore } from '../state/shoulderStore'
 import { recipesForProsthesis } from '../lib/shoulder/recipes'
 import { useUiStore } from '../state/uiStore'
 import { Hint } from './Hint'
+import { KeinPaketHinweis } from './KeinPaketHinweis'
 import {
   applyNavToolsPane2,
   startSlopeToolPane2,
@@ -85,9 +86,6 @@ import { renderKneeTemplate } from '../lib/knee/templates'
 export function Toolbar() {
   const planningMode = useViewerStore((s) => s.planningMode)
   const hasImage = useViewerStore((s) => s.hasImage)
-  const hipActiveKind = useHipStore((s) => s.activeKind)
-  const kneeActiveKind = useKneeStore((s) => s.activeKind)
-
   return (
     // w-60 statt w-52: bei 208px brachen die längsten Sektions-Titel selbst
     // ohne Modul-Präfix noch um (gemessenes Titel-Budget 133px neben einem
@@ -119,12 +117,11 @@ export function Toolbar() {
             Ein `mode === 'hip' ? Hüfte : Knie` hätte den Schulter-Modus
             still in die Knie-Sektion fallen lassen — der Compiler warnt
             bei einem Ternary nicht. */}
-        {planningMode === 'hip' && (
-          <HipSection hasImage={hasImage} activeKind={hipActiveKind} />
-        )}
-        {planningMode === 'knee' && (
-          <KneeSection hasImage={hasImage} activeKind={kneeActiveKind} />
-        )}
+        {/* Jede Sektion liest ihren activeKind SELBST aus ihrem Store —
+            die Toolbar abonnierte sonst Hüft- UND Knie-Toolwechsel auch in
+            Modi, die keinen von beiden rendern. */}
+        {planningMode === 'hip' && <HipSection hasImage={hasImage} />}
+        {planningMode === 'knee' && <KneeSection hasImage={hasImage} />}
         {planningMode === 'shoulder' && <ShoulderSection hasImage={hasImage} />}
       </div>
 
@@ -183,24 +180,8 @@ function KneeFamilienDropdown({
   )
 }
 
-// Gemeinsamer Hinweis für Hüfte + Knie, wenn kein Paket geladen ist
-// (Formulierung wie im rechten TemplatesPanel).
-function KeinPaketHinweis() {
-  return (
-    <p className="mx-1 mb-1 rounded border border-amber-800/60 bg-amber-950/40 px-2 py-1.5 text-[11px] leading-snug text-amber-300">
-      Kein Schablonen-Paket geladen — Schablonen sind erst nach dem Import
-      verfügbar (Paket-Symbol oben in der Kopfzeile). Messen geht auch ohne.
-    </p>
-  )
-}
-
-function HipSection({
-  hasImage,
-  activeKind,
-}: {
-  hasImage: boolean
-  activeKind: string | null
-}) {
+function HipSection({ hasImage }: { hasImage: boolean }) {
+  const activeKind = useHipStore((s) => s.activeKind)
   const calibrated = useViewerStore((s) => s.calibration != null)
   // „Erledigt"-Kriterien fürs Auto-Einklappen (Debug-Runde 2): Sobald ein
   // Schritt bearbeitet ist, klappt seine Sektion standardmäßig zu — bleibt
@@ -227,7 +208,13 @@ function HipSection({
   const pkgInfo = useTemplatePackageStore((s) => s.info)
   const cupsVerfuegbar = cupCatalogEntries().length > 0
   const stemsVerfuegbar = stemCatalogEntries().length > 0
-  const keinHipKatalog = !pkgInfo && !cupsVerfuegbar && !stemsVerfuegbar
+  // Zwei getrennte Fragen: Der Status-PUNKT hängt an der Katalog-LEERE
+  // dieses Moduls (auch ein importiertes Nur-Knie-Paket lässt die
+  // Hüft-Buttons tot — dann wäre amber eine Aufforderung ins Leere).
+  // Der HINWEIS hängt am fehlenden Paket, denn sein Text sagt „Kein
+  // Schablonen-Paket geladen" — bei einem Teil-Paket wäre das falsch.
+  const hipKatalogLeer = !cupsVerfuegbar && !stemsVerfuegbar
+  const keinHipKatalog = !pkgInfo && hipKatalogLeer
   return (
     <>
       {/* Ablauf: 1 Kalibrierung → 2 Messungen → 3 Schablonen, danach die
@@ -268,7 +255,17 @@ function HipSection({
         id="hip-templates"
         title="3 · Schablonen"
         defaultCollapsed={templatesFertig}
-        statusDot={templatesFertig ? 'bg-emerald-500' : 'bg-amber-500'}
+        // Ohne Katalog KEIN amber: die Hinzufügen-Buttons sind dann
+        // deaktiviert — ein „hier steht etwas aus"-Punkt fordert zu einer
+        // Handlung auf, die gerade unmöglich ist. Den fehlenden Import
+        // meldet der KeinPaketHinweis in der Sektion selbst.
+        statusDot={
+          templatesFertig
+            ? 'bg-emerald-500'
+            : hipKatalogLeer
+              ? undefined
+              : 'bg-amber-500'
+        }
       >
         {keinHipKatalog && <KeinPaketHinweis />}
         <ToolButton
@@ -341,7 +338,7 @@ function OsteophyteToolButton({ hasImage }: { hasImage: boolean }) {
           !hasImage ? 'cursor-not-allowed opacity-50' : '',
         ].join(' ')}
       >
-        {placing ? 'Markieren aktiv – fertig' : 'Osteophyten markieren'}
+        {placing ? 'Markieren aktiv — fertig' : 'Osteophyten markieren'}
       </button>
       <Hint>
         <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
@@ -447,21 +444,22 @@ function KneeCalibrationButtons({ hasImage }: { hasImage: boolean }) {
     !c ? 'none' : c.referenceMm > 0 ? 'manual' : 'dicom'
 
   const calText = (c: typeof leftCal) => {
-    if (!c) return 'nicht kalibriert'
+    if (!c) return 'Noch nicht kalibriert'
     const mag =
       c.magnificationFactor && c.magnificationFactor !== 1.0
         ? ` · Mag ${c.magnificationFactor.toFixed(2)}×`
         : ''
     return c.referenceMm > 0
       ? `Referenz ${c.referenceMm} mm${mag}`
-      : `aus DICOM (automatisch)${mag}`
+      : `aus DICOM-Pixelabstand${mag}`
   }
 
   // Einzelbild: ein Button fürs Haupt-Pane (identisch zur Hüfte).
   if (!splitView) {
     return (
       <PaneCalibrationButton
-        label="Kalibrieren"
+        label="Kalibrieren …"
+        labelDone="Kalibriert ✓"
         pane="left"
         mode={calMode(leftCal)}
         statusText={calText(leftCal)}
@@ -476,7 +474,8 @@ function KneeCalibrationButtons({ hasImage }: { hasImage: boolean }) {
   return (
     <div className="flex flex-col gap-1">
       <PaneCalibrationButton
-        label="AP (links) kalibrieren"
+        label="Kalibrieren: AP (links) …"
+        labelDone="Kalibriert: AP (links) ✓"
         pane="left"
         mode={calMode(leftCal)}
         statusText={calText(leftCal)}
@@ -484,10 +483,11 @@ function KneeCalibrationButtons({ hasImage }: { hasImage: boolean }) {
         highlight={activePane === 'left'}
       />
       <PaneCalibrationButton
-        label="Seitlich (rechts) kalibrieren"
+        label="Kalibrieren: seitlich (rechts) …"
+        labelDone="Kalibriert: seitlich (rechts) ✓"
         pane="right"
         mode={rightHasImage ? calMode(rightCal) : 'none'}
-        statusText={rightHasImage ? calText(rightCal) : 'kein Bild geladen'}
+        statusText={rightHasImage ? calText(rightCal) : 'Kein Bild geladen'}
         disabled={!rightHasImage}
         highlight={activePane === 'right'}
       />
@@ -499,6 +499,7 @@ type CalMode = 'manual' | 'dicom' | 'none'
 
 function PaneCalibrationButton({
   label,
+  labelDone,
   pane,
   mode,
   statusText,
@@ -506,6 +507,11 @@ function PaneCalibrationButton({
   highlight,
 }: {
   label: string
+  /** Beschriftung nach MANUELLER Kalibrierung — wie der Hüft-Button, der
+   *  von „Kalibrieren …" auf „Kalibriert ✓" kippt. Vorher blieb hier die
+   *  Aufforderung stehen und bekam nur einen Haken angehängt
+   *  („Kalibrieren … ✓"). */
+  labelDone: string
   pane: 'left' | 'right'
   mode: CalMode
   statusText: string
@@ -533,21 +539,15 @@ function PaneCalibrationButton({
     >
       <div className="flex items-center gap-1.5 font-medium">
         <span className={['inline-block h-2 w-2 rounded-full', dotColor].join(' ')} />
-        {label}
-        {mode === 'manual' ? ' ✓' : ''}
+        {mode === 'manual' ? labelDone : label}
       </div>
       <div className="mt-0.5 text-[10px] text-neutral-400">{statusText}</div>
     </button>
   )
 }
 
-function KneeSection({
-  hasImage,
-  activeKind,
-}: {
-  hasImage: boolean
-  activeKind: string | null
-}) {
+function KneeSection({ hasImage }: { hasImage: boolean }) {
+  const activeKind = useKneeStore((s) => s.activeKind)
   // Workflow oben als „Hero", Einzel-Messungen darunter als Spot-Tools.
   const workflow = AVAILABLE_KNEE_RECIPES.find((r) => r.kind === 'workflow')
   // Tibialer Slope wird ausschließlich auf dem seitlichen (rechten) Bild
@@ -608,8 +608,11 @@ function KneeSection({
   const tibiaFamilien = KNEE_IMPLANT_FAMILIES.filter(
     (f) => f.bone === 'Tibia' && zeigbar(f),
   )
-  const keinKneeKatalog =
-    !pkgInfo && femurFamilien.length === 0 && tibiaFamilien.length === 0
+  // Punkt an der Katalog-Leere, Hinweis am fehlenden Paket — gleiche
+  // Trennung wie bei der Hüfte (s. dort).
+  const kneeKatalogLeer =
+    femurFamilien.length === 0 && tibiaFamilien.length === 0
+  const keinKneeKatalog = !pkgInfo && kneeKatalogLeer
 
   return (
     <>
@@ -700,14 +703,21 @@ function KneeSection({
         id="knee-templates"
         title="5 · Schablonen"
         defaultCollapsed={kneeComponentCount >= 2}
-        statusDot={kneeComponentCount >= 2 ? 'bg-emerald-500' : 'bg-amber-500'}
+        // Ohne Katalog kein amber — gleiche Begründung wie bei der Hüfte.
+        statusDot={
+          kneeComponentCount >= 2
+            ? 'bg-emerald-500'
+            : kneeKatalogLeer
+              ? undefined
+              : 'bg-amber-500'
+        }
       >
       {/* Seiten-Abfrage wie bei der Hüfte (UX-Befund P1-1: vorher war die
           Seite hart auf 'R' verdrahtet). */}
       {keinKneeKatalog && <KeinPaketHinweis />}
       {femurFamilien.length > 0 && (
         <KneeFamilienDropdown
-          label="Femur"
+          label="Femurkomponente"
           familien={femurFamilien}
           disabled={!hasImage}
           onWahl={setPendingSideKind}
@@ -715,7 +725,7 @@ function KneeSection({
       )}
       {tibiaFamilien.length > 0 && (
         <KneeFamilienDropdown
-          label="Tibia"
+          label="Tibiakomponente"
           familien={tibiaFamilien}
           disabled={!hasImage}
           onWahl={setPendingSideKind}
@@ -968,8 +978,8 @@ function SelectedKneeTemplatePanel() {
         value={selected.view}
         onChange={(v) => store.setView(selected.id, v as 'AP' | 'lateral')}
         options={[
-          { value: 'AP', label: 'AP (frontal)' },
-          { value: 'lateral', label: 'lateral (seitlich)' },
+          { value: 'AP', label: 'AP' },
+          { value: 'lateral', label: 'seitlich' },
         ]}
       />
 
@@ -1222,9 +1232,9 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
       <Divider />
 
       {/* Platzhalter, damit der Ablauf dieselbe Gestalt hat wie bei Hüfte
-          und Knie. Bewusst NEUTRAL statt amber: amber heißt bei den anderen
-          Modulen „Paket fehlt, bitte importieren" — hier fehlt nichts, was
-          der Nutzer beisteuern könnte. */}
+          und Knie. Ohne Punkt und ohne Badge (Doktrin s. CollapsibleSection):
+          amber hieße „hier steht ein Schritt aus" — es gibt aber nichts zu
+          tun, solange keine Schulter-Schablonen existieren. */}
       <CollapsibleSection
         id="shoulder-templates"
         title="5 · Schablonen"
@@ -1353,13 +1363,26 @@ function CollapsibleSection({
   // aufgeklappt hatte (Debug-Runde 3: „Kalibrierung fährt nicht ein").
   // Ein danach erneutes manuelles Aufklappen bleibt bis zum nächsten
   // Erledigt-Übergang respektiert.
-  const prevDefault = useRef(defaultCollapsed)
+  // Nur SCHRITT-Sektionen (statusDot) verwerfen die manuelle Wahl: dort
+  // bedeutet der Kipp-Übergang „dieser Schritt wurde gerade erledigt".
+  // Einstellungs-Sektionen (Badge) klappen dagegen durch FREMDEN
+  // Fortschritt zu — z. B. Seite/Prothese, sobald die erste Messung
+  // gesetzt ist. Wer sie bewusst offen hält, soll sie behalten.
+  //
+  // Die Flanke wird auf der KONJUNKTION (Schritt UND erledigt) verfolgt,
+  // nicht auf defaultCollapsed allein: Bei „4 · Messungen" (Knie) kippt
+  // defaultCollapsed schon durch die Vollvermessung, während der eigene
+  // Punkt noch fehlt — die Kante wäre verbraucht, und der spätere EIGENE
+  // Erledigt-Übergang (erste Einzelmessung) fände keine mehr vor.
+  const istSchritt = statusDot != null
+  const fertigerSchritt = istSchritt && defaultCollapsed
+  const prevFertig = useRef(fertigerSchritt)
   useEffect(() => {
-    if (defaultCollapsed && !prevDefault.current) {
+    if (fertigerSchritt && !prevFertig.current) {
       useUiStore.getState().clearSectionChoice(id)
     }
-    prevDefault.current = defaultCollapsed
-  }, [defaultCollapsed, id])
+    prevFertig.current = fertigerSchritt
+  }, [fertigerSchritt, id])
   return (
     <>
       <button
@@ -1439,7 +1462,7 @@ function ToolButton({
 }
 
 // ----------------------------------------------------------------------
-// Template-Eigenschaften-Panel (unverändert)
+// Hüft-Schablonen-Panels (Pfanne/Schaft der Auswahl)
 // ----------------------------------------------------------------------
 
 function SelectedTemplatePanel() {
@@ -1476,7 +1499,7 @@ function SelectedCupPanel({ cup }: { cup: CupTemplate }) {
   return (
     <div className="mx-2 mt-2 rounded border border-sky-900/60 bg-sky-950/30 p-2 text-xs">
       <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-sky-300">
-        Ausgewählte Pfanne
+        Ausgewählte Schablone
       </div>
 
       <label className="mb-1 block text-[10px] text-neutral-400">Typ</label>
@@ -1535,7 +1558,7 @@ function SelectedCupPanel({ cup }: { cup: CupTemplate }) {
         onClick={() => store.remove(cup.id)}
         className="w-full rounded border border-red-900/60 px-2 py-1 text-[11px] text-red-300 transition hover:bg-red-900/40"
       >
-        Pfanne entfernen
+        Schablone entfernen
       </button>
     </div>
   )
@@ -1550,7 +1573,7 @@ function SelectedStemPanel({ stem }: { stem: StemTemplate }) {
   return (
     <div className="mx-2 mt-2 rounded border border-sky-900/60 bg-sky-950/30 p-2 text-xs">
       <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-sky-300">
-        Ausgewählter Schaft
+        Ausgewählte Schablone
       </div>
 
       <label className="mb-1 block text-[10px] text-neutral-400">Familie</label>
@@ -1621,7 +1644,7 @@ function SelectedStemPanel({ stem }: { stem: StemTemplate }) {
         onClick={() => store.remove(stem.id)}
         className="w-full rounded border border-red-900/60 px-2 py-1 text-[11px] text-red-300 transition hover:bg-red-900/40"
       >
-        Schaft entfernen
+        Schablone entfernen
       </button>
     </div>
   )

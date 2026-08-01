@@ -806,8 +806,10 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
       const lines: string[] = []
       lines.push(`Prä-OP: ${formatLldForSide(preopLLD, opSide)}`)
       for (const c of correction.perSide) {
+        // Seite ausgeschrieben wie in den Nachbarzeilen (Prä-/Post-OP) und
+        // im Messungen-Panel — „Korrektur R" war die einzige Abkürzung.
         lines.push(
-          `Korrektur ${c.side}: ${c.mm >= 0 ? '+' : ''}${(c.mm / 10).toFixed(2).replace('.', ',')} cm`,
+          `Korrektur ${c.side === 'R' ? 'rechts' : 'links'}: ${c.mm >= 0 ? '+' : ''}${(c.mm / 10).toFixed(2).replace('.', ',')} cm`,
         )
       }
       lines.push(`Post-OP: ${formatLldForSide(postopLLD, opSide)}`)

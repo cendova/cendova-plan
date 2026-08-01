@@ -7,6 +7,7 @@ import {
   gruppiereNachImplantat,
 } from '../state/kneeTemplateStore'
 import { Hint } from './Hint'
+import { KeinPaketHinweis } from './KeinPaketHinweis'
 import { ConfirmDialog } from './ConfirmDialog'
 import {
   cupCatalogEntries,
@@ -116,11 +117,7 @@ export function TemplatesPanel() {
             keine Schulter-Schablonen, die Aufforderung liefe also ins Leere.
             Den Stand erklärt dort Sektion 5 der linken Leiste. */}
         {noCatalog && planningMode !== 'shoulder' && (
-          <p className="mx-1 mb-2 rounded border border-amber-800/60 bg-amber-950/40 px-2 py-1.5 text-[11px] leading-snug text-amber-300">
-            Kein Schablonen-Paket geladen — Schablonen sind erst nach dem
-            Import verfügbar (Paket-Symbol oben in der Kopfzeile). Messen
-            geht auch ohne.
-          </p>
+          <KeinPaketHinweis className="mb-2" />
         )}
         {/* Schulter-Erklärung IMMER zeigen, nicht nur im Leerzustand. Vorher
             stand sie im `!hasAny`-Zweig — also genau dann, wenn die Liste
@@ -143,7 +140,7 @@ export function TemplatesPanel() {
             <p className="px-1 py-1 text-xs text-neutral-500">
               {planningMode === 'hip'
                 ? 'Noch keine Schablonen platziert. „Pfanne hinzufügen" oder „Schaft hinzufügen" in der linken Leiste.'
-                : 'Noch keine Schablonen platziert. Femur oder Tibia in der linken Leiste auswählen.'}
+                : 'Noch keine Schablonen platziert. Femur- oder Tibiakomponente in der linken Leiste auswählen.'}
             </p>
           </Hint>
         )}

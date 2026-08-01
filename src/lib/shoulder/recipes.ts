@@ -126,7 +126,7 @@ export type ShoulderProsthesis = 'anatomic' | 'reverse'
 // ----------------------------------------------------------------------
 const csa: ShoulderRecipe = {
   kind: 'csa',
-  label: 'CSA (Critical Shoulder Angle)',
+  label: 'CSA (kritischer Schulterwinkel)',
   needsCalibration: false,
   steps: [
     'Glenoid — oberer Rand',
