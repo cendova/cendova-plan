@@ -51,11 +51,21 @@ import {
 import {
   addCupTemplate,
   addKneeTemplate,
+  addShoulderTemplate,
   addStemTemplate,
   autoPlaceKneeImplant,
   openCalibrationChoice,
 } from '../lib/cornerstone/viewer'
 import { kneeKindPlaceable } from '../lib/knee/kneePlaceable'
+import { shoulderKindPlaceable } from '../lib/shoulder/shoulderPlaceable'
+import {
+  shoulderFamiliesForProsthesis,
+  shoulderSizeLabel,
+  SHOULDER_SIZE_LABELS,
+  type ShoulderImplantFamily,
+  type ShoulderImplantKind,
+} from '../lib/shoulder/shoulderCatalog'
+import { useShoulderTemplateStore } from '../state/shoulderTemplateStore'
 import { useTemplateTracerStore } from '../state/templateTracerStore'
 import {
   pickHipTool,
@@ -147,16 +157,18 @@ export function Toolbar() {
 // (KNEE_IMPLANT_FAMILIES, im öffentlichen Repo leer). Poly-Inserts werden
 // nicht separat platziert (TIBIA_INSERT-Regler am Tibia-Template) und
 // erscheinen deshalb nicht in der Auswahl.
-function KneeFamilienDropdown({
+function KneeFamilienDropdown<K extends string>({
   label,
   familien,
   disabled,
   onWahl,
 }: {
   label: string
-  familien: KneeImplantFamily[]
+  // Struktureller Typ statt KneeImplantFamily: die Schulter-Sektion nutzt
+  // dasselbe Dropdown mit ihren Familien (nur kind+label werden gebraucht).
+  familien: ReadonlyArray<{ kind: K; label: string }>
   disabled: boolean
-  onWahl: (kind: KneeImplantKind) => void
+  onWahl: (kind: K) => void
 }) {
   return (
     <div className="px-1">
@@ -167,7 +179,7 @@ function KneeFamilienDropdown({
         value=""
         disabled={disabled}
         onChange={(e) => {
-          if (e.target.value) onWahl(e.target.value as KneeImplantKind)
+          if (e.target.value) onWahl(e.target.value as K)
         }}
         className="mb-2 w-full rounded border border-neutral-700 bg-neutral-950 px-1 py-1 text-xs disabled:opacity-50"
       >
@@ -1240,21 +1252,160 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
 
       <Divider />
 
-      {/* Platzhalter, damit der Ablauf dieselbe Gestalt hat wie bei Hüfte
-          und Knie. Ohne Punkt und ohne Badge (Doktrin s. CollapsibleSection):
-          amber hieße „hier steht ein Schritt aus" — es gibt aber nichts zu
-          tun, solange keine Schulter-Schablonen existieren. */}
+      <ShoulderTemplatesSection hasImage={hasImage} />
+    </>
+  )
+}
+
+/**
+ * Sektion „5 · Schablonen" der Schulter — amber/emerald-Muster wie Hüfte/
+ * Knie: amber nur, wenn der Schulter-Katalog NICHT leer ist (sonst gäbe es
+ * nichts zu tun); emerald sobald eine Schablone platziert wurde.
+ *
+ * Das Angebot ist doppelt gefiltert: `prosthesis` (anatomisch/revers, wie
+ * recipesForProsthesis — filtert nur das ANGEBOT, nie Rechnung) und
+ * `shoulderKindPlaceable` (nur Familien mit zeichenbarer Kontur).
+ * Die Seite kommt aus dem Schulter-Modul (Sektion „2 · Seite") — anders
+ * als beim Knie gibt es hier bereits eine explizite Seiten-Wahl, eine
+ * zweite Abfrage pro Schablone wäre redundant. Pro Schablone bleibt die
+ * Seite im Auswahl-Panel änderbar.
+ */
+function ShoulderTemplatesSection({ hasImage }: { hasImage: boolean }) {
+  const prosthesis = useShoulderStore((s) => s.prosthesis)
+  const side = useShoulderStore((s) => s.side)
+  const placedCount = useShoulderTemplateStore((s) => s.templates.length)
+  // pkgInfo triggert Re-Render nach Paket-Import (die Familien-Arrays
+  // werden in-place ersetzt und wären sonst referenz-gleich).
+  const pkgInfo = useTemplatePackageStore((s) => s.info)
+  void pkgInfo
+  const placeable = (f: ShoulderImplantFamily) => shoulderKindPlaceable(f.kind)
+  const familien = shoulderFamiliesForProsthesis(prosthesis).filter(placeable)
+  const humerusFamilien = familien.filter((f) => f.bone === 'Humerus')
+  const glenoidFamilien = familien.filter((f) => f.bone === 'Glenoid')
+  const katalogLeer = familien.length === 0
+  const keinKatalog = !pkgInfo && katalogLeer
+
+  function platziere(kind: ShoulderImplantKind) {
+    const id = addShoulderTemplate(kind, side)
+    if (id) {
+      useViewerStore
+        .getState()
+        .setStatus(
+          'Schablone platziert — per Drag verschieben, Griff/±-Tasten drehen.',
+        )
+    }
+  }
+
+  return (
+    <>
       <CollapsibleSection
         id="shoulder-templates"
         title="5 · Schablonen"
-        defaultCollapsed
+        defaultCollapsed={placedCount >= 1}
+        // Ohne Katalog kein amber — gleiche Begründung wie Hüfte/Knie.
+        statusDot={
+          placedCount >= 1
+            ? 'bg-emerald-500'
+            : katalogLeer
+              ? undefined
+              : 'bg-amber-500'
+        }
       >
-        <p className="mx-1 mb-1 rounded border border-neutral-700 bg-neutral-800/50 px-2 py-1.5 text-[11px] leading-snug text-neutral-400">
-          Noch nicht verfügbar. Schulter-Schablonen kommen mit eigenem
-          Material; ein Hüft-/Knie-Paket enthält sie nicht. Messen geht ohne.
-        </p>
+        {keinKatalog && <KeinPaketHinweis />}
+        {humerusFamilien.length > 0 && (
+          <KneeFamilienDropdown
+            label="Humerus-Komponente"
+            familien={humerusFamilien}
+            disabled={!hasImage}
+            onWahl={platziere}
+          />
+        )}
+        {glenoidFamilien.length > 0 && (
+          <KneeFamilienDropdown
+            label="Glenoid-Komponente"
+            familien={glenoidFamilien}
+            disabled={!hasImage}
+            onWahl={platziere}
+          />
+        )}
       </CollapsibleSection>
+      {/* Direkt hinter der Sektion, ohne Trenner (Regel: Trenner nur
+          ZWISCHEN Sektionen — s. SelectedKneeTemplatePanel). */}
+      <SelectedShoulderTemplatePanel />
     </>
+  )
+}
+
+/** Eigenschaften-Panel der ausgewählten Schulter-Schablone (Knie-Muster,
+ *  ohne Ebene/Inlay — die Schulter kennt nur die a.p.-Sicht). */
+function SelectedShoulderTemplatePanel() {
+  const selected = useShoulderTemplateStore((s) =>
+    s.selectedId ? s.templates.find((t) => t.id === s.selectedId) ?? null : null,
+  )
+  if (!selected) return null
+  const store = useShoulderTemplateStore.getState()
+  const family = shoulderFamiliesForProsthesis('anatomic')
+    .concat(shoulderFamiliesForProsthesis('reverse'))
+    .find((f) => f.kind === selected.kind)
+  const labels = SHOULDER_SIZE_LABELS[selected.kind] ?? []
+
+  return (
+    <div className="mx-2 mt-2 rounded border border-pink-900/60 bg-pink-950/30 p-2 text-xs">
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-pink-300">
+        Ausgewählte Schablone
+      </div>
+      <div className="mb-2 text-[11px] text-neutral-300">
+        {family?.label ?? selected.kind}
+      </div>
+
+      <KneeSelect
+        label="Größe"
+        value={selected.sizeIndex}
+        onChange={(v) => store.setSizeIndex(selected.id, v)}
+        options={labels.map((l, i) => ({ value: i, label: l }))}
+      />
+
+      <KneeSelect
+        label="Seite"
+        value={selected.side}
+        onChange={(v) => store.setSide(selected.id, v as 'R' | 'L')}
+        options={[
+          { value: 'R', label: 'rechts' },
+          { value: 'L', label: 'links' },
+        ]}
+      />
+
+      <div className="mb-2">
+        <div className="mb-1 text-[10px] text-neutral-400">
+          Drehung · {selected.rotationDeg.toFixed(1)}°
+        </div>
+        <div className="grid grid-cols-4 gap-1">
+          {[-1, -0.2, 0.2, 1].map((d) => (
+            <button
+              key={d}
+              onClick={() =>
+                store.setRotationDeg(selected.id, selected.rotationDeg + d)
+              }
+              className="rounded border border-neutral-700 bg-neutral-900 px-1 py-0.5 text-[11px] transition hover:bg-neutral-800"
+            >
+              {d > 0 ? `+${d}` : d}°
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="text-[10px] text-neutral-500">
+        Größe: {shoulderSizeLabel(selected.kind, selected.sizeIndex)} · Drag =
+        verschieben · Pfeile/± = fein · Entf = löschen
+      </div>
+
+      <button
+        onClick={() => store.remove(selected.id)}
+        className="mt-2 w-full rounded border border-red-900/60 bg-red-950/40 px-2 py-1 text-[11px] text-red-300 transition hover:bg-red-900/40"
+      >
+        Schablone entfernen
+      </button>
+    </div>
   )
 }
 

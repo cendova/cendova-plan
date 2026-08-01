@@ -53,6 +53,10 @@ import {
   useKneeTemplateStore,
   type KneeTemplate,
 } from '../../state/kneeTemplateStore'
+import {
+  useShoulderTemplateStore,
+  type ShoulderTemplate,
+} from '../../state/shoulderTemplateStore'
 import { ensureIdsAbove } from '../ids'
 import {
   getCurrentDicomBytes,
@@ -89,7 +93,8 @@ export function setEmbeddedSaveHook(hook: (() => void) | null): void {
 // Version 5: + seitliches Bild (Knie-Zwei-Bild) + rechte Kalibrierung
 // Version 6: + freie Längen-/Winkelmessungen (gingen vorher verloren)
 // Version 7: + Schulter-Messungen (CSA) inkl. Seite und Prothesentyp
-const PLAN_FORMAT_VERSION = 7
+// Version 8: + Schulter-Schablonen (gingen vorher beim Speichern verloren)
+const PLAN_FORMAT_VERSION = 8
 
 export interface PlanFile {
   /** Schema-Version. Beim Laden prüfen und ggf. migrieren. */
@@ -142,6 +147,8 @@ export interface PlanFile {
   }
   /** Platzierte Knie-Schablonen. Optional (Pläne < v4 ohne Feld). */
   kneeTemplates?: KneeTemplate[]
+  /** Platzierte Schulter-Schablonen. Optional (Pläne < v8 ohne Feld). */
+  shoulderTemplates?: ShoulderTemplate[]
   notes: TextNote[]
   /** Editierbare klinische BLD-Notiz aus dem Arztbrief. Optional (alte
    *  Pläne kennen das Feld nicht → Default beim Laden). */
@@ -238,6 +245,7 @@ export function buildPlan(): PlanFile {
       referenceLine: useTemplateStore.getState().referenceLine,
     },
     kneeTemplates: useKneeTemplateStore.getState().templates,
+    shoulderTemplates: useShoulderTemplateStore.getState().templates,
     notes: useNoteStore.getState().notes,
     clinicalBld: useViewerStore.getState().clinicalBld,
     osteophytes: useOsteophyteStore.getState().regions,
@@ -358,6 +366,7 @@ export async function applyPlan(plan: PlanFile): Promise<
   useShoulderStore.getState().removeAll()
   useTemplateStore.getState().reset()
   useKneeTemplateStore.getState().reset()
+  useShoulderTemplateStore.getState().reset()
   useNoteStore.getState().reset()
   useOsteophyteStore.getState().reset()
 
@@ -394,6 +403,16 @@ export async function applyPlan(plan: PlanFile): Promise<
     visible: t.visible ?? true,
   }))
   useKneeTemplateStore.setState({ templates: kneeTemplates, selectedId: null })
+  // Schulter-Schablonen (v8+): fehlende Felder alter Einträge defaulten.
+  const shoulderTemplates = (plan.shoulderTemplates ?? []).map((t) => ({
+    ...t,
+    groupId: t.groupId ?? t.id,
+    visible: t.visible ?? true,
+  }))
+  useShoulderTemplateStore.setState({
+    templates: shoulderTemplates,
+    selectedId: null,
+  })
   useNoteStore.setState({ notes: plan.notes ?? [] })
   useOsteophyteStore.setState({
     regions: plan.osteophytes ?? [],
@@ -411,6 +430,7 @@ export async function applyPlan(plan: PlanFile): Promise<
   ensureIdsAbove(plan.templates?.cups)
   ensureIdsAbove(plan.templates?.stems)
   ensureIdsAbove(kneeTemplates)
+  ensureIdsAbove(shoulderTemplates)
   ensureIdsAbove(plan.notes)
   ensureIdsAbove(plan.osteophytes)
   // Klinische BLD-Notiz + Cave übernehmen; alte Pläne ohne Feld → Default.
@@ -476,6 +496,8 @@ export async function applyPlan(plan: PlanFile): Promise<
     plan.templates?.cups?.length > 0 && `${plan.templates.cups.length} Pfanne(n)`,
     plan.templates?.stems?.length > 0 && `${plan.templates.stems.length} Schaft/Schäfte`,
     (plan.kneeTemplates?.length ?? 0) > 0 && `${plan.kneeTemplates!.length} Knie-Schablone(n)`,
+    (plan.shoulderTemplates?.length ?? 0) > 0 &&
+      `${plan.shoulderTemplates!.length} Schulter-Schablone(n)`,
     plan.notes?.length > 0 && `${plan.notes.length} Notiz(en)`,
     plan.osteophytes && plan.osteophytes.length > 0 &&
       `${plan.osteophytes.length} Osteophyten-Fläche(n)`,

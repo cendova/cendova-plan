@@ -17,6 +17,7 @@ import { HipOverlay } from './HipOverlay'
 import { KneeOverlay } from './KneeOverlay'
 import { ShoulderOverlay } from './ShoulderOverlay'
 import { KneeTemplateOverlay } from './KneeTemplateOverlay'
+import { ShoulderTemplateOverlay } from './ShoulderTemplateOverlay'
 import { TemplateOverlay } from './TemplateOverlay'
 import { OsteophyteOverlay } from './OsteophyteOverlay'
 import { useOsteophyteStore } from '../state/osteophyteStore'
@@ -319,6 +320,7 @@ export function Viewport() {
       {hasImage && <KneeOverlay />}
       {hasImage && <ShoulderOverlay />}
       {hasImage && <KneeTemplateOverlay />}
+      {hasImage && <ShoulderTemplateOverlay />}
       {hasImage && <TemplateOverlay />}
       {hasImage && <OsteophyteOverlay />}
       {hasImage && <StackImagePicker pane="left" />}

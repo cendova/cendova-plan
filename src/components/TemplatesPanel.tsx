@@ -6,6 +6,14 @@ import {
   useKneeTemplateStore,
   gruppiereNachImplantat,
 } from '../state/kneeTemplateStore'
+import {
+  useShoulderTemplateStore,
+  gruppiereShoulderNachImplantat,
+} from '../state/shoulderTemplateStore'
+import {
+  SHOULDER_IMPLANT_FAMILIES,
+  shoulderSizeLabel,
+} from '../lib/shoulder/shoulderCatalog'
 import { Hint } from './Hint'
 import { KeinPaketHinweis } from './KeinPaketHinweis'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -48,6 +56,15 @@ export function TemplatesPanel() {
   const setKneeGroupVisible = useKneeTemplateStore((s) => s.setGroupVisible)
   const removeAllKnee = useKneeTemplateStore((s) => s.removeAll)
 
+  const shoulderTemplates = useShoulderTemplateStore((s) => s.templates)
+  const shoulderSelectedId = useShoulderTemplateStore((s) => s.selectedId)
+  const selectShoulder = useShoulderTemplateStore((s) => s.select)
+  const removeShoulder = useShoulderTemplateStore((s) => s.remove)
+  const setShoulderGroupVisible = useShoulderTemplateStore(
+    (s) => s.setGroupVisible,
+  )
+  const removeAllShoulder = useShoulderTemplateStore((s) => s.removeAll)
+
   const pkgInfo = useTemplatePackageStore((s) => s.info)
   const planningMode = useViewerStore((s) => s.planningMode)
   // Bestätigung vor dem Sammel-Löschen (UX-Befund P1-5).
@@ -57,20 +74,35 @@ export function TemplatesPanel() {
 
   // EINE Zeile je Implantat, nicht je Kontur (Begründung + Tests am Store).
   const kneeZeilen = gruppiereNachImplantat(kneeTemplates, kneeSelectedId)
+  const shoulderZeilen = gruppiereShoulderNachImplantat(
+    shoulderTemplates,
+    shoulderSelectedId,
+  )
 
-  const hasAny = cups.length > 0 || stems.length > 0 || kneeZeilen.length > 0
+  const hasAny =
+    cups.length > 0 ||
+    stems.length > 0 ||
+    kneeZeilen.length > 0 ||
+    shoulderZeilen.length > 0
 
-  // Auswahl ist LISTENWEIT exklusiv. Hüft- und Knie-Store führen je ein
-  // eigenes `selectedId`; solange sie in getrennten Panels lebten, war das
-  // egal. In einer gemeinsamen Liste wären sonst zwei Zeilen gleichzeitig
-  // markiert — und rechts erschienen zwei Eigenschaften-Panels.
+  // Auswahl ist LISTENWEIT exklusiv. Hüft-, Knie- und Schulter-Store führen
+  // je ein eigenes `selectedId`; in einer gemeinsamen Liste wären sonst
+  // mehrere Zeilen gleichzeitig markiert — und rechts erschienen mehrere
+  // Eigenschaften-Panels.
   const waehleHueft = (id: string) => {
     selectKnee(null)
+    selectShoulder(null)
     select(id)
   }
   const waehleKnie = (id: string) => {
     select(null)
+    selectShoulder(null)
     selectKnee(id)
+  }
+  const waehleSchulter = (id: string) => {
+    select(null)
+    selectKnee(null)
+    selectShoulder(id)
   }
   // Ohne Schablonen-Paket gibt es keine Katalogdaten (das öffentliche Repo
   // enthält keine Hersteller-Schablonen) → freundlicher Hinweis statt
@@ -109,6 +141,7 @@ export function TemplatesPanel() {
           // Knie-Modus, wo genau die nicht gemeint sein konnten.
           removeAll()
           removeAllKnee()
+          removeAllShoulder()
           setConfirmClear(false)
         }}
       >
@@ -116,26 +149,10 @@ export function TemplatesPanel() {
       </ConfirmDialog>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        {/* Im Schulter-Modus bewusst KEIN Import-Aufruf: ein Paket enthält
-            keine Schulter-Schablonen, die Aufforderung liefe also ins Leere.
-            Den Stand erklärt dort Sektion 5 der linken Leiste. */}
-        {noCatalog && planningMode !== 'shoulder' && (
-          <KeinPaketHinweis className="mb-2" />
-        )}
-        {/* Schulter-Erklärung IMMER zeigen, nicht nur im Leerzustand. Vorher
-            stand sie im `!hasAny`-Zweig — also genau dann, wenn die Liste
-            leer war und der Satz „die Liste zeigt Hüft-Schablonen" nicht
-            stimmte; sobald wirklich welche dastanden, verschwand er. Der
-            zweite Satz kommt deshalb nur, wenn tatsächlich etwas gelistet
-            wird. Neutral statt amber: es fehlt nichts, was der Nutzer
-            beisteuern könnte (gleiche Begründung wie in der linken Leiste). */}
-        {planningMode === 'shoulder' && (
-          <p className="mx-1 mb-2 rounded border border-neutral-700 bg-neutral-800/50 px-2 py-1.5 text-[11px] leading-snug text-neutral-400">
-            Schulter-Schablonen sind noch nicht verfügbar.
-            {hasAny && ' Die Liste zeigt die der anderen Module.'}
-          </p>
-        )}
-        {!hasAny && planningMode !== 'shoulder' && (
+        {/* Seit Schritt 7 liefert das Paket auch Schulter-Schablonen — der
+            Import-Hinweis gilt daher in allen Modi. */}
+        {noCatalog && <KeinPaketHinweis className="mb-2" />}
+        {!hasAny && (
           <Hint>
             {/* Der Hinweis nennt die Buttons des AKTIVEN Modus. Vorher stand
                 hier immer „Pfanne/Schaft hinzufügen" — im Knie-Tab gibt es
@@ -143,7 +160,9 @@ export function TemplatesPanel() {
             <p className="px-1 py-1 text-xs text-neutral-500">
               {planningMode === 'hip'
                 ? 'Noch keine Schablonen platziert. „Pfanne hinzufügen" oder „Schaft hinzufügen" in der linken Leiste.'
-                : 'Noch keine Schablonen platziert. Femur- oder Tibiakomponente in der linken Leiste auswählen.'}
+                : planningMode === 'shoulder'
+                  ? 'Noch keine Schablonen platziert. Humerus- oder Glenoid-Komponente in der linken Leiste auswählen.'
+                  : 'Noch keine Schablonen platziert. Femur- oder Tibiakomponente in der linken Leiste auswählen.'}
             </p>
           </Hint>
         )}
@@ -214,6 +233,27 @@ export function TemplatesPanel() {
                   onSelect={waehleKnie}
                   onToggleVisible={setKneeGroupVisible}
                   onRemove={removeKnee}
+                />
+              )
+            })}
+            {shoulderZeilen.map(({ haupt, sichtbar, ausgewaehlt }) => {
+              const familie = SHOULDER_IMPLANT_FAMILIES.find(
+                (f) => f.kind === haupt.kind,
+              )
+              // Badge nach Knochen: H = Humerus, G = Glenoid (wie P/S/F/T).
+              const kuerzel = familie?.bone === 'Glenoid' ? 'G' : 'H'
+              return (
+                <TemplateRow
+                  key={haupt.groupId}
+                  id={haupt.id}
+                  badge={`${kuerzel}${haupt.id.replace(/[^0-9]/g, '')}`}
+                  title={`${familie?.label ?? 'Schablone'} · ${haupt.side === 'R' ? 'rechts' : 'links'}`}
+                  subtitle={`Gr. ${shoulderSizeLabel(haupt.kind, haupt.sizeIndex)}`}
+                  selected={ausgewaehlt}
+                  visible={sichtbar}
+                  onSelect={waehleSchulter}
+                  onToggleVisible={setShoulderGroupVisible}
+                  onRemove={removeShoulder}
                 />
               )
             })}

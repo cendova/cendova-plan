@@ -37,6 +37,7 @@ export function pruefePlanGrenzen(plan: PlanFile): string | null {
     arrayOk(plan.templates?.cups, 'templates.cups'),
     arrayOk(plan.templates?.stems, 'templates.stems'),
     arrayOk(plan.kneeTemplates, 'kneeTemplates'),
+    arrayOk(plan.shoulderTemplates, 'shoulderTemplates'),
     arrayOk(plan.notes, 'notes'),
     arrayOk(plan.osteophytes, 'osteophytes'),
   ]

@@ -52,6 +52,12 @@ import {
 } from '../knee/smithNephewCatalog'
 import { contourGeomImage, getKneeContour } from '../knee/kneeContours'
 import { kneeContourAvailable } from '../knee/kneePlaceable'
+import { shoulderKindPlaceable } from '../shoulder/shoulderPlaceable'
+import type { ShoulderImplantKind } from '../shoulder/shoulderCatalog'
+import {
+  useShoulderTemplateStore,
+  type ShoulderSide,
+} from '../../state/shoulderTemplateStore'
 import { getKneeImage, type KneeImage } from '../knee/kneeImages'
 import { angleAtVertex, dist as distance3 } from '../geometry'
 import { applyToolBindings } from './toolBindings'
@@ -351,6 +357,7 @@ export function resetPlanning(): void {
   useKneeStore.getState().reset()
   useShoulderStore.getState().reset()
   useKneeTemplateStore.getState().reset()
+  useShoulderTemplateStore.getState().reset()
   useNoteStore.getState().reset()
   useTemplateStore.getState().reset()
   useOsteophyteStore.getState().reset()
@@ -377,6 +384,7 @@ function updateStoreForLoadedImage(
   useKneeStore.getState().reset()
   useShoulderStore.getState().reset()
   useKneeTemplateStore.getState().reset()
+  useShoulderTemplateStore.getState().reset()
   useNoteStore.getState().reset()
   useTemplateStore.getState().reset()
   useOsteophyteStore.getState().reset()
@@ -917,6 +925,26 @@ export function addKneeTemplate(
     if (rightId) lastId = rightId
   }
   return lastId
+}
+
+/**
+ * Platziert eine Schulter-Schablone mittig im Haupt-Viewport. Deutlich
+ * einfacher als das Knie: nur die a.p.-Sicht, nur das Haupt-Pane, keine
+ * Auto-Ausrichtung (v1: frei platzierbar; der Nutzer richtet per Drag/
+ * Rotation aus). Ohne zeichenbare Kontur keine Platzierung — sonst
+ * entstünde ein Eintrag, den das Overlay nicht zeichnen kann.
+ */
+export function addShoulderTemplate(
+  kind: ShoulderImplantKind,
+  side: ShoulderSide,
+): string | null {
+  if (!shoulderKindPlaceable(kind)) return null
+  const vp = getViewport()
+  if (!vp) return null
+  const w = vp.canvas.clientWidth
+  const h = vp.canvas.clientHeight
+  const center = vp.canvasToWorld([w / 2, h / 2])
+  return useShoulderTemplateStore.getState().add(kind, side, center)
 }
 
 /** Startet den Schaft-Anlege-Ablauf (Seite-Frage). Direkt nach Side-

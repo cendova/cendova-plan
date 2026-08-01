@@ -84,6 +84,8 @@ export const autoPlaceKneeImplant: VI['autoPlaceKneeImplant'] = (...a) =>
   impl?.autoPlaceKneeImplant(...a)
 export const addKneeTemplate: VI['addKneeTemplate'] = (...a) =>
   impl?.addKneeTemplate(...a) ?? null
+export const addShoulderTemplate: VI['addShoulderTemplate'] = (...a) =>
+  impl?.addShoulderTemplate(...a) ?? null
 export const addStemTemplate: VI['addStemTemplate'] = (...a) =>
   impl?.addStemTemplate(...a)
 export const placeStemForSide: VI['placeStemForSide'] = (...a) =>

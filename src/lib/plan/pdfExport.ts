@@ -22,6 +22,11 @@ import { useViewerStore } from '../../state/viewerStore'
 import { useKneePanesStore } from '../../state/kneePanesStore'
 import { useHipStore } from '../../state/hipStore'
 import { useShoulderStore } from '../../state/shoulderStore'
+import { useShoulderTemplateStore } from '../../state/shoulderTemplateStore'
+import {
+  SHOULDER_IMPLANT_FAMILIES,
+  shoulderSizeLabel,
+} from '../shoulder/shoulderCatalog'
 import { useKneeStore } from '../../state/kneeStore'
 import { useTemplateStore } from '../../state/templateStore'
 import { useNoteStore } from '../../state/noteStore'
@@ -513,6 +518,7 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
   const hipMeasurements = useHipStore.getState().measurements
   const kneeMeasurements = useKneeStore.getState().measurements
   const shoulderMeasurements = useShoulderStore.getState().measurements
+  const shoulderTemplates = useShoulderTemplateStore.getState().templates
   const cups = useTemplateStore.getState().templates
   const stems = useTemplateStore.getState().stems
   const notes = useNoteStore.getState().notes
@@ -785,6 +791,26 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
             `• ${s.side}: ${stemDisplayName(s.catalogIndex, s.sizeIndex)}` +
             ` | Halslänge ${head >= 0 ? '+' : ''}${head} mm` +
             ` | ${alignText}${refNote}`
+          )
+        }),
+      )
+    }
+
+    // Schulter-Schablonen — Textliste wie Pfannen/Schäfte: Familie, Seite,
+    // Größe (Kombi-Label), Rotation. Die Konturen selbst stecken im
+    // Viewport-Schnappschuss von Seite 1.
+    if (shoulderTemplates.length > 0) {
+      writeSection(
+        'Schulter-Schablonen',
+        shoulderTemplates.map((t) => {
+          const familie = SHOULDER_IMPLANT_FAMILIES.find(
+            (f) => f.kind === t.kind,
+          )
+          const seite = t.side === 'R' ? 'rechts' : 'links'
+          return (
+            `• ${familie?.label ?? t.kind} (${seite})` +
+            ` | Gr. ${shoulderSizeLabel(t.kind, t.sizeIndex)}` +
+            ` | Drehung ${t.rotationDeg.toFixed(1)}°`
           )
         }),
       )
