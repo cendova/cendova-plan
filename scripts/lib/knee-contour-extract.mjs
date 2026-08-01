@@ -82,6 +82,10 @@ export async function extractContour(imagePath, ballMm = 25, opts = {}) {
     const [r, g, b] = px(x, y)
     if (isBlue(r, g, b)) { blue[y * W + x] = 1; barrier[y * W + x] = 1 }
     else if (isBrightish(r, g, b) || isLightBlue(r, g, b) || isDimBlue(r, g, b)) barrier[y * W + x] = 1
+    // Zusätzliche Barrieren-Farbe des Aufrufers (z. B. roter Referenzkreis
+    // der Schulter-Screenshots): stopft wie die weißen Dash-Linien die
+    // Löcher, die er in die Kontur reißt — zählt aber nie als Implantat.
+    else if (opts.extraBarrier?.(r, g, b)) barrier[y * W + x] = 1
   }
   // Mini-Closing (r=1) auf der Barriere: versiegelt echte 1–2-px-Brüche in
   // den Zeichnungs-Linien. Bewusst klein, damit die 4–6-px-Lücken GEWOLLT
@@ -99,7 +103,11 @@ export async function extractContour(imagePath, ballMm = 25, opts = {}) {
     }
     c.blueArea = nBlue
   }
-  const cands = barComps.filter((c) => c.blueArea > 400).sort((a, b) => b.blueArea - a.blueArea)
+  // Mindest-Pixelzahlen als opts (Defaults = bewährte Knie-Werte): sehr
+  // kleine/dünne Zeichnungen (z. B. flache Schulter-Kalotten in kleinen
+  // Screenshots) liegen legitim darunter.
+  const minBlueArea = opts.minBlueArea ?? 400
+  const cands = barComps.filter((c) => c.blueArea > minBlueArea).sort((a, b) => b.blueArea - a.blueArea)
 
   const contours = []
   const claimed = new Uint8Array(W * H) // verhindert Doppel-Extraktion, wenn zwei Kandidaten dieselbe Region füllen
@@ -117,7 +125,7 @@ export async function extractContour(imagePath, ballMm = 25, opts = {}) {
       for (let i = 0; i < s.mask.length; i++) if (s.mask[i] && blue[i]) nb++
       if (nb > bestBlue) { bestBlue = nb; bestSolid = s }
     }
-    if (!bestSolid || bestBlue < 300) continue
+    if (!bestSolid || bestBlue < Math.min(300, minBlueArea * 0.75)) continue
     let overlap = 0, area = 0
     for (let i = 0; i < bestSolid.mask.length; i++) if (bestSolid.mask[i]) { area++; if (claimed[i]) overlap++ }
     if (area === 0 || overlap / area > 0.5) continue
