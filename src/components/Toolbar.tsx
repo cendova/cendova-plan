@@ -70,6 +70,8 @@ import { useKneeTemplateStore } from '../state/kneeTemplateStore'
 import { useTemplatePackageStore } from '../state/templatePackageStore'
 import {
   KNEE_IMPLANT_FAMILIES,
+  entdoppleGenesisTibia,
+  ohneTibiaVariantenZusatz,
   isHiddenKneeSize,
   LEGION_PS_FEMUR,
   SPHERE_FEMUR,
@@ -605,8 +607,11 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
   const femurFamilien = KNEE_IMPLANT_FAMILIES.filter(
     (f) => f.bone === 'Femur' && zeigbar(f),
   )
-  const tibiaFamilien = KNEE_IMPLANT_FAMILIES.filter(
-    (f) => f.bone === 'Tibia' && zeigbar(f),
+  // EIN Genesis-II-Eintrag statt female/male tapered (s. Katalog-Helfer):
+  // die Entdopplung laeuft NACH dem Platzierbarkeits-Filter, damit die
+  // uebrig bleibende Variante sicher platzierbar ist.
+  const tibiaFamilien = entdoppleGenesisTibia(
+    KNEE_IMPLANT_FAMILIES.filter((f) => f.bone === 'Tibia' && zeigbar(f)),
   )
   // Punkt an der Katalog-Leere, Hinweis am fehlenden Paket — gleiche
   // Trennung wie bei der Hüfte (s. dort).
@@ -737,8 +742,12 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
           {/* Gewählte Familie anzeigen — bei den Dropdowns ist die Wahl
               sonst nicht mehr sichtbar, sobald das Select zurückspringt. */}
           <div className="mb-1 truncate text-sky-200">
-            {KNEE_IMPLANT_FAMILIES.find((f) => f.kind === pendingSideKind)
-              ?.label ?? 'Schablone'}{' '}
+            {(() => {
+              const l = KNEE_IMPLANT_FAMILIES.find(
+                (f) => f.kind === pendingSideKind,
+              )?.label
+              return l ? ohneTibiaVariantenZusatz(l) : 'Schablone'
+            })()}{' '}
             — Seite?
           </div>
           <div className="flex items-center gap-1.5">
@@ -936,7 +945,7 @@ function SelectedKneeTemplatePanel() {
         Ausgewählte Schablone
       </div>
       <div className="mb-2 text-[11px] text-neutral-300">
-        {family?.label ?? selected.kind}
+        {family ? ohneTibiaVariantenZusatz(family.label) : selected.kind}
       </div>
 
       <KneeSelect

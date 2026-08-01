@@ -16,7 +16,10 @@ import {
   stemCatalogEntries,
 } from '../lib/hip/templates'
 import { sizeLabelFor } from '../lib/knee/templates'
-import { KNEE_IMPLANT_FAMILIES } from '../lib/knee/smithNephewCatalog'
+import {
+  KNEE_IMPLANT_FAMILIES,
+  ohneTibiaVariantenZusatz,
+} from '../lib/knee/smithNephewCatalog'
 
 /**
  * Listet ALLE platzierten Schablonen mit Ein/Aus-Schalter, Auswahl und
@@ -202,7 +205,7 @@ export function TemplatesPanel() {
                   key={haupt.groupId}
                   id={haupt.id}
                   badge={`${kuerzel}${haupt.id.replace(/[^0-9]/g, '')}`}
-                  title={`${familie?.label ?? 'Schablone'} · ${haupt.side === 'R' ? 'rechts' : 'links'}`}
+                  title={`${familie ? ohneTibiaVariantenZusatz(familie.label) : 'Schablone'} · ${haupt.side === 'R' ? 'rechts' : 'links'}`}
                   subtitle={`Gr. ${sizeLabelFor(haupt.kind, haupt.sizeIndex) || '?'}${
                     inlay != null ? ` · Inlay ${inlay} mm` : ''
                   }`}
