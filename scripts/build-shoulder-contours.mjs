@@ -23,13 +23,48 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { extractContour } from './lib/knee-contour-extract.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const BASIS = join(ROOT, 'Schablonen_Schulter')
 const DIR = join(BASIS, 'Schablonen_Felix')
 const PREVIEWS = join(BASIS, 'previews')
+const BILDER = join(BASIS, 'bilder')
 mkdirSync(PREVIEWS, { recursive: true })
+mkdirSync(BILDER, { recursive: true })
+
+/**
+ * Schneidet die Kontur-Region symmetrisch um das BBox-Zentrum aus dem
+ * Quell-Screenshot (Bild-Overlay hat im Renderer Vorrang vor der Vektor-
+ * Kontur — Knie-Muster: fotografische Qualität inkl. Hilfslinien).
+ * Symmetrie ist Pflicht: der Renderer setzt Bildmitte = Schablonen-Anker;
+ * am Bildrand wird deshalb schwarz aufgefüllt statt einseitig geklippt.
+ */
+async function schneideBild(pfad, bbox, rand = 6) {
+  const img = await loadImage(pfad)
+  const cx = (bbox.mnX + bbox.mxX) / 2
+  const cy = (bbox.mnY + bbox.mxY) / 2
+  const halfW = Math.ceil((bbox.mxX - bbox.mnX) / 2 + rand)
+  const halfH = Math.ceil((bbox.mxY - bbox.mnY) / 2 + rand)
+  const w = 2 * halfW
+  const h = 2 * halfH
+  const c = createCanvas(w, h)
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = '#000'
+  ctx.fillRect(0, 0, w, h)
+  const sx = Math.round(cx - halfW)
+  const sy = Math.round(cy - halfH)
+  // Quellrechteck auf die Bildgrenzen klemmen, Ziel-Offset entsprechend.
+  const csx = Math.max(0, sx)
+  const csy = Math.max(0, sy)
+  const cw = Math.min(img.width, sx + w) - csx
+  const ch = Math.min(img.height, sy + h) - csy
+  if (cw > 0 && ch > 0) {
+    ctx.drawImage(img, csx, csy, cw, ch, csx - sx, csy - sy, cw, ch)
+  }
+  return { png: await c.encode('png'), widthPx: w, heightPx: h }
+}
 
 const { kugelMm, eintraege } = JSON.parse(
   readFileSync(join(BASIS, 'zuordnung.local.json'), 'utf8'),
@@ -39,23 +74,25 @@ const { kugelMm, eintraege } = JSON.parse(
 const isRed = (r, g, b) => r > 110 && r - g > 50 && r - b > 50
 
 const konturen = {}
+const bilder = {}
 const messungen = []
 let fehler = 0
+
+// Zwei Chaikin-Pässe glätten die Zickzack-Ecken der Normalen-Korrektur —
+// der Vektor-Fallback soll makellos aussehen (Autor-Feedback nach dem
+// ersten Klick-Test). Das Bild-Overlay ist davon unabhängig pixelscharf.
+const OPTS = { maxComponents: 1, extraBarrier: isRed, chaikinPasses: 2 }
 
 for (const e of eintraege) {
   const pfad = join(DIR, e.file)
   try {
-    let res = await extractContour(pfad, kugelMm, {
-      maxComponents: 1,
-      extraBarrier: isRed,
-    })
+    let res = await extractContour(pfad, kugelMm, OPTS)
     if (res.contours.length === 0) {
       // Sehr dünne/kleine Formen (flache Kalotten in kleinen Screenshots)
       // fallen unter die Knie-Standardschwellen — zweiter Versuch mit
       // kleinerem Opening und niedrigerer Mindest-Pixelzahl.
       res = await extractContour(pfad, kugelMm, {
-        maxComponents: 1,
-        extraBarrier: isRed,
+        ...OPTS,
         openRadius: 1,
         minBlueArea: 200,
       })
@@ -68,6 +105,25 @@ for (const e of eintraege) {
       hMm: +c.hMm.toFixed(2),
       points: c.normPoints,
       approx: true, // Kugel-kalibriert (±2 %), ohne Hersteller-Soll-Snap
+    }
+    // Bild-Overlay: Kontur-Region zuschneiden (Kugel-Hälfte bleibt draußen).
+    let bMnX = Infinity, bMxX = -1, bMnY = Infinity, bMxY = -1
+    for (const [x, y] of c.rawPoly) {
+      if (x < bMnX) bMnX = x
+      if (x > bMxX) bMxX = x
+      if (y < bMnY) bMnY = y
+      if (y > bMxY) bMxY = y
+    }
+    const bildDatei = `${e.kind}_${String(e.sizeIndex).padStart(2, '0')}.png`
+    const zuschnitt = await schneideBild(pfad, {
+      mnX: bMnX, mxX: bMxX, mnY: bMnY, mxY: bMxY,
+    })
+    writeFileSync(join(BILDER, bildDatei), zuschnitt.png)
+    bilder[key] = {
+      file: `bilder/${bildDatei}`,
+      widthPx: zuschnitt.widthPx,
+      heightPx: zuschnitt.heightPx,
+      mmPerPx: +res.mmPerPx.toFixed(5),
     }
     messungen.push({
       key,
@@ -113,7 +169,8 @@ for (const kind of kinds) {
 
 writeFileSync(
   join(BASIS, 'schulter-konturen.local.json'),
-  JSON.stringify({ kugelMm, konturen }, null, 1),
+  JSON.stringify({ kugelMm, konturen, bilder }, null, 1),
 )
 console.log(`\n-> ${join(BASIS, 'schulter-konturen.local.json')}`)
+console.log(`-> Bild-Overlays: ${BILDER} (${Object.keys(bilder).length})`)
 console.log(`-> Previews: ${PREVIEWS}`)

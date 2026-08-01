@@ -271,3 +271,22 @@ describe('mergeManifests — Schulter', () => {
     expect(out.merge).toBeUndefined()
   })
 })
+
+describe('referencedImagePaths — Schulter', () => {
+  it('sammelt shoulderImages-Pfade (ZIP-Konsistenzprüfung)', () => {
+    const paths = referencedImagePaths({
+      format: 'cendova-templates',
+      formatVersion: 1,
+      name: 'x',
+      shoulderImages: {
+        'affinis-glenoid|AP|0': {
+          path: 'images/schulter/affinis-glenoid_00.png',
+          widthPx: 100,
+          heightPx: 120,
+          mmPerPx: 0.3,
+        },
+      },
+    })
+    expect(paths).toContain('images/schulter/affinis-glenoid_00.png')
+  })
+})

@@ -34,7 +34,7 @@ const argOf = (n, d) => {
 const today = new Date().toISOString().slice(0, 10)
 const OUT = argOf('--out', join(PROJECT_DIR, `cendova-addon-schulter-${today}.zip`))
 
-const { konturen } = JSON.parse(
+const { konturen, bilder } = JSON.parse(
   readFileSync(join(BASIS, 'schulter-konturen.local.json'), 'utf8'),
 )
 const { eintraege } = JSON.parse(
@@ -93,6 +93,24 @@ await bundle.close()
 const data = await import(pathToFileURL(bundleFile).href)
 rmSync(tmp, { recursive: true, force: true })
 
+// Bild-Overlays: PNGs unter images/schulter/ ins ZIP, Index im Manifest.
+// Das BILD hat im Renderer Vorrang (Hilfslinien + pixelscharfe Kanten);
+// die Vektor-Konturen bleiben als Fallback + mm-Maßquelle im Paket.
+const zipDateien = {}
+const shoulderImages = {}
+for (const [key, meta] of Object.entries(bilder ?? {})) {
+  const name = meta.file.split('/').pop()
+  const zipPfad = `images/schulter/${name}`
+  // PNGs sind bereits komprimiert → level 0 (nur speichern).
+  zipDateien[zipPfad] = [readFileSync(join(BASIS, meta.file)), { level: 0 }]
+  shoulderImages[key] = {
+    path: zipPfad,
+    widthPx: meta.widthPx,
+    heightPx: meta.heightPx,
+    mmPerPx: meta.mmPerPx,
+  }
+}
+
 const manifest = {
   format: 'cendova-templates',
   formatVersion: 1,
@@ -101,6 +119,7 @@ const manifest = {
   generator: 'scripts/export-shoulder-package.mjs',
   merge: true,
   shoulderContours: konturen,
+  ...(Object.keys(shoulderImages).length > 0 ? { shoulderImages } : {}),
   shoulderCatalog: { families, sizeLabels },
 }
 
@@ -110,9 +129,13 @@ if (!check.ok) {
   process.exit(1)
 }
 
-const zip = zipSync({ 'manifest.json': strToU8(JSON.stringify(manifest)) })
+const zip = zipSync({
+  'manifest.json': [strToU8(JSON.stringify(manifest)), { level: 6 }],
+  ...zipDateien,
+})
 writeFileSync(OUT, zip)
 console.log(
   `Schulter-Paket gebaut: ${Object.keys(konturen).length} Konturen, ` +
+    `${Object.keys(shoulderImages).length} Bild-Overlays, ` +
     `${families.length} Familien, merge:true\n→ ${OUT} (${Math.round(zip.length / 1024)} KB)`,
 )

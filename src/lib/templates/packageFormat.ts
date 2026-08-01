@@ -36,6 +36,7 @@ import { MAX_PAKET_BILDER, MAX_PAKET_KATALOG } from '../importGrenzen'
 import type { KneeContour } from '../knee/kneeContours'
 import type { ShoulderContour } from '../shoulder/shoulderContours'
 import type { ShoulderImplantFamily } from '../shoulder/shoulderCatalog'
+import type { ShoulderImage } from '../shoulder/shoulderImages'
 
 /** Knie-Katalog (S&N + Medacta Sphere) — reine Maßtabellen. */
 export interface KneeCatalogData {
@@ -94,6 +95,9 @@ export interface TemplatePackageManifest {
   /** Pro-Größe-Schulter-Konturen (Schlüssel `kind|AP|sizeIndex`) — werden
    *  wie kneeContours über die eingebauten Tabellen gelegt (Merge). */
   shoulderContours?: Record<string, ShoulderContour>
+  /** Schulter-Bild-Index (Schlüssel `kind|AP|sizeIndex`) — Bild-Overlays
+   *  haben im Renderer Vorrang vor den Vektor-Konturen (Knie-Muster). */
+  shoulderImages?: Record<string, ShoulderImage>
   /** Tracer-Hintergründe, Schlüssel `kind|view` bzw. `kind|view|band`. */
   backgrounds?: Record<string, BackgroundData>
 }
@@ -102,6 +106,7 @@ export interface TemplatePackageManifest {
 export function referencedImagePaths(m: TemplatePackageManifest): string[] {
   const paths: string[] = []
   for (const img of Object.values(m.kneeImages ?? {})) paths.push(img.path)
+  for (const img of Object.values(m.shoulderImages ?? {})) paths.push(img.path)
   for (const folder of Object.values(m.medactaImages ?? {}))
     for (const img of Object.values(folder)) paths.push(img.path)
   for (const bg of Object.values(m.backgrounds ?? {})) paths.push(bg.file)

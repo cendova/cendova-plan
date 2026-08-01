@@ -25,7 +25,9 @@ import {
   type ShoulderTemplate,
 } from '../state/shoulderTemplateStore'
 import { getShoulderContour } from '../lib/shoulder/shoulderContours'
+import { getShoulderImage } from '../lib/shoulder/shoulderImages'
 import { shoulderSizeLabel } from '../lib/shoulder/shoulderCatalog'
+import { resolveTemplateImage } from '../lib/templates/registry'
 
 type Vp = NonNullable<ReturnType<typeof getViewport>>
 
@@ -136,7 +138,8 @@ export function ShoulderTemplateOverlay() {
     >
       {templates.filter((t) => t.visible).map((t: ShoulderTemplate) => {
         const contour = getShoulderContour(t.kind, t.sizeIndex)
-        if (!contour) return null
+        const img = getShoulderImage(t.kind, t.sizeIndex)
+        if (!contour && !img) return null
         const isSelected = selectedId === t.id
 
         // mm → Canvas-px über Probepunkte (getrennt X/Y, wie Knie-Bildpfad).
@@ -146,8 +149,14 @@ export function ShoulderTemplateOverlay() {
         const probeY = w2c([t.center[0], t.center[1] + oneMm, t.center[2]])
         const pxPerMmX = Math.abs(probeX[0] - centerC[0])
         const pxPerMmY = Math.abs(probeY[1] - centerC[1])
-        const halfWpx = (contour.wMm / 2) * pxPerMmX
-        const halfHpx = (contour.hMm / 2) * pxPerMmY
+        // Halbmaße: mit Bild aus dessen Pixel-Geometrie (inkl. Rand), sonst
+        // aus der Vektor-Kontur.
+        const halfWpx = img
+          ? (img.widthPx * img.mmPerPx * pxPerMmX) / 2
+          : (contour!.wMm / 2) * pxPerMmX
+        const halfHpx = img
+          ? (img.heightPx * img.mmPerPx * pxPerMmY) / 2
+          : (contour!.hMm / 2) * pxPerMmY
         const cx = centerC[0]
         const cy = centerC[1]
 
@@ -159,10 +168,6 @@ export function ShoulderTemplateOverlay() {
         const groupTransform =
           `rotate(${t.rotationDeg} ${cx} ${cy})` +
           (mirror ? ` translate(${cx} 0) scale(-1 1) translate(${-cx} 0)` : '')
-
-        const pointsStr = contour.points
-          .map((p) => `${cx + p.x * halfWpx},${cy + p.y * halfHpx}`)
-          .join(' ')
 
         const stroke = isSelected ? '#FFE08A' : '#FFC400'
 
@@ -193,21 +198,85 @@ export function ShoulderTemplateOverlay() {
           cy - armLen * Math.cos(rad),
         ]
 
+        // --- Bild-Overlay (Vorrang, Knie-Muster): der zugeschnittene
+        // Quell-Screenshot maßstabsgetreu, per Farbmatrix amber eingefärbt.
+        // Alpha = 2·(B−R): schwarzer Hintergrund und weiße Linien (B=R)
+        // werden transparent, die cyane Zeichnung (B≫R) deckend amber,
+        // der rote Referenzkreis (R≫B) verschwindet. Hilfslinien der
+        // Vorlage bleiben so automatisch erhalten — pixelscharf, ohne
+        // Vektor-Erkennung.
+        const imgHref = img ? resolveTemplateImage(img.path) : ''
+        const x0 = cx - halfWpx
+        const y0 = cy - halfHpx
+
         return (
           <g key={t.id}>
+            {img && (
+              <defs>
+                <filter
+                  id={`shoulder-tint-${t.id}`}
+                  colorInterpolationFilters="sRGB"
+                >
+                  <feColorMatrix
+                    type="matrix"
+                    values={
+                      isSelected
+                        ? '0 0 0 0 1  0 0 0 0 0.878  0 0 0 0 0.541  -2 0 2 0 0'
+                        : '0 0 0 0 1  0 0 0 0 0.769  0 0 0 0 0  -2 0 2 0 0'
+                    }
+                  />
+                </filter>
+              </defs>
+            )}
             <g transform={groupTransform}>
-              <polygon
-                data-overlay-ui
-                points={pointsStr}
-                fill="rgba(255, 196, 0, 0.05)"
-                stroke={stroke}
-                strokeWidth={isSelected ? 2 : 1.5}
-                className={locked ? 'pointer-events-none' : 'pointer-events-auto cursor-move'}
-                onMouseDown={locked ? undefined : selectAndStartDrag}
-              />
-              {/* Achse/Features aus dem Paket (falls vorhanden) — reine
-                  Referenzlinien, klick-durchlässig. */}
-              {contour.axis && (
+              {img ? (
+                <>
+                  <image
+                    href={imgHref}
+                    data-pdf-tint="knee"
+                    x={x0}
+                    y={y0}
+                    width={2 * halfWpx}
+                    height={2 * halfHpx}
+                    preserveAspectRatio="none"
+                    filter={`url(#shoulder-tint-${t.id})`}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  {/* Transparente Hit-Fläche zum Verschieben (deckt das
+                      gedrehte Bild exakt ab, Knie-Muster). */}
+                  <image
+                    data-overlay-ui
+                    href={imgHref}
+                    x={x0}
+                    y={y0}
+                    width={2 * halfWpx}
+                    height={2 * halfHpx}
+                    preserveAspectRatio="none"
+                    opacity={0}
+                    style={{
+                      pointerEvents: locked ? 'none' : 'all',
+                      cursor: 'move',
+                    }}
+                    onMouseDown={locked ? undefined : selectAndStartDrag}
+                  />
+                </>
+              ) : (
+                <polygon
+                  data-overlay-ui
+                  points={contour!.points
+                    .map((p) => `${cx + p.x * ((contour!.wMm / 2) * pxPerMmX)},${cy + p.y * ((contour!.hMm / 2) * pxPerMmY)}`)
+                    .join(' ')}
+                  fill="rgba(255, 196, 0, 0.05)"
+                  stroke={stroke}
+                  strokeWidth={isSelected ? 2 : 1.5}
+                  className={locked ? 'pointer-events-none' : 'pointer-events-auto cursor-move'}
+                  onMouseDown={locked ? undefined : selectAndStartDrag}
+                />
+              )}
+              {/* Achse aus dem Paket (falls vorhanden) — Referenz,
+                  klick-durchlässig; nur im Vektor-Fallback sinnvoll (im
+                  Bild ist die Achse bereits eingezeichnet). */}
+              {!img && contour?.axis && (
                 <line
                   x1={cx + contour.axis[0][0] * halfWpx}
                   y1={cy + contour.axis[0][1] * halfHpx}

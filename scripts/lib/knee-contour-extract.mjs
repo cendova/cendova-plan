@@ -153,11 +153,28 @@ export async function extractContour(imagePath, ballMm = 25, opts = {}) {
       if (nx * (cxs - x) + ny * (cys - y) < 0) { nx = -nx; ny = -ny }
       return [x + nx * inset, y + ny * inset]
     })
+    // Optionale Chaikin-Glättung (Corner-Cutting) VOR dem Ausdünnen:
+    // Die Strichbreiten-Korrektur entlang lokaler Normalen erzeugt an
+    // stark gekrümmten Stellen kleine Zickzack-Ecken — ein bis zwei
+    // Chaikin-Pässe runden sie, ohne die Form zu verfälschen (jeder Pass
+    // halbiert den maximalen Eckwinkel). Default 0 = Knie-Verhalten.
+    let smoothed = corrFull
+    for (let pass = 0; pass < (opts.chaikinPasses ?? 0); pass++) {
+      const n2 = smoothed.length
+      const next = []
+      for (let i = 0; i < n2; i++) {
+        const [ax, ay] = smoothed[i]
+        const [bx2, by2] = smoothed[(i + 1) % n2]
+        next.push([0.75 * ax + 0.25 * bx2, 0.75 * ay + 0.25 * by2])
+        next.push([0.25 * ax + 0.75 * bx2, 0.25 * ay + 0.75 * by2])
+      }
+      smoothed = next
+    }
     // Douglas-Peucker: Ecken erhalten, Bögen ausdünnen. Toleranz wächst,
     // bis die Punktzahl im Budget liegt (Bundle-Größe + Render-Last).
-    let tol = 0.9, corr = corrFull
+    let tol = 0.9, corr = smoothed
     for (let it = 0; it < 6; it++) {
-      corr = simplifyClosed(corrFull, tol)
+      corr = simplifyClosed(smoothed, tol)
       if (corr.length <= 110) break
       tol *= 1.4
     }
