@@ -18,6 +18,7 @@ import { loadFilesToPane2 } from '../lib/cornerstone/viewer2'
 import { expandZips, pickDicomImageFiles } from '../lib/cornerstone/dicomFolder'
 import { useKneePanesStore } from '../state/kneePanesStore'
 import { pickLeftTool, toggleNoteTool } from '../lib/toolControls'
+import { ConfirmDialog } from './ConfirmDialog'
 import {
   IconAngle,
   IconClipboard,
@@ -53,6 +54,12 @@ export function HeaderTools() {
   const pkgInputRef = useRef<HTMLInputElement>(null)
   const [openMenu, setOpenMenu] = useState(false)
   const [openPkgMenu, setOpenPkgMenu] = useState(false)
+  // Rückfrage vor dem Entfernen: Der Menüpunkt löschte bisher SOFORT den
+  // kompletten Bestand. Nach einem merge-Import (Addon) ist das EIN
+  // gemergtes Paket — „Paket entfernen" nahm also auch die Hüft-/Knie-
+  // Schablonen mit, samt lokaler Sicherung (realer Datenverlust beim
+  // Autor). Jetzt: bestätigen, mit Klartext und Export-Hinweis.
+  const [confirmPkgRemove, setConfirmPkgRemove] = useState(false)
   const pkgInfo = useTemplatePackageStore((s) => s.info)
   const showHints = useUiStore((s) => s.showHints)
   const toggleHints = useUiStore((s) => s.toggleHints)
@@ -330,20 +337,36 @@ export function HeaderTools() {
                     label="Paket exportieren (.zip) …"
                   />
                   <MenuItem
-                    onClick={async () => {
+                    onClick={() => {
                       setOpenPkgMenu(false)
-                      await removeTemplatePackage()
-                      setStatus(
-                        'Schablonen-Paket entfernt — eingebaute Schablonen aktiv.',
-                      )
+                      setConfirmPkgRemove(true)
                     }}
-                    label="Paket entfernen"
+                    label="Alle Schablonen entfernen …"
                   />
                 </>
               )}
             </div>
           </>
         )}
+        <ConfirmDialog
+          open={confirmPkgRemove}
+          title="Alle importierten Schablonen entfernen?"
+          confirmLabel="Entfernen"
+          onCancel={() => setConfirmPkgRemove(false)}
+          onConfirm={async () => {
+            setConfirmPkgRemove(false)
+            await removeTemplatePackage()
+            setStatus(
+              'Alle importierten Schablonen entfernt — eingebaute Schablonen aktiv.',
+            )
+          }}
+        >
+          Entfernt den GESAMTEN importierten Bestand — auch Schablonen aus
+          früher importierten Paketen (Hüfte, Knie, Schulter), da mehrere
+          Pakete beim Import zu einem verschmelzen. Die lokale Sicherung
+          wird ebenfalls gelöscht. Vorher „Paket exportieren" sichert alles
+          in eine ZIP-Datei.
+        </ConfirmDialog>
         <input
           ref={pkgInputRef}
           type="file"
