@@ -23,8 +23,8 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { extractContour } from './lib/knee-contour-extract.mjs'
+import { rendereSchablonenBild } from './lib/schablonen-render.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const BASIS = join(ROOT, 'Schablonen_Schulter')
@@ -34,37 +34,6 @@ const BILDER = join(BASIS, 'bilder')
 mkdirSync(PREVIEWS, { recursive: true })
 mkdirSync(BILDER, { recursive: true })
 
-/**
- * Schneidet die Kontur-Region symmetrisch um das BBox-Zentrum aus dem
- * Quell-Screenshot (Bild-Overlay hat im Renderer Vorrang vor der Vektor-
- * Kontur — Knie-Muster: fotografische Qualität inkl. Hilfslinien).
- * Symmetrie ist Pflicht: der Renderer setzt Bildmitte = Schablonen-Anker;
- * am Bildrand wird deshalb schwarz aufgefüllt statt einseitig geklippt.
- */
-async function schneideBild(pfad, bbox, rand = 6) {
-  const img = await loadImage(pfad)
-  const cx = (bbox.mnX + bbox.mxX) / 2
-  const cy = (bbox.mnY + bbox.mxY) / 2
-  const halfW = Math.ceil((bbox.mxX - bbox.mnX) / 2 + rand)
-  const halfH = Math.ceil((bbox.mxY - bbox.mnY) / 2 + rand)
-  const w = 2 * halfW
-  const h = 2 * halfH
-  const c = createCanvas(w, h)
-  const ctx = c.getContext('2d')
-  ctx.fillStyle = '#000'
-  ctx.fillRect(0, 0, w, h)
-  const sx = Math.round(cx - halfW)
-  const sy = Math.round(cy - halfH)
-  // Quellrechteck auf die Bildgrenzen klemmen, Ziel-Offset entsprechend.
-  const csx = Math.max(0, sx)
-  const csy = Math.max(0, sy)
-  const cw = Math.min(img.width, sx + w) - csx
-  const ch = Math.min(img.height, sy + h) - csy
-  if (cw > 0 && ch > 0) {
-    ctx.drawImage(img, csx, csy, cw, ch, csx - sx, csy - sy, cw, ch)
-  }
-  return { png: await c.encode('png'), widthPx: w, heightPx: h }
-}
 
 const { kugelMm, eintraege } = JSON.parse(
   readFileSync(join(BASIS, 'zuordnung.local.json'), 'utf8'),
@@ -106,24 +75,17 @@ for (const e of eintraege) {
       points: c.normPoints,
       approx: true, // Kugel-kalibriert (±2 %), ohne Hersteller-Soll-Snap
     }
-    // Bild-Overlay: Kontur-Region zuschneiden (Kugel-Hälfte bleibt draußen).
-    let bMnX = Infinity, bMxX = -1, bMnY = Infinity, bMxY = -1
-    for (const [x, y] of c.rawPoly) {
-      if (x < bMnX) bMnX = x
-      if (x > bMxX) bMxX = x
-      if (y < bMnY) bMnY = y
-      if (y > bMxY) bMxY = y
-    }
+    // Bild-Overlay NEU RENDERN (nicht nur zuschneiden): einheitliche
+    // Hüft-Auflösung + einheitlich feine Strichstärke, mit Antialiasing.
+    // Begründung + Messwerte siehe lib/schablonen-render.mjs.
     const bildDatei = `${e.kind}_${String(e.sizeIndex).padStart(2, '0')}.png`
-    const zuschnitt = await schneideBild(pfad, {
-      mnX: bMnX, mxX: bMxX, mnY: bMnY, mxY: bMxY,
-    })
-    writeFileSync(join(BILDER, bildDatei), zuschnitt.png)
+    const bild = await rendereSchablonenBild(pfad, res.mmPerPx)
+    writeFileSync(join(BILDER, bildDatei), bild.png)
     bilder[key] = {
       file: `bilder/${bildDatei}`,
-      widthPx: zuschnitt.widthPx,
-      heightPx: zuschnitt.heightPx,
-      mmPerPx: +res.mmPerPx.toFixed(5),
+      widthPx: bild.widthPx,
+      heightPx: bild.heightPx,
+      mmPerPx: bild.mmPerPx,
     }
     messungen.push({
       key,

@@ -217,12 +217,19 @@ export function ShoulderTemplateOverlay() {
                   id={`shoulder-tint-${t.id}`}
                   colorInterpolationFilters="sRGB"
                 >
+                  {/* Alpha = (B − R), Faktor 1 statt 2 wie beim Knie: Die
+                      Schulter-Bilder werden synthetisch gerendert (sauberes
+                      Cyan, Antialiasing über die Helligkeit). Ein Faktor 2
+                      würde die AA-Ränder auf volle Deckung ziehen — die
+                      Linien wirkten wieder hart und breiter. Knie-Screen-
+                      shots brauchen die 2 dagegen, weil ihre Linien dunkler
+                      sind. */}
                   <feColorMatrix
                     type="matrix"
                     values={
                       isSelected
-                        ? '0 0 0 0 1  0 0 0 0 0.878  0 0 0 0 0.541  -2 0 2 0 0'
-                        : '0 0 0 0 1  0 0 0 0 0.769  0 0 0 0 0  -2 0 2 0 0'
+                        ? '0 0 0 0 1  0 0 0 0 0.878  0 0 0 0 0.541  -1 0 1 0 0'
+                        : '0 0 0 0 1  0 0 0 0 0.769  0 0 0 0 0  -1 0 1 0 0'
                     }
                   />
                 </filter>
@@ -233,7 +240,7 @@ export function ShoulderTemplateOverlay() {
                 <>
                   <image
                     href={imgHref}
-                    data-pdf-tint="knee"
+                    data-pdf-tint="shoulder"
                     x={x0}
                     y={y0}
                     width={2 * halfWpx}

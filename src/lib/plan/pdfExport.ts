@@ -77,6 +77,10 @@ import { computeCpak } from '../knee/cpak'
  *  - „knee": Referenz-Screenshots mit SCHWARZEM Hintergrund, blaue
  *    Implantat-Linien, weiße Callouts. Alpha = 2·(B − R) (nur „blaue"
  *    Pixel bleiben; Schwarz und Weiß haben B≈R → transparent).
+ *  - „shoulder": synthetisch gerenderte Schablonen (sauberes Cyan auf
+ *    Schwarz, Antialiasing über die Helligkeit). Alpha = B − R, also
+ *    OHNE den Faktor 2 des Knies — der würde die AA-Ränder auf volle
+ *    Deckung ziehen und die Linien wieder hart/breit machen.
  *
  * Workaround-Mechanik: Transformation pixelweise in ein Canvas anwenden,
  * das eingefärbte Bitmap als data-URL ins href tauschen, Filter abnehmen.
@@ -124,7 +128,12 @@ async function pretintTemplateImages(
         data[i + 1] = TINT_G
         data[i + 2] = TINT_B
         // Alpha-Maske wie der jeweilige Live-feColorMatrix (s. Doku oben).
-        const newA = mode === 'knee' ? 2 * (b - r) : 1.5 * a - r - g - b
+        const newA =
+          mode === 'knee'
+            ? 2 * (b - r)
+            : mode === 'shoulder'
+              ? b - r
+              : 1.5 * a - r - g - b
         data[i + 3] = newA < 0 ? 0 : newA > 255 ? 255 : newA
       }
       ctx.putImageData(imgData, 0, 0)
