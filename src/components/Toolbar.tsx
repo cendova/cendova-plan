@@ -1254,22 +1254,23 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
 
       <Divider />
 
-      <ShoulderTemplatesSection hasImage={hasImage} />
+      <ShaftFragmentSection hasImage={hasImage} />
 
       <Divider />
 
-      <ShaftFragmentSection hasImage={hasImage} />
+      <ShoulderTemplatesSection hasImage={hasImage} />
     </>
   )
 }
 
 /**
- * Sektion „6 · Schaft-Osteotomie": Schnittkontur um den Humerusschaft
- * legen, das Fragment dann verschieben/drehen.
+ * Sektion „5 · Schaft-Crop": Schnittkontur um den Humerusschaft legen,
+ * das Fragment dann verschieben/drehen.
  *
- * Bewusst NACH den Schablonen: In der Planung wird erst die Komponente
- * gewählt, dann die Korrektur simuliert. Emerald, sobald ein Fragment
- * existiert — kein amber, weil der Schritt optional ist (wie die
+ * VOR den Schablonen: Erst wird die Knochensituation hergestellt, dann
+ * die Komponente daran ausgerichtet — deshalb liegt das Fragment im
+ * Viewport auch UNTER den Schablonen. Emerald, sobald ein Fragment
+ * existiert; kein amber, weil der Schritt optional ist (wie die
  * Osteophyten bei der Hüfte).
  */
 function ShaftFragmentSection({ hasImage }: { hasImage: boolean }) {
@@ -1280,8 +1281,8 @@ function ShaftFragmentSection({ hasImage }: { hasImage: boolean }) {
 
   return (
     <CollapsibleSection
-      id="shoulder-osteotomy"
-      title="6 · Schaft-Osteotomie"
+      id="shoulder-crop"
+      title="5 · Schaft-Crop"
       defaultCollapsed={fragmente.length === 0}
       statusDot={fragmente.length > 0 ? 'bg-emerald-500' : undefined}
     >
@@ -1346,7 +1347,7 @@ function ShaftFragmentSection({ hasImage }: { hasImage: boolean }) {
 }
 
 /**
- * Sektion „5 · Schablonen" der Schulter — amber/emerald-Muster wie Hüfte/
+ * Sektion „6 · Schablonen" der Schulter — amber/emerald-Muster wie Hüfte/
  * Knie: amber nur, wenn der Schulter-Katalog NICHT leer ist (sonst gäbe es
  * nichts zu tun); emerald sobald eine Schablone platziert wurde.
  *
@@ -1388,7 +1389,7 @@ function ShoulderTemplatesSection({ hasImage }: { hasImage: boolean }) {
     <>
       <CollapsibleSection
         id="shoulder-templates"
-        title="5 · Schablonen"
+        title="6 · Schablonen"
         defaultCollapsed={placedCount >= 1}
         // Ohne Katalog kein amber — gleiche Begründung wie Hüfte/Knie.
         statusDot={

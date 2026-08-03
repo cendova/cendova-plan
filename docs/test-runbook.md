@@ -152,16 +152,17 @@ Es öffnet sich **http://localhost:5173** — **lokal ist `localhost` korrekt**
    umzustellen (einzige Stelle, mit Tests abgesichert).
 5. **Sperre prüfen:** Bei aktiver Schulter-Messung dürfen Schablonen keine
    Klicks abfangen (und umgekehrt).
-6. **Schaft-Osteotomie** (Sektion 6, optional): Schaft mit Klicks
+6. **Schaft-Crop** (Sektion 5, optional): Schaft mit Klicks
    umfahren, Enter schließt den Schnitt. Das Stück ziehen und mit ±
-   drehen — die gestrichelte Linie zeigt die Ausgangslage, das Original
-   bleibt stehen. Beim Hineinzoomen muss das Fragment so scharf bleiben
-   wie das Bild darunter. Undo/Redo muss Verschiebung und Drehung
-   zurücknehmen.
+   drehen — an der Ausgangsstelle bleibt eine schwarze Lücke (gestrichelt
+   umrandet), das Stück selbst liegt an der neuen Position. Beim
+   Hineinzoomen muss es so scharf bleiben wie das Bild darunter, und
+   Schablonen müssen DARÜBER sichtbar bleiben. Undo/Redo muss
+   Verschiebung und Drehung zurücknehmen.
 7. **Plan speichern** → erneut laden: Schulter-Messungen, -Schablonen und
    Schaft-Fragmente sind wieder da, keine ID-Kollision (Format v9).
 8. **PDF-Export** → Abschnitte „Schulter-Messungen",
-   „Schulter-Schablonen" und ggf. „Schaft-Osteotomie" vorhanden;
+   „Schulter-Schablonen" und ggf. „Schaft-Crop" vorhanden;
    Schablonen und verschobenes Fragment im Ausdruck sichtbar.
 
 ---

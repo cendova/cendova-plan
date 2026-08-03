@@ -828,12 +828,12 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
       )
     }
 
-    // Schaft-Osteotomie: Betrag und Richtung der Verschiebung je Fragment.
+    // Schaft-Crop: Betrag und Richtung der Verschiebung je Fragment.
     // Die Konturen selbst stecken im Viewport-Schnappschuss von Seite 1
     // (Ausgangslage gestrichelt, verschobenes Stück durchgezogen).
     if (shaftFragments.length > 0) {
       writeSection(
-        'Schaft-Osteotomie',
+        'Schaft-Crop',
         shaftFragments.map((f, i) => {
           const betrag = verschiebungBetrag(f.offset, factor)
           // Ohne Kalibrierung ist der Betrag eine Welt-Einheit und KEIN

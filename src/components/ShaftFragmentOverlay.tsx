@@ -132,12 +132,32 @@ export function ShaftFragmentOverlay() {
 
     const w2c = (p: Types.Point3) => vp.worldToCanvas(p)
 
-    for (const f of fragments) {
-      if (!f.visible || f.points.length < 3) continue
+    const sichtbar = fragments.filter((f) => f.visible && f.points.length >= 3)
+    const geometrie = sichtbar.map((f) => {
       const zielWelt = fragmentPolygon(f.points, f.rotationDeg, f.offset)
-      const quellPoly = f.points.map(w2c)
-      const zielPoly = zielWelt.map(w2c)
+      return { f, quellPoly: f.points.map(w2c), zielPoly: zielWelt.map(w2c), zielWelt }
+    })
 
+    // DURCHGANG 1 — alle Ursprungsbereiche schwarz füllen: Das Stück ist
+    // herausgelöst, an seiner alten Stelle bleibt eine Lücke; sonst stünde
+    // der Schaft doppelt im Bild und die Verschiebung wäre nicht ablesbar.
+    // Schwarz statt transparent, weil der Bildhintergrund schwarz ist.
+    //
+    // Bewusst ein eigener Durchgang VOR dem Zeichnen: Sonst könnte die
+    // Füllung eines später bearbeiteten Fragments ein bereits gezeichnetes
+    // früheres wieder ausradieren.
+    for (const { quellPoly } of geometrie) {
+      ctx.save()
+      ctx.beginPath()
+      quellPoly.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])))
+      ctx.closePath()
+      ctx.fillStyle = '#000000'
+      ctx.fill()
+      ctx.restore()
+    }
+
+    // DURCHGANG 2 — die Fragmente an ihrer neuen Lage zeichnen.
+    for (const { f, quellPoly, zielPoly, zielWelt } of geometrie) {
       // Pixel des Schnitts versetzt zeichnen: auf das ZIEL-Polygon
       // clippen und den Quell-Canvas so transformiert einzeichnen, dass
       // der Schnitt genau in dieses Polygon fällt.
@@ -176,8 +196,8 @@ export function ShaftFragmentOverlay() {
       ctx.drawImage(quelle, 0, 0, quelle.width, quelle.height, 0, 0, breite, hoehe)
       ctx.restore()
 
-      // Umrisse: Ziel durchgezogen, Ursprung gestrichelt (zeigt, woher
-      // das Stück kommt).
+      // Umrisse: Ziel durchgezogen, Ursprung gestrichelt (umrandet die
+      // entstandene Lücke und zeigt, woher das Stück kommt).
       const gewaehlt = f.id === selectedId
       ctx.save()
       ctx.lineWidth = gewaehlt ? 2 : 1.25

@@ -317,6 +317,12 @@ export function Viewport() {
         <div className="pointer-events-none absolute inset-2 rounded-lg border-2 border-dashed border-sky-500 bg-sky-500/10" />
       )}
 
+      {/* Reihenfolge = Stapelung. Das Schaft-Fragment liegt GANZ UNTEN
+          (direkt über dem Bild): Es ersetzt Bildinhalt, deshalb müssen
+          Messungen und vor allem die Schablonen darüber sichtbar
+          bleiben — sonst verdeckte ein verschobenes Fragment die
+          Schablone, die man gerade danach ausrichtet. */}
+      {hasImage && <ShaftFragmentOverlay />}
       {hasImage && <HipOverlay />}
       {hasImage && <KneeOverlay />}
       {hasImage && <ShoulderOverlay />}
@@ -324,7 +330,6 @@ export function Viewport() {
       {hasImage && <ShoulderTemplateOverlay />}
       {hasImage && <TemplateOverlay />}
       {hasImage && <OsteophyteOverlay />}
-      {hasImage && <ShaftFragmentOverlay />}
       {hasImage && <StackImagePicker pane="left" />}
     </main>
 
