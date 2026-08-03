@@ -1,5 +1,5 @@
 /**
- * Beispielbilder für die Demo: lädt bei `?beispiel=huefte|knie` ein
+ * Beispielbilder für die Demo: lädt bei `?beispiel=huefte|knie|schulter` ein
  * mitgeliefertes Demo-DICOM (frei lizenzierte, anonymisierte Lehraufnahme —
  * Quellen/Lizenz: public/sample/LIESMICH.txt) und schaltet den passenden
  * Planungsmodus. So startet die Demo von cendova.de direkt mit einem Bild,
@@ -14,6 +14,7 @@ import { useViewerStore } from '../state/viewerStore'
 const BEISPIELE = {
   huefte: { datei: 'beispiel-huefte.dcm', modus: 'hip' },
   knie: { datei: 'beispiel-knie.dcm', modus: 'knee' },
+  schulter: { datei: 'beispiel-schulter.dcm', modus: 'shoulder' },
 } as const
 
 export async function beispielAusUrlLaden(): Promise<void> {

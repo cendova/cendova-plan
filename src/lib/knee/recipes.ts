@@ -317,7 +317,7 @@ const tibialSlope: KneeRecipe = {
 // ----------------------------------------------------------------------
 const workflow: KneeRecipe = {
   kind: 'workflow',
-  label: 'Knie-Vollvermessung',
+  label: 'Vollvermessung',
   needsCalibration: true,
   steps: [
     // Hüftkopf (0–2)

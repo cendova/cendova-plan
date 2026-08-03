@@ -27,6 +27,12 @@ import {
   STEM_CCD_BY_FOLDER,
 } from '../hip/medactaCatalog'
 import * as sn from '../knee/smithNephewCatalog'
+import { SHOULDER_CONTOURS } from '../shoulder/shoulderContours'
+import { SHOULDER_IMAGES } from '../shoulder/shoulderImages'
+import {
+  SHOULDER_IMPLANT_FAMILIES,
+  SHOULDER_SIZE_LABELS,
+} from '../shoulder/shoulderCatalog'
 import { BACKGROUNDS } from '../knee/templateBackgroundsData'
 import { idbClearPackage, idbLoadPackage, idbStorePackage } from './idb'
 import {
@@ -84,6 +90,10 @@ const bundled = {
   traceSizeBands: { ...sn.TRACE_SIZE_BANDS },
   tibiaInsert: { ...sn.TIBIA_INSERT },
   implantFamilies: [...sn.KNEE_IMPLANT_FAMILIES],
+  shoulderContours: { ...SHOULDER_CONTOURS },
+  shoulderImages: { ...SHOULDER_IMAGES },
+  shoulderFamilies: [...SHOULDER_IMPLANT_FAMILIES],
+  shoulderSizeLabels: { ...SHOULDER_SIZE_LABELS },
 }
 
 // ---------------------------------------------------------------------------
@@ -147,6 +157,19 @@ function applyOverrides(m: TemplatePackageManifest): void {
     )
     replaceArray(sn.KNEE_IMPLANT_FAMILIES, kc.implantFamilies)
   }
+  // Schulter: Konturen wie kneeContours schlüsselweise MERGEN, Katalog
+  // (Familien + Größen-Labels) ersetzen.
+  if (m.shoulderContours) {
+    replaceRecord(SHOULDER_CONTOURS, {
+      ...bundled.shoulderContours,
+      ...m.shoulderContours,
+    })
+  }
+  if (m.shoulderCatalog) {
+    replaceArray(SHOULDER_IMPLANT_FAMILIES, m.shoulderCatalog.families)
+    replaceRecord(SHOULDER_SIZE_LABELS, m.shoulderCatalog.sizeLabels)
+  }
+  replaceRecord(SHOULDER_IMAGES, m.shoulderImages)
 }
 
 /** Eingebaute Daten wiederherstellen (nach „Paket entfernen"). */
@@ -178,15 +201,21 @@ function restoreBundled(): void {
     bundled.tibiaInsert as Record<string, { baseMm: number; thicknessesMm: number[] }>,
   )
   replaceArray(sn.KNEE_IMPLANT_FAMILIES, bundled.implantFamilies)
+  replaceRecord(SHOULDER_CONTOURS, bundled.shoulderContours)
+  replaceRecord(SHOULDER_IMAGES, bundled.shoulderImages)
+  replaceArray(SHOULDER_IMPLANT_FAMILIES, bundled.shoulderFamilies)
+  replaceRecord(SHOULDER_SIZE_LABELS, bundled.shoulderSizeLabels)
 }
 
 /** C2-Simulation: Templating-Tabellen leeren (Vermessung bleibt voll nutzbar). */
 function clearBundledData(): void {
   replaceRecord(KNEE_IMAGES, {})
+  replaceRecord(SHOULDER_IMAGES, {})
   replaceRecord(MEDACTA_IMAGES, {})
   replaceArray(MEDACTA_CATALOG, [])
   replaceRecord(BACKGROUNDS, {})
   replaceArray(sn.KNEE_IMPLANT_FAMILIES, [])
+  replaceArray(SHOULDER_IMPLANT_FAMILIES, [])
 }
 
 // ---------------------------------------------------------------------------

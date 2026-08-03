@@ -449,8 +449,10 @@ function axisEndpointsLocal(
 function labelForKind(kind: KneeImplantKind): string {
   switch (kind) {
     case 'legion-ps-femur':            return 'Legion PS'
-    case 'genesis-tibia-female':       return 'Genesis II (F)'
-    case 'genesis-tibia-male':         return 'Genesis II (M)'
+    // Bewusst OHNE (F)/(M): die Varianten teilen sich Masstabelle und
+    // Geometrie — der Zusatz ist im Angebot bereits entdoppelt.
+    case 'genesis-tibia-female':       return 'Genesis II'
+    case 'genesis-tibia-male':         return 'Genesis II'
     case 'journey-uk-femur':           return 'Journey UK F'
     case 'journey-uk-tibia-medial':   return 'Journey UK T (med)'
     case 'journey-uk-tibia-lateral':  return 'Journey UK T (lat)'

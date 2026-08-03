@@ -10,6 +10,7 @@ import { useViewportSync } from '../lib/cornerstone/useViewportSync'
 import { useViewerStore } from '../state/viewerStore'
 import { useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
+import { useShoulderStore } from '../state/shoulderStore'
 import { useNoteStore } from '../state/noteStore'
 import { useOsteophyteStore } from '../state/osteophyteStore'
 import {
@@ -71,12 +72,25 @@ export function TemplateOverlay() {
   // keine Osteotomie-/Osteophyten-/Mess-Punkte setzen. In diesen Modi
   // werden alle Hit-Regionen auf pointer-events:none gestellt, sodass
   // Klicks bis zum Viewport durchfallen.
+  // ACHTUNG beim Erweitern: JEDES messende Modul muss hier stehen. Die
+  // zentrale Werkzeug-Abschaltung (`brichFremdeWerkzeugeAb`) greift hier
+  // NICHT — das ist kein Werkzeug-gegen-Werkzeug-Konflikt, sondern
+  // Werkzeug-gegen-Hit-Region: Die Regionen tragen `data-overlay-ui`,
+  // und der geteilte Overlay-Kern steigt bei solchen Zielen aus, BEVOR
+  // er einen Messpunkt setzt. Fehlt ein Modul, verschiebt ein Mess-Klick
+  // über der Schablone still das Implantat, statt zu messen.
   const hipActive = useHipStore((s) => s.activeKind != null)
   const kneeActive = useKneeStore((s) => s.activeKind != null)
+  const shoulderActive = useShoulderStore((s) => s.activeKind != null)
   const notePlacing = useNoteStore((s) => s.placing)
   const osteophytePlacing = useOsteophyteStore((s) => s.placing)
   const locked =
-    hipActive || kneeActive || notePlacing || osteophytePlacing || pending != null
+    hipActive ||
+    kneeActive ||
+    shoulderActive ||
+    notePlacing ||
+    osteophytePlacing ||
+    pending != null
 
   // Mousedown-Capture für die Tränenfigur-Stufe und Esc zum Abbruch.
   useEffect(() => {

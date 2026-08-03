@@ -6,13 +6,19 @@
  * Funktionen arbeiten direkt auf den Stores (.getState()) — kein React-
  * Hook nötig, damit sie auch aus Event-Handlern und Tests aufrufbar sind.
  */
-import { useViewerStore, type LeftTool } from '../state/viewerStore'
+import {
+  useViewerStore,
+  type LeftTool,
+  type PlanningMode,
+} from '../state/viewerStore'
 import { useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
+import { useShoulderStore } from '../state/shoulderStore'
 import { useNoteStore } from '../state/noteStore'
 import { useOsteophyteStore } from '../state/osteophyteStore'
 import { useTemplateStore } from '../state/templateStore'
 import type { HipKind } from './hip/recipes'
+import type { ShoulderKind } from './shoulder/recipes'
 import type { KneeKind } from './knee/recipes'
 import {
   applyLeftTool,
@@ -24,8 +30,7 @@ import { useKneePanesStore } from '../state/kneePanesStore'
 
 /** Bricht jedes laufende Mess- oder Notiz-Werkzeug ab. */
 function cancelOthers() {
-  useHipStore.getState().cancelTool()
-  useKneeStore.getState().cancelTool()
+  brichFremdeWerkzeugeAb()
   useNoteStore.getState().setPlacing(false)
   useOsteophyteStore.getState().setPlacing(false)
 }
@@ -49,9 +54,22 @@ export function pickLeftTool(tool: LeftTool) {
   applyToolPane2(tool)
 }
 
+/**
+ * Bricht die Mess-Werkzeuge ALLER Module ab — außer optional einem, das
+ * gerade aktiviert werden soll. Bewusst zentral statt als Aufzählung in
+ * jedem pick*-Aufruf: Bei zwei Modulen war die Aufzählung noch
+ * überschaubar, ab dem dritten wird das Vergessen eines Moduls zum
+ * stillen Fehler (zwei scharfe Werkzeuge nehmen denselben Klick an).
+ */
+function brichFremdeWerkzeugeAb(ausser?: PlanningMode) {
+  if (ausser !== 'hip') useHipStore.getState().cancelTool()
+  if (ausser !== 'knee') useKneeStore.getState().cancelTool()
+  if (ausser !== 'shoulder') useShoulderStore.getState().cancelTool()
+}
+
 /** Aktiviert ein Hüft-Mess-Werkzeug (Toggle). */
 export function pickHipTool(kind: HipKind) {
-  useKneeStore.getState().cancelTool()
+  brichFremdeWerkzeugeAb('hip')
   useNoteStore.getState().setPlacing(false)
   useOsteophyteStore.getState().setPlacing(false)
   useHipStore.getState().toggleTool(kind)
@@ -59,18 +77,25 @@ export function pickHipTool(kind: HipKind) {
 
 /** Aktiviert ein Knie-Mess-Werkzeug (Toggle). */
 export function pickKneeTool(kind: KneeKind) {
-  useHipStore.getState().cancelTool()
+  brichFremdeWerkzeugeAb('knee')
   useNoteStore.getState().setPlacing(false)
   useOsteophyteStore.getState().setPlacing(false)
   useKneeStore.getState().toggleTool(kind)
+}
+
+/** Aktiviert ein Schulter-Mess-Werkzeug (Toggle). */
+export function pickShoulderTool(kind: ShoulderKind) {
+  brichFremdeWerkzeugeAb('shoulder')
+  useNoteStore.getState().setPlacing(false)
+  useOsteophyteStore.getState().setPlacing(false)
+  useShoulderStore.getState().toggleTool(kind)
 }
 
 /** Toggelt den Notiz-Setz-Modus. */
 export function toggleNoteTool() {
   const next = !useNoteStore.getState().placing
   if (next) {
-    useHipStore.getState().cancelTool()
-    useKneeStore.getState().cancelTool()
+    brichFremdeWerkzeugeAb()
     useOsteophyteStore.getState().setPlacing(false)
   }
   useNoteStore.getState().setPlacing(next)
@@ -81,8 +106,7 @@ export function toggleNoteTool() {
 export function toggleOsteophyteTool() {
   const next = !useOsteophyteStore.getState().placing
   if (next) {
-    useHipStore.getState().cancelTool()
-    useKneeStore.getState().cancelTool()
+    brichFremdeWerkzeugeAb()
     useNoteStore.getState().setPlacing(false)
     // Laufende Pfannen-/Schaft-Platzierung abbrechen, sonst würden zwei
     // Klick-Listener (Template + Osteophyt) denselben Klick verarbeiten.
@@ -92,15 +116,17 @@ export function toggleOsteophyteTool() {
 }
 
 /**
- * Wechselt den Planungs-Modus (Hüfte ↔ Knie). Bricht laufende Werkzeuge
- * im jeweils anderen Modus ab, lässt fertige Messungen/Templates aber
- * sichtbar — sonst würde der Tab-Wechsel Daten „verschwinden lassen".
+ * Wechselt den Planungs-Modus (Hüfte / Knie / Schulter). Bricht laufende
+ * Werkzeuge ALLER anderen Module ab, lässt fertige Messungen/Templates
+ * aber sichtbar — sonst würde der Tab-Wechsel Daten „verschwinden lassen".
+ *
+ * Bewusst als Abbruch-Schleife über alle Fremd-Module statt als
+ * if/else-Paar: Mit dem dritten Modus hätte ein `if (hip) … else …` nur
+ * je EIN anderes Werkzeug abgeräumt — beim Wechsel auf die Schulter wäre
+ * ein laufendes Knie-Werkzeug „scharf" geblieben und hätte Klicks
+ * abgefangen, die der Schulter gelten.
  */
-export function setPlanningMode(mode: 'hip' | 'knee') {
-  if (mode === 'hip') {
-    useKneeStore.getState().cancelTool()
-  } else {
-    useHipStore.getState().cancelTool()
-  }
+export function setPlanningMode(mode: PlanningMode) {
+  brichFremdeWerkzeugeAb(mode)
   useViewerStore.getState().setPlanningMode(mode)
 }

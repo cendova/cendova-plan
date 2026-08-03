@@ -7,6 +7,8 @@ import { useKneeStore } from '../state/kneeStore'
 import { useTemplateStore } from '../state/templateStore'
 import { getRecipe } from '../lib/hip/recipes'
 import { computeWorkflowRaw, getKneeRecipe } from '../lib/knee/recipes'
+import { getShoulderRecipe } from '../lib/shoulder/recipes'
+import { useShoulderStore } from '../state/shoulderStore'
 import { computeCpak } from '../lib/knee/cpak'
 import {
   extractWorkflowAxes,
@@ -40,6 +42,7 @@ import {
 export function MeasurementPanel() {
   const measurements = useViewerStore((s) => s.measurements)
   const calibration = useViewerStore((s) => s.calibration)
+  const planningMode = useViewerStore((s) => s.planningMode)
   const hipMeasurements = useHipStore((s) => s.measurements)
   const removeHip = useHipStore((s) => s.removeMeasurement)
   const removeAllHip = useHipStore((s) => s.removeAll)
@@ -48,6 +51,10 @@ export function MeasurementPanel() {
   const removeKnee = useKneeStore((s) => s.removeMeasurement)
   const removeAllKnee = useKneeStore((s) => s.removeAll)
   const setKneeVisible = useKneeStore((s) => s.setVisible)
+  const shoulderMeasurements = useShoulderStore((s) => s.measurements)
+  const removeShoulder = useShoulderStore((s) => s.removeMeasurement)
+  const removeAllShoulder = useShoulderStore((s) => s.removeAll)
+  const setShoulderVisible = useShoulderStore((s) => s.setVisible)
   // Platzierte Knie-Schablonen — für die „geplante" (post-OP) CPAK aus der
   // Implantat-Position. Reaktiv, damit der geplante Punkt live mitwandert.
   const kneeTemplates = useKneeTemplateStore((s) => s.templates)
@@ -102,21 +109,33 @@ export function MeasurementPanel() {
     referenceLine,
     factor,
   )
-  // Bilanz erscheint, sobald eine BLD-Messung vorliegt (Prä-OP); Korrektur +
+  // Bilanz erscheint, sobald eine LLD-Messung vorliegt (Prä-OP); Korrektur +
   // Post-OP kommen dazu, sobald Pfanne + Schaft der operierten Seite stehen.
   const bal = preopLLD != null ? buildLldBalance(preopLLD, lldCorrection) : null
   const showLldBalance = bal != null
-  const hasAny =
+  // „Alle löschen" umfasst nur, was sich damit auch löschen lässt —
+  // Messungen. Die Δ-Zeilen und die Beinlängen-Bilanz sind ABLEITUNGEN
+  // aus platzierten Schablonen: sie verschwinden mit den Schablonen (Panel
+  // darunter), nicht mit den Messungen. Vorher zählten sie hier mit — der
+  // Dialog versprach „Alle Messungen beider Bilder werden entfernt", und
+  // nach dem Klick stand exakt derselbe Inhalt wieder da. Messungen des
+  // rechten Panes zählen nur, solange die Zwei-Bild-Ansicht sie zeigt.
+  const hatLoeschbareMessungen =
     measurements.length > 0 ||
     hipMeasurements.length > 0 ||
     kneeMeasurements.length > 0 ||
-    deltas.length > 0 ||
-    rightMeasurements.length > 0
+    shoulderMeasurements.length > 0 ||
+    (splitView && rightMeasurements.length > 0)
+  // Der Leerzustands-Hinweis verschwindet dagegen, sobald IRGENDETWAS in
+  // der Liste steht — auch eine abgeleitete Zeile.
+  const zeigtInhalt =
+    hatLoeschbareMessungen || deltas.length > 0 || showLldBalance
 
   function clearAll() {
     removeAllMeasurements()
     removeAllHip()
     removeAllKnee()
+    removeAllShoulder()
     rightMeasurements.forEach((m) => removeRightMeasurement(m.id))
   }
   // Bestätigung vor dem Sammel-Löschen (UX-Befund P1-5: Länge/Winkel und
@@ -129,7 +148,7 @@ export function MeasurementPanel() {
         <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
           Messungen
         </span>
-        {hasAny && (
+        {hatLoeschbareMessungen && (
           <button
             onClick={() => setConfirmClear(true)}
             className="text-[11px] text-neutral-500 transition hover:text-red-400"
@@ -153,11 +172,20 @@ export function MeasurementPanel() {
       </ConfirmDialog>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        {!hasAny && (
+        {!zeigtInhalt && (
           <Hint>
+            {/* Nennt wie das Schablonen-Panel die Werkzeuge des AKTIVEN
+                Modus samt Ort. Die generischen Länge-/Winkel-Werkzeuge
+                liegen in der Kopfzeile, nicht in der linken Leiste — die
+                alte Sammelformel „ein Mess-, Hüft-, Knie- oder
+                Schulter-Werkzeug" warf beide Orte in einen Topf. */}
             <p className="px-1 py-1 text-xs text-neutral-500">
-              Noch keine Messungen. Ein Mess-, Hüft- oder Knie-Werkzeug wählen
-              und im Bild platzieren.
+              {planningMode === 'hip' &&
+                'Noch keine Messungen. Ein Hüft-Werkzeug in der linken Leiste wählen — oder Länge/Winkel in der Kopfzeile.'}
+              {planningMode === 'knee' &&
+                'Noch keine Messungen. Vollvermessung oder ein Messwerkzeug in der linken Leiste wählen — oder Länge/Winkel in der Kopfzeile.'}
+              {planningMode === 'shoulder' &&
+                'Noch keine Messungen. Ein Schulter-Werkzeug in der linken Leiste wählen — oder Länge/Winkel in der Kopfzeile.'}
             </p>
           </Hint>
         )}
@@ -199,7 +227,7 @@ export function MeasurementPanel() {
                 <Row
                   key={m.id}
                   badge={m.label}
-                  badgeColor={m.kind === 'length' ? 'text-sky-400' : 'text-violet-300'}
+                  badgeColor={m.kind === 'length' ? 'text-sky-400' : 'text-sky-300'}
                   visible={m.visible}
                   onToggleVisible={() =>
                     setRightMeasurementVisible(m.id, !m.visible)
@@ -275,7 +303,7 @@ export function MeasurementPanel() {
                   </span>
                   <div className="flex flex-1 flex-col leading-tight">
                     <span className="text-[11px] text-neutral-400">
-                      Plan-Änderung ({side === 'R' ? 'rechts' : 'links'})
+                      Plan-Änderung · {side === 'R' ? 'rechts' : 'links'}
                       {!calibration && (
                         <span className="ml-1 text-amber-500">· unkalibriert</span>
                       )}
@@ -367,6 +395,55 @@ export function MeasurementPanel() {
                     <div className="flex flex-col">
                       <span className="text-[11px] text-neutral-400">
                         {recipe.label}
+                        {recipe.needsCalibration && !calibration && (
+                          <span className="ml-1 text-amber-500">
+                            · unkalibriert
+                          </span>
+                        )}
+                      </span>
+                      {values.map((v, i) => (
+                        <span key={i} className="tabular-nums">
+                          {values.length > 1 && (
+                            <span className="text-neutral-500">
+                              {v.label}:{' '}
+                            </span>
+                          )}
+                          {v.value}
+                        </span>
+                      ))}
+                    </div>
+                  }
+                />
+              )
+            })}
+          </ul>
+        )}
+
+        {/* Schulter-Messungen. Zeigt zusaetzlich die SEITE, weil sie pro
+            Messung eingefroren wird: Ein spaeteres Umschalten in der
+            Toolbar deutet bestehende Messungen bewusst nicht um, also
+            muss am Wert ablesbar sein, fuer welche Schulter er gilt. */}
+        {shoulderMeasurements.length > 0 && (
+          <ul className="mt-1 flex flex-col gap-1">
+            {shoulderMeasurements.map((m) => {
+              const recipe = getShoulderRecipe(m.kind)
+              if (!recipe) return null
+              const { values } = recipe.compute(m.points, factor)
+              return (
+                <Row
+                  key={m.id}
+                  badge="S"
+                  badgeColor="text-emerald-300"
+                  visible={m.visible}
+                  onToggleVisible={() => setShoulderVisible(m.id, !m.visible)}
+                  onDelete={() => removeShoulder(m.id)}
+                  main={
+                    <div className="flex flex-col">
+                      <span className="text-[11px] text-neutral-400">
+                        {recipe.label}
+                        <span className="ml-1 text-neutral-500">
+                          · {m.side === 'R' ? 'rechts' : 'links'}
+                        </span>
                         {recipe.needsCalibration && !calibration && (
                           <span className="ml-1 text-amber-500">
                             · unkalibriert
@@ -526,7 +603,9 @@ function LldCorrectionRow({ side, mm }: { side: 'R' | 'L'; mm: number }) {
   const sign = mm > 0 ? '+' : ''
   return (
     <div className="flex items-baseline justify-between gap-2 leading-tight">
-      <span className="text-[11px] text-neutral-400">Korrektur {side}</span>
+      <span className="text-[11px] text-neutral-400">
+        Korrektur {side === 'R' ? 'rechts' : 'links'}
+      </span>
       <span className="tabular-nums text-sm text-neutral-200">
         {sign}
         {(mm / 10).toFixed(2).replace('.', ',')} cm

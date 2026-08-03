@@ -1,7 +1,21 @@
 import { useState } from 'react'
 import { useTemplateStore } from '../state/templateStore'
 import { useTemplatePackageStore } from '../state/templatePackageStore'
+import { useViewerStore } from '../state/viewerStore'
+import {
+  useKneeTemplateStore,
+  gruppiereNachImplantat,
+} from '../state/kneeTemplateStore'
+import {
+  useShoulderTemplateStore,
+  gruppiereShoulderNachImplantat,
+} from '../state/shoulderTemplateStore'
+import {
+  SHOULDER_IMPLANT_FAMILIES,
+  shoulderSizeLabel,
+} from '../lib/shoulder/shoulderCatalog'
 import { Hint } from './Hint'
+import { KeinPaketHinweis } from './KeinPaketHinweis'
 import { ConfirmDialog } from './ConfirmDialog'
 import {
   cupCatalogEntries,
@@ -9,11 +23,22 @@ import {
   headOffsetMm,
   stemCatalogEntries,
 } from '../lib/hip/templates'
+import { sizeLabelFor } from '../lib/knee/templates'
+import {
+  KNEE_IMPLANT_FAMILIES,
+  ohneTibiaVariantenZusatz,
+} from '../lib/knee/smithNephewCatalog'
 
 /**
- * Listet alle platzierten Schablonen (Pfannen + Schäfte) mit Ein/Aus-
- * Schalter, Auswahl und Löschen — analog zum Messungen-Panel. Sitzt
- * rechts unter den Messungen in der App-Sidebar.
+ * Listet ALLE platzierten Schablonen mit Ein/Aus-Schalter, Auswahl und
+ * Löschen — Hüfte (Pfannen + Schäfte) und Knie (Femur-/Tibiakomponenten).
+ * Sitzt rechts unter den Messungen in der App-Sidebar.
+ *
+ * Modulübergreifend wie das Messungen-Panel darüber: dort stehen Hüft-,
+ * Knie- und Schulter-Messungen gemeinsam, unterschieden durch ein Badge.
+ * Knie-Schablonen fehlten hier früher komplett — eine ausgeblendete oder
+ * aus dem Bild geschobene Knie-Komponente war damit nirgends mehr
+ * erreichbar, während dasselbe bei der Hüfte über diese Liste ging.
  */
 export function TemplatesPanel() {
   const cups = useTemplateStore((s) => s.templates)
@@ -24,12 +49,61 @@ export function TemplatesPanel() {
   const remove = useTemplateStore((s) => s.remove)
   const removeAll = useTemplateStore((s) => s.removeAll)
 
+  const kneeTemplates = useKneeTemplateStore((s) => s.templates)
+  const kneeSelectedId = useKneeTemplateStore((s) => s.selectedId)
+  const selectKnee = useKneeTemplateStore((s) => s.select)
+  const removeKnee = useKneeTemplateStore((s) => s.remove)
+  const setKneeGroupVisible = useKneeTemplateStore((s) => s.setGroupVisible)
+  const removeAllKnee = useKneeTemplateStore((s) => s.removeAll)
+
+  const shoulderTemplates = useShoulderTemplateStore((s) => s.templates)
+  const shoulderSelectedId = useShoulderTemplateStore((s) => s.selectedId)
+  const selectShoulder = useShoulderTemplateStore((s) => s.select)
+  const removeShoulder = useShoulderTemplateStore((s) => s.remove)
+  const setShoulderGroupVisible = useShoulderTemplateStore(
+    (s) => s.setGroupVisible,
+  )
+  const removeAllShoulder = useShoulderTemplateStore((s) => s.removeAll)
+
   const pkgInfo = useTemplatePackageStore((s) => s.info)
+  const planningMode = useViewerStore((s) => s.planningMode)
   // Bestätigung vor dem Sammel-Löschen (UX-Befund P1-5).
   const [confirmClear, setConfirmClear] = useState(false)
   const cupEntries = cupCatalogEntries()
   const stemEntries = stemCatalogEntries()
-  const hasAny = cups.length > 0 || stems.length > 0
+
+  // EINE Zeile je Implantat, nicht je Kontur (Begründung + Tests am Store).
+  const kneeZeilen = gruppiereNachImplantat(kneeTemplates, kneeSelectedId)
+  const shoulderZeilen = gruppiereShoulderNachImplantat(
+    shoulderTemplates,
+    shoulderSelectedId,
+  )
+
+  const hasAny =
+    cups.length > 0 ||
+    stems.length > 0 ||
+    kneeZeilen.length > 0 ||
+    shoulderZeilen.length > 0
+
+  // Auswahl ist LISTENWEIT exklusiv. Hüft-, Knie- und Schulter-Store führen
+  // je ein eigenes `selectedId`; in einer gemeinsamen Liste wären sonst
+  // mehrere Zeilen gleichzeitig markiert — und rechts erschienen mehrere
+  // Eigenschaften-Panels.
+  const waehleHueft = (id: string) => {
+    selectKnee(null)
+    selectShoulder(null)
+    select(id)
+  }
+  const waehleKnie = (id: string) => {
+    select(null)
+    selectShoulder(null)
+    selectKnee(id)
+  }
+  const waehleSchulter = (id: string) => {
+    select(null)
+    selectKnee(null)
+    selectShoulder(id)
+  }
   // Ohne Schablonen-Paket gibt es keine Katalogdaten (das öffentliche Repo
   // enthält keine Hersteller-Schablonen) → freundlicher Hinweis statt
   // leerer Auswahl. Vermessung ist davon nicht betroffen.
@@ -37,8 +111,12 @@ export function TemplatesPanel() {
     !pkgInfo && cupEntries.length === 0 && stemEntries.length === 0
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center justify-between border-y border-neutral-700 px-3 py-2">
+    // Eigenes Scrollen wie im Messungen-Panel darüber: `max-h-[45%]` deckelt
+    // die Höhe, `min-h-0` erlaubt dem inneren Bereich zu schrumpfen. Vorher
+    // wuchs das Panel unbegrenzt und hatte KEIN overflow — bei mehreren
+    // Schablonen waren die letzten Einträge nicht mehr erreichbar.
+    <div className="flex max-h-[45%] min-h-0 flex-col">
+      <div className="flex shrink-0 items-center justify-between border-y border-neutral-700 px-3 py-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
           Schablonen
         </span>
@@ -57,26 +135,34 @@ export function TemplatesPanel() {
         confirmLabel="Alle löschen"
         onCancel={() => setConfirmClear(false)}
         onConfirm={() => {
+          // „Alle" heisst alles, was die Liste zeigt — wie clearAll() im
+          // Messungen-Panel. Vorher raeumte der Button nur den Hueft-Store,
+          // versprach im Text aber pauschal „Pfannen und Schäfte", auch im
+          // Knie-Modus, wo genau die nicht gemeint sein konnten.
           removeAll()
+          removeAllKnee()
+          removeAllShoulder()
           setConfirmClear(false)
         }}
       >
-        Alle platzierten Pfannen und Schäfte werden entfernt.
+        Alle platzierten Schablonen werden entfernt.
       </ConfirmDialog>
 
-      <div className="p-2">
-        {noCatalog && (
-          <p className="mx-1 mb-2 rounded border border-amber-800/60 bg-amber-950/40 px-2 py-1.5 text-[11px] leading-snug text-amber-300">
-            Kein Schablonen-Paket geladen — Schablonen sind erst nach dem
-            Import verfügbar (Paket-Symbol oben in der Kopfzeile). Messen
-            geht auch ohne.
-          </p>
-        )}
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {/* Seit Schritt 7 liefert das Paket auch Schulter-Schablonen — der
+            Import-Hinweis gilt daher in allen Modi. */}
+        {noCatalog && <KeinPaketHinweis className="mb-2" />}
         {!hasAny && (
           <Hint>
+            {/* Der Hinweis nennt die Buttons des AKTIVEN Modus. Vorher stand
+                hier immer „Pfanne/Schaft hinzufügen" — im Knie-Tab gibt es
+                die aber gar nicht. */}
             <p className="px-1 py-1 text-xs text-neutral-500">
-              Noch keine Schablonen platziert. „Pfanne hinzufügen" oder
-              „Schaft hinzufügen" im linken Menü.
+              {planningMode === 'hip'
+                ? 'Noch keine Schablonen platziert. „Pfanne hinzufügen" oder „Schaft hinzufügen" in der linken Leiste.'
+                : planningMode === 'shoulder'
+                  ? 'Noch keine Schablonen platziert. Humerus- oder Glenoid-Komponente in der linken Leiste auswählen.'
+                  : 'Noch keine Schablonen platziert. Femur- oder Tibiakomponente in der linken Leiste auswählen.'}
             </p>
           </Hint>
         )}
@@ -95,7 +181,7 @@ export function TemplatesPanel() {
                   subtitle={`⌀ ${diameter} mm`}
                   selected={cup.id === selectedId}
                   visible={cup.visible !== false}
-                  onSelect={select}
+                  onSelect={waehleHueft}
                   onToggleVisible={setVisible}
                   onRemove={remove}
                 />
@@ -115,9 +201,59 @@ export function TemplatesPanel() {
                   subtitle={`Gr. ${size?.size ?? '?'} · Kopf ${offsetTxt} mm`}
                   selected={stem.id === selectedId}
                   visible={stem.visible !== false}
-                  onSelect={select}
+                  onSelect={waehleHueft}
                   onToggleVisible={setVisible}
                   onRemove={remove}
+                />
+              )
+            })}
+            {kneeZeilen.map(({ haupt, sichtbar, ausgewaehlt }) => {
+              const familie = KNEE_IMPLANT_FAMILIES.find(
+                (f) => f.kind === haupt.kind,
+              )
+              // Badge nach Bauteil, wie „P"/„S" bei der Hüfte.
+              const kuerzel =
+                familie?.bone === 'Tibia'
+                  ? 'T'
+                  : familie?.bone === 'Femur'
+                    ? 'F'
+                    : 'K'
+              const inlay = haupt.insertThicknessMm
+              return (
+                <TemplateRow
+                  key={haupt.groupId}
+                  id={haupt.id}
+                  badge={`${kuerzel}${haupt.id.replace(/[^0-9]/g, '')}`}
+                  title={`${familie ? ohneTibiaVariantenZusatz(familie.label) : 'Schablone'} · ${haupt.side === 'R' ? 'rechts' : 'links'}`}
+                  subtitle={`Gr. ${sizeLabelFor(haupt.kind, haupt.sizeIndex) || '?'}${
+                    inlay != null ? ` · Inlay ${inlay} mm` : ''
+                  }`}
+                  selected={ausgewaehlt}
+                  visible={sichtbar}
+                  onSelect={waehleKnie}
+                  onToggleVisible={setKneeGroupVisible}
+                  onRemove={removeKnee}
+                />
+              )
+            })}
+            {shoulderZeilen.map(({ haupt, sichtbar, ausgewaehlt }) => {
+              const familie = SHOULDER_IMPLANT_FAMILIES.find(
+                (f) => f.kind === haupt.kind,
+              )
+              // Badge nach Knochen: H = Humerus, G = Glenoid (wie P/S/F/T).
+              const kuerzel = familie?.bone === 'Glenoid' ? 'G' : 'H'
+              return (
+                <TemplateRow
+                  key={haupt.groupId}
+                  id={haupt.id}
+                  badge={`${kuerzel}${haupt.id.replace(/[^0-9]/g, '')}`}
+                  title={`${familie?.label ?? 'Schablone'} · ${haupt.side === 'R' ? 'rechts' : 'links'}`}
+                  subtitle={`Gr. ${shoulderSizeLabel(haupt.kind, haupt.sizeIndex)}`}
+                  selected={ausgewaehlt}
+                  visible={sichtbar}
+                  onSelect={waehleSchulter}
+                  onToggleVisible={setShoulderGroupVisible}
+                  onRemove={removeShoulder}
                 />
               )
             })}

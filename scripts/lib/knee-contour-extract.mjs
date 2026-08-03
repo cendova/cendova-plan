@@ -47,6 +47,10 @@ const isLightBlue = (r, g, b) => b > 140 && b - r > 40 && g > r
 // Schwelle. Nur Barriere, zählt nicht als „echtes" Blau.
 const isDimBlue = (r, g, b) => b > 60 && b - r > 35 && g > r
 
+// Für den Silhouetten-Fallback (offene Umrisslinien) mit-exportiert —
+// die Helfer bleiben ansonsten intern.
+export { traceContour, simplifyClosed, morph, labelComponents }
+
 export async function extractContour(imagePath, ballMm = 25, opts = {}) {
   const img = await loadImage(imagePath)
   const W = img.width, H = img.height
@@ -82,11 +86,18 @@ export async function extractContour(imagePath, ballMm = 25, opts = {}) {
     const [r, g, b] = px(x, y)
     if (isBlue(r, g, b)) { blue[y * W + x] = 1; barrier[y * W + x] = 1 }
     else if (isBrightish(r, g, b) || isLightBlue(r, g, b) || isDimBlue(r, g, b)) barrier[y * W + x] = 1
+    // Zusätzliche Barrieren-Farbe des Aufrufers (z. B. roter Referenzkreis
+    // der Schulter-Screenshots): stopft wie die weißen Dash-Linien die
+    // Löcher, die er in die Kontur reißt — zählt aber nie als Implantat.
+    else if (opts.extraBarrier?.(r, g, b)) barrier[y * W + x] = 1
   }
-  // Mini-Closing (r=1) auf der Barriere: versiegelt echte 1–2-px-Brüche in
-  // den Zeichnungs-Linien. Bewusst klein, damit die 4–6-px-Lücken GEWOLLT
-  // gestrichelter Linien offen bleiben (deren Taschen sollen NICHT füllen).
-  const barrierClosed = morph(morph(barrier, W, H, 1, false), W, H, 1, true)
+  // Mini-Closing auf der Barriere: versiegelt echte Brüche in den
+  // Zeichnungs-Linien. Default r=1 (Knie-Verhalten) — bewusst klein, damit
+  // die 4–6-px-Lücken GEWOLLT gestrichelter Linien offen bleiben (deren
+  // Taschen sollen NICHT füllen). Serien mit offener Umrisslinie (einige
+  // Medacta-Ansichten) brauchen mehr; der Aufrufer steigert dann gezielt.
+  const closeRadius = opts.closeRadius ?? 1
+  const barrierClosed = morph(morph(barrier, W, H, closeRadius, false), W, H, closeRadius, true)
 
   // Kandidaten auf der Barrieren-Maske labeln (überbrückt die Lücken, die
   // weiße Linien in die blaue Kontur reißen). Kandidat = genug blaue Pixel.
@@ -99,7 +110,11 @@ export async function extractContour(imagePath, ballMm = 25, opts = {}) {
     }
     c.blueArea = nBlue
   }
-  const cands = barComps.filter((c) => c.blueArea > 400).sort((a, b) => b.blueArea - a.blueArea)
+  // Mindest-Pixelzahlen als opts (Defaults = bewährte Knie-Werte): sehr
+  // kleine/dünne Zeichnungen (z. B. flache Schulter-Kalotten in kleinen
+  // Screenshots) liegen legitim darunter.
+  const minBlueArea = opts.minBlueArea ?? 400
+  const cands = barComps.filter((c) => c.blueArea > minBlueArea).sort((a, b) => b.blueArea - a.blueArea)
 
   const contours = []
   const claimed = new Uint8Array(W * H) // verhindert Doppel-Extraktion, wenn zwei Kandidaten dieselbe Region füllen
@@ -117,7 +132,7 @@ export async function extractContour(imagePath, ballMm = 25, opts = {}) {
       for (let i = 0; i < s.mask.length; i++) if (s.mask[i] && blue[i]) nb++
       if (nb > bestBlue) { bestBlue = nb; bestSolid = s }
     }
-    if (!bestSolid || bestBlue < 300) continue
+    if (!bestSolid || bestBlue < Math.min(300, minBlueArea * 0.75)) continue
     let overlap = 0, area = 0
     for (let i = 0; i < bestSolid.mask.length; i++) if (bestSolid.mask[i]) { area++; if (claimed[i]) overlap++ }
     if (area === 0 || overlap / area > 0.5) continue
@@ -145,11 +160,28 @@ export async function extractContour(imagePath, ballMm = 25, opts = {}) {
       if (nx * (cxs - x) + ny * (cys - y) < 0) { nx = -nx; ny = -ny }
       return [x + nx * inset, y + ny * inset]
     })
+    // Optionale Chaikin-Glättung (Corner-Cutting) VOR dem Ausdünnen:
+    // Die Strichbreiten-Korrektur entlang lokaler Normalen erzeugt an
+    // stark gekrümmten Stellen kleine Zickzack-Ecken — ein bis zwei
+    // Chaikin-Pässe runden sie, ohne die Form zu verfälschen (jeder Pass
+    // halbiert den maximalen Eckwinkel). Default 0 = Knie-Verhalten.
+    let smoothed = corrFull
+    for (let pass = 0; pass < (opts.chaikinPasses ?? 0); pass++) {
+      const n2 = smoothed.length
+      const next = []
+      for (let i = 0; i < n2; i++) {
+        const [ax, ay] = smoothed[i]
+        const [bx2, by2] = smoothed[(i + 1) % n2]
+        next.push([0.75 * ax + 0.25 * bx2, 0.75 * ay + 0.25 * by2])
+        next.push([0.25 * ax + 0.75 * bx2, 0.25 * ay + 0.75 * by2])
+      }
+      smoothed = next
+    }
     // Douglas-Peucker: Ecken erhalten, Bögen ausdünnen. Toleranz wächst,
     // bis die Punktzahl im Budget liegt (Bundle-Größe + Render-Last).
-    let tol = 0.9, corr = corrFull
+    let tol = 0.9, corr = smoothed
     for (let it = 0; it < 6; it++) {
-      corr = simplifyClosed(corrFull, tol)
+      corr = simplifyClosed(smoothed, tol)
       if (corr.length <= 110) break
       tol *= 1.4
     }

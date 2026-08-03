@@ -49,6 +49,44 @@ export interface KneeTemplate {
   insertThicknessMm?: number
 }
 
+/** Eine Zeile der Schablonen-Liste = EIN Implantat, nicht eine Kontur. */
+export interface KneeSchablonenZeile {
+  /** Stellvertreter der Gruppe (AP, sonst der erste Eintrag). */
+  haupt: KneeTemplate
+  sichtbar: boolean
+  ausgewaehlt: boolean
+}
+
+/**
+ * Fasst die Konturen eines Implantats zu EINER Listenzeile zusammen.
+ *
+ * Ein Knie-Implantat liegt als AP- UND als seitliche Kontur im Store, beide
+ * mit derselben `groupId`; `remove` und `setGroupVisible` fassen sie
+ * ebenfalls gemeinsam. Zwei Listenzeilen für ein Implantat wären also
+ * gelogen — und ihr Löschen-Knopf hätte beide Zeilen auf einmal entfernt.
+ *
+ * Sichtbar heisst „mindestens eine Kontur sichtbar": nur so kippt der
+ * Augen-Schalter einer teilweise ausgeblendeten Gruppe auf „ausblenden"
+ * und räumt damit den Rest mit ab, statt in einen Zustand zu führen, aus
+ * dem ein Klick nicht mehr herausführt.
+ */
+export function gruppiereNachImplantat(
+  templates: readonly KneeTemplate[],
+  selectedId: string | null,
+): KneeSchablonenZeile[] {
+  const gruppen = new Map<string, KneeTemplate[]>()
+  for (const t of templates) {
+    const g = gruppen.get(t.groupId)
+    if (g) g.push(t)
+    else gruppen.set(t.groupId, [t])
+  }
+  return [...gruppen.values()].map((g) => ({
+    haupt: g.find((t) => t.view === 'AP') ?? g[0],
+    sichtbar: g.some((t) => t.visible !== false),
+    ausgewaehlt: selectedId != null && g.some((t) => t.id === selectedId),
+  }))
+}
+
 interface KneeTemplateState {
   templates: KneeTemplate[]
   /** Aktuell ausgewählte Schablone (für das Eigenschaften-Panel). */
@@ -65,6 +103,8 @@ interface KneeTemplateState {
   ) => string
   remove: (id: string) => void
   setVisible: (id: string, visible: boolean) => void
+  /** Wie `setVisible`, aber fuer die ganze Gruppe (AP + seitlich). */
+  setGroupVisible: (id: string, visible: boolean) => void
   setCenter: (id: string, center: Types.Point3) => void
   setRotationDeg: (id: string, deg: number) => void
   setSizeIndex: (id: string, sizeIndex: number) => void
@@ -133,6 +173,21 @@ export const useKneeTemplateStore = create<KneeTemplateState>((set) => ({
         t.id === id ? { ...t, visible } : t,
       ),
     })),
+
+  // Gruppenweit ein-/ausblenden — Pendant zu `remove`, das ebenfalls die
+  // ganze Gruppe fasst. Die Schablonen-Liste rechts zeigt EINE Zeile je
+  // Implantat; ihr Augen-Schalter darf nicht nur die AP-Kontur treffen und
+  // die seitliche sichtbar stehen lassen.
+  setGroupVisible: (id, visible) =>
+    set((s) => {
+      const target = s.templates.find((t) => t.id === id)
+      if (!target) return s
+      return {
+        templates: s.templates.map((t) =>
+          t.groupId === target.groupId ? { ...t, visible } : t,
+        ),
+      }
+    }),
 
   setCenter: (id, center) =>
     set((s) => ({

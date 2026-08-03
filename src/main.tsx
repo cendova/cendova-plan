@@ -22,7 +22,7 @@ initEmbeddedBridge()
 void templateRegistry.initTemplateRegistry()
 void import('./state/orgProfileStore').then((m) => m.initOrgProfileSicherung())
 
-// Demo-Komfort: ?beispiel=huefte|knie lädt ein mitgeliefertes Lehr-DICOM
+// Demo-Komfort: ?beispiel=huefte|knie|schulter lädt ein mitgeliefertes Lehr-DICOM
 // (Details/Quellen: src/lib/beispielbild.ts) — asynchron, ohne den
 // App-Start zu blockieren.
 void import('./lib/beispielbild').then((m) => m.beispielAusUrlLaden())

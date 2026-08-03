@@ -33,6 +33,12 @@ import {
   type KneeMeasurement,
 } from '../../state/kneeStore'
 import {
+  useShoulderStore,
+  type ShoulderMeasurement,
+  type ShoulderSide,
+} from '../../state/shoulderStore'
+import type { ShoulderProsthesis } from '../shoulder/recipes'
+import {
   useTemplateStore,
   type CupTemplate,
   type StemTemplate,
@@ -47,6 +53,10 @@ import {
   useKneeTemplateStore,
   type KneeTemplate,
 } from '../../state/kneeTemplateStore'
+import {
+  useShoulderTemplateStore,
+  type ShoulderTemplate,
+} from '../../state/shoulderTemplateStore'
 import { ensureIdsAbove } from '../ids'
 import {
   getCurrentDicomBytes,
@@ -82,7 +92,9 @@ export function setEmbeddedSaveHook(hook: (() => void) | null): void {
 // Version 4: + Knie-Schablonen (gingen vorher beim Speichern verloren)
 // Version 5: + seitliches Bild (Knie-Zwei-Bild) + rechte Kalibrierung
 // Version 6: + freie Längen-/Winkelmessungen (gingen vorher verloren)
-const PLAN_FORMAT_VERSION = 6
+// Version 7: + Schulter-Messungen (CSA) inkl. Seite und Prothesentyp
+// Version 8: + Schulter-Schablonen (gingen vorher beim Speichern verloren)
+const PLAN_FORMAT_VERSION = 8
 
 export interface PlanFile {
   /** Schema-Version. Beim Laden prüfen und ggf. migrieren. */
@@ -118,6 +130,13 @@ export interface PlanFile {
   rightCalibration?: Calibration | null
   hipMeasurements: HipMeasurement[]
   kneeMeasurements: KneeMeasurement[]
+  /** Schulter-Messungen (ab v7). Optional, damit ältere Pläne — die das
+   *  Feld nicht haben — unverändert laden. */
+  shoulderMeasurements?: ShoulderMeasurement[]
+  /** Seite und Prothesentyp des Schulter-Moduls (ab v7). Die Seite JEDER
+   *  Messung steckt zusätzlich in der Messung selbst (Schnappschuss);
+   *  dieses Feld stellt nur den zuletzt gewählten Zustand wieder her. */
+  shoulder?: { side: ShoulderSide; prosthesis: ShoulderProsthesis }
   /** Freie Längen-/Winkelmessungen (Cornerstone-Annotationen des
    *  Haupt-Panes, Welt-Koordinaten). Optional (Pläne < v6 ohne Feld). */
   genericMeasurements?: GenericMeasurementData[]
@@ -128,6 +147,8 @@ export interface PlanFile {
   }
   /** Platzierte Knie-Schablonen. Optional (Pläne < v4 ohne Feld). */
   kneeTemplates?: KneeTemplate[]
+  /** Platzierte Schulter-Schablonen. Optional (Pläne < v8 ohne Feld). */
+  shoulderTemplates?: ShoulderTemplate[]
   notes: TextNote[]
   /** Editierbare klinische BLD-Notiz aus dem Arztbrief. Optional (alte
    *  Pläne kennen das Feld nicht → Default beim Laden). */
@@ -212,6 +233,11 @@ export function buildPlan(): PlanFile {
     rightCalibration: embeddedImageRight ? panes.rightCalibration : undefined,
     hipMeasurements: useHipStore.getState().measurements,
     kneeMeasurements: useKneeStore.getState().measurements,
+    shoulderMeasurements: useShoulderStore.getState().measurements,
+    shoulder: {
+      side: useShoulderStore.getState().side,
+      prosthesis: useShoulderStore.getState().prosthesis,
+    },
     genericMeasurements: getGenericMeasurements(),
     templates: {
       cups: useTemplateStore.getState().templates,
@@ -219,6 +245,7 @@ export function buildPlan(): PlanFile {
       referenceLine: useTemplateStore.getState().referenceLine,
     },
     kneeTemplates: useKneeTemplateStore.getState().templates,
+    shoulderTemplates: useShoulderTemplateStore.getState().templates,
     notes: useNoteStore.getState().notes,
     clinicalBld: useViewerStore.getState().clinicalBld,
     osteophytes: useOsteophyteStore.getState().regions,
@@ -334,8 +361,12 @@ export async function applyPlan(plan: PlanFile): Promise<
   // Alte Daten zurücksetzen
   useHipStore.getState().removeAll()
   useKneeStore.getState().removeAll()
+  // Schulter mit aufräumen: Sonst blieben beim Laden eines Plans
+  // Schulter-Messungen des VORIGEN Falls stehen.
+  useShoulderStore.getState().removeAll()
   useTemplateStore.getState().reset()
   useKneeTemplateStore.getState().reset()
+  useShoulderTemplateStore.getState().reset()
   useNoteStore.getState().reset()
   useOsteophyteStore.getState().reset()
 
@@ -344,6 +375,14 @@ export async function applyPlan(plan: PlanFile): Promise<
   useViewerStore.getState().setCalibration(plan.calibration)
   useHipStore.setState({ measurements: plan.hipMeasurements ?? [] })
   useKneeStore.setState({ measurements: plan.kneeMeasurements ?? [] })
+  useShoulderStore.setState({
+    measurements: plan.shoulderMeasurements ?? [],
+    // Ältere Pläne (< v7) haben kein Schulter-Feld — dann die Vorbelegung
+    // stehen lassen statt sie auf einen Zufallswert zu setzen.
+    ...(plan.shoulder
+      ? { side: plan.shoulder.side, prosthesis: plan.shoulder.prosthesis }
+      : {}),
+  })
   // Stems aus alten Plänen können das femurAxis-Feld noch nicht haben —
   // explizit auf null setzen, damit die TypeScript-Required-Felder
   // erfüllt sind und stemAxisAlignment auf die 90°-Vertikale fällt.
@@ -364,6 +403,16 @@ export async function applyPlan(plan: PlanFile): Promise<
     visible: t.visible ?? true,
   }))
   useKneeTemplateStore.setState({ templates: kneeTemplates, selectedId: null })
+  // Schulter-Schablonen (v8+): fehlende Felder alter Einträge defaulten.
+  const shoulderTemplates = (plan.shoulderTemplates ?? []).map((t) => ({
+    ...t,
+    groupId: t.groupId ?? t.id,
+    visible: t.visible ?? true,
+  }))
+  useShoulderTemplateStore.setState({
+    templates: shoulderTemplates,
+    selectedId: null,
+  })
   useNoteStore.setState({ notes: plan.notes ?? [] })
   useOsteophyteStore.setState({
     regions: plan.osteophytes ?? [],
@@ -377,9 +426,11 @@ export async function applyPlan(plan: PlanFile): Promise<
   // angelegte Objekte mit geladenen (gleiche ID → Lösch-/Render-Fehler).
   ensureIdsAbove(plan.hipMeasurements)
   ensureIdsAbove(plan.kneeMeasurements)
+  ensureIdsAbove(plan.shoulderMeasurements)
   ensureIdsAbove(plan.templates?.cups)
   ensureIdsAbove(plan.templates?.stems)
   ensureIdsAbove(kneeTemplates)
+  ensureIdsAbove(shoulderTemplates)
   ensureIdsAbove(plan.notes)
   ensureIdsAbove(plan.osteophytes)
   // Klinische BLD-Notiz + Cave übernehmen; alte Pläne ohne Feld → Default.
@@ -438,11 +489,15 @@ export async function applyPlan(plan: PlanFile): Promise<
   const counts = [
     plan.hipMeasurements?.length > 0 && `${plan.hipMeasurements.length} Hüft-Messung(en)`,
     plan.kneeMeasurements?.length > 0 && `${plan.kneeMeasurements.length} Knie-Messung(en)`,
+    (plan.shoulderMeasurements?.length ?? 0) > 0 &&
+      `${plan.shoulderMeasurements!.length} Schulter-Messung(en)`,
     (plan.genericMeasurements?.length ?? 0) > 0 &&
       `${plan.genericMeasurements!.length} freie Messung(en)`,
     plan.templates?.cups?.length > 0 && `${plan.templates.cups.length} Pfanne(n)`,
     plan.templates?.stems?.length > 0 && `${plan.templates.stems.length} Schaft/Schäfte`,
     (plan.kneeTemplates?.length ?? 0) > 0 && `${plan.kneeTemplates!.length} Knie-Schablone(n)`,
+    (plan.shoulderTemplates?.length ?? 0) > 0 &&
+      `${plan.shoulderTemplates!.length} Schulter-Schablone(n)`,
     plan.notes?.length > 0 && `${plan.notes.length} Notiz(en)`,
     plan.osteophytes && plan.osteophytes.length > 0 &&
       `${plan.osteophytes.length} Osteophyten-Fläche(n)`,

@@ -249,6 +249,45 @@ export interface KneeImplantFamily {
 export const KNEE_IMPLANT_FAMILIES: KneeImplantFamily[] = []
 
 // ----------------------------------------------------------------------
+// Genesis-II-Tibia: female/male tapered sind in der App EIN Implantat —
+// beide Typen teilen sich dieselbe Maßtabelle (GENESIS_II_TIBIA_SHARED)
+// und dieselbe Geometrie-Behandlung. Die frühere Lösung (nur EIN Eintrag
+// im Dropdown) hing daran, dass das Paket für die Male-Variante keine
+// Kontur lieferte — sobald sie doch platzierbar wird (Paket mit beiden
+// Konturensätzen ODER alte Browser-Traces im localStorage), standen
+// wieder zwei Einträge samt female/male da. Deshalb jetzt zentral und
+// unabhängig von der Datenlage: ein Eintrag, Label ohne den Zusatz.
+// ----------------------------------------------------------------------
+const GENESIS_TIBIA_VARIANTEN: readonly KneeImplantKind[] = [
+  'genesis-tibia-female',
+  'genesis-tibia-male',
+]
+
+/** Entfernt den female/male-Zusatz aus einem Familien-Label
+ *  („Genesis II female tapered" → „Genesis II tapered"). */
+export function ohneTibiaVariantenZusatz(label: string): string {
+  return label
+    .replace(/[ (-]*\b(female|male)\b[) ]*/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+/** Reduziert das Familien-Angebot auf EINEN Genesis-II-Tibia-Eintrag.
+ *  Erwartet die bereits auf Platzierbarkeit gefilterte Liste: ist nur
+ *  eine Variante platzierbar, bleibt genau die erhalten. */
+export function entdoppleGenesisTibia(
+  familien: KneeImplantFamily[],
+): KneeImplantFamily[] {
+  const erste = familien.find((f) => GENESIS_TIBIA_VARIANTEN.includes(f.kind))
+  if (!erste) return familien
+  return familien.flatMap((f) => {
+    if (!GENESIS_TIBIA_VARIANTEN.includes(f.kind)) return [f]
+    if (f !== erste) return []
+    return [{ ...f, label: ohneTibiaVariantenZusatz(f.label) }]
+  })
+}
+
+// ----------------------------------------------------------------------
 // Tibia-Inlay (Poly-Insert): wählbare Dicken je Verbund.
 //   baseMm        = die in der Schablonen-Kontur abgebildete (dünnste) Höhe.
 //   thicknessesMm = klinisch verfügbare Höhen.

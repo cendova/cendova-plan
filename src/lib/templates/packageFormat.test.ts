@@ -196,3 +196,97 @@ describe('validateManifest — Bildpfade', () => {
     if (!r.ok) expect(r.error).toMatch(/Unsicherer Bildpfad/)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Schulter (Schritt 7): shoulderContours/shoulderCatalog im Manifest.
+// ---------------------------------------------------------------------------
+const schulterKontur = (wMm: number) => ({
+  wMm,
+  hMm: wMm * 1.2,
+  points: [
+    { x: -1, y: -1 },
+    { x: 1, y: -1 },
+    { x: 0, y: 1 },
+  ],
+  approx: true,
+})
+
+describe('validateManifest — Schulter', () => {
+  it('akzeptiert ein Manifest mit shoulderContours + shoulderCatalog', () => {
+    const r = validateManifest({
+      ...minimal,
+      shoulderContours: { 'affinis-glenoid|AP|0': schulterKontur(16) },
+      shoulderCatalog: {
+        families: [
+          {
+            kind: 'affinis-glenoid',
+            label: 'Affinis Glenoid',
+            manufacturer: 'Mathys',
+            prosthesis: 'anatomic',
+            bone: 'Glenoid',
+            sizeCount: 4,
+          },
+        ],
+        sizeLabels: { 'affinis-glenoid': ['1', '2', '3', '4'] },
+      },
+    })
+    expect(r.ok).toBe(true)
+  })
+  it('lehnt unvollständige Schulter-Konturen ab', () => {
+    const r = validateManifest({
+      ...minimal,
+      shoulderContours: {
+        'affinis-glenoid|AP|0': { wMm: 16, points: [] },
+      },
+    })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/shoulderContours/)
+  })
+})
+
+describe('mergeManifests — Schulter', () => {
+  it('vereinigt shoulderContours schlüsselweise wie kneeContours', () => {
+    const basis2: TemplatePackageManifest = {
+      format: 'cendova-templates',
+      formatVersion: 1,
+      name: 'Test-Paket',
+      shoulderContours: { 'affinis-glenoid|AP|0': schulterKontur(16) },
+    }
+    const addon2: TemplatePackageManifest = {
+      format: 'cendova-templates',
+      formatVersion: 1,
+      name: 'Schulter-Addon',
+      merge: true,
+      shoulderContours: {
+        'affinis-glenoid|AP|1': schulterKontur(17),
+        'affinis-glenoid|AP|0': schulterKontur(16.5), // Überschreiben erlaubt
+      },
+    }
+    const out = mergeManifests(basis2, addon2)
+    expect(Object.keys(out.shoulderContours ?? {}).sort()).toEqual([
+      'affinis-glenoid|AP|0',
+      'affinis-glenoid|AP|1',
+    ])
+    expect(out.shoulderContours?.['affinis-glenoid|AP|0']?.wMm).toBe(16.5)
+    expect(out.merge).toBeUndefined()
+  })
+})
+
+describe('referencedImagePaths — Schulter', () => {
+  it('sammelt shoulderImages-Pfade (ZIP-Konsistenzprüfung)', () => {
+    const paths = referencedImagePaths({
+      format: 'cendova-templates',
+      formatVersion: 1,
+      name: 'x',
+      shoulderImages: {
+        'affinis-glenoid|AP|0': {
+          path: 'images/schulter/affinis-glenoid_00.png',
+          widthPx: 100,
+          heightPx: 120,
+          mmPerPx: 0.3,
+        },
+      },
+    })
+    expect(paths).toContain('images/schulter/affinis-glenoid_00.png')
+  })
+})

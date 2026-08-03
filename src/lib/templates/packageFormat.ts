@@ -34,6 +34,9 @@ import type {
 import type { BackgroundData } from '../knee/templateBackgroundsData'
 import { MAX_PAKET_BILDER, MAX_PAKET_KATALOG } from '../importGrenzen'
 import type { KneeContour } from '../knee/kneeContours'
+import type { ShoulderContour } from '../shoulder/shoulderContours'
+import type { ShoulderImplantFamily } from '../shoulder/shoulderCatalog'
+import type { ShoulderImage } from '../shoulder/shoulderImages'
 
 /** Knie-Katalog (S&N + Medacta Sphere) — reine Maßtabellen. */
 export interface KneeCatalogData {
@@ -56,6 +59,12 @@ export interface KneeCatalogData {
     Record<KneeImplantKind, { baseMm: number; thicknessesMm: number[] }>
   >
   implantFamilies?: KneeImplantFamily[]
+}
+
+/** Schulter-Katalog — Familien + linearisierte Größen-Labels je kind. */
+export interface ShoulderCatalogData {
+  families?: ShoulderImplantFamily[]
+  sizeLabels?: Record<string, string[]>
 }
 
 export interface TemplatePackageManifest {
@@ -81,6 +90,14 @@ export interface TemplatePackageManifest {
    *  kneeContours schlüsselweise über die eingebauten Werte gelegt. */
   stemCcdByFolder?: Record<string, number>
   kneeCatalog?: KneeCatalogData
+  /** Schulter-Katalog (Familien + Größen-Labels). */
+  shoulderCatalog?: ShoulderCatalogData
+  /** Pro-Größe-Schulter-Konturen (Schlüssel `kind|AP|sizeIndex`) — werden
+   *  wie kneeContours über die eingebauten Tabellen gelegt (Merge). */
+  shoulderContours?: Record<string, ShoulderContour>
+  /** Schulter-Bild-Index (Schlüssel `kind|AP|sizeIndex`) — Bild-Overlays
+   *  haben im Renderer Vorrang vor den Vektor-Konturen (Knie-Muster). */
+  shoulderImages?: Record<string, ShoulderImage>
   /** Tracer-Hintergründe, Schlüssel `kind|view` bzw. `kind|view|band`. */
   backgrounds?: Record<string, BackgroundData>
 }
@@ -89,6 +106,7 @@ export interface TemplatePackageManifest {
 export function referencedImagePaths(m: TemplatePackageManifest): string[] {
   const paths: string[] = []
   for (const img of Object.values(m.kneeImages ?? {})) paths.push(img.path)
+  for (const img of Object.values(m.shoulderImages ?? {})) paths.push(img.path)
   for (const folder of Object.values(m.medactaImages ?? {}))
     for (const img of Object.values(folder)) paths.push(img.path)
   for (const bg of Object.values(m.backgrounds ?? {})) paths.push(bg.file)
@@ -158,6 +176,19 @@ export function validateManifest(
       }
     }
   }
+  if (m.shoulderContours !== undefined) {
+    for (const [key, c] of Object.entries(m.shoulderContours)) {
+      if (
+        !c ||
+        typeof c.wMm !== 'number' ||
+        typeof c.hMm !== 'number' ||
+        !Array.isArray(c.points) ||
+        c.points.length < 3
+      ) {
+        return { ok: false, error: `shoulderContours['${key}'] ist unvollständig` }
+      }
+    }
+  }
   if (m.stemCcdByFolder !== undefined) {
     for (const [folder, deg] of Object.entries(m.stemCcdByFolder)) {
       // Plausibles CCD-Fenster — schützt vor vertauschten Feldern/Tippfehlern.
@@ -187,7 +218,9 @@ export function validateManifest(
       (n, v) => n + (Array.isArray(v) ? v.length : 0),
       0,
     ) +
-    Object.keys(m.kneeContours ?? {}).length
+    Object.keys(m.kneeContours ?? {}).length +
+    (m.shoulderCatalog?.families?.length ?? 0) +
+    Object.keys(m.shoulderContours ?? {}).length
   if (katalogGroesse > MAX_PAKET_KATALOG) {
     return { ok: false, error: `Katalog im Manifest ist zu groß (> ${MAX_PAKET_KATALOG} Einträge)` }
   }
@@ -208,7 +241,13 @@ export function mergeManifests(
   if (base) {
     for (const [k, val] of Object.entries(addon)) {
       if (val === undefined) continue
-      if (k === 'kneeContours' || k === 'stemCcdByFolder' || k === 'merge' || k === 'name')
+      if (
+        k === 'kneeContours' ||
+        k === 'shoulderContours' ||
+        k === 'stemCcdByFolder' ||
+        k === 'merge' ||
+        k === 'name'
+      )
         continue
       ;(out as unknown as Record<string, unknown>)[k] = val
     }
@@ -216,6 +255,12 @@ export function mergeManifests(
   }
   if (addon.kneeContours) {
     out.kneeContours = { ...(base?.kneeContours ?? {}), ...addon.kneeContours }
+  }
+  if (addon.shoulderContours) {
+    out.shoulderContours = {
+      ...(base?.shoulderContours ?? {}),
+      ...addon.shoulderContours,
+    }
   }
   if (addon.stemCcdByFolder) {
     out.stemCcdByFolder = { ...(base?.stemCcdByFolder ?? {}), ...addon.stemCcdByFolder }

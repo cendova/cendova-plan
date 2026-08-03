@@ -3,7 +3,8 @@
 [![Verifikation](https://github.com/cendova/cendova-plan/actions/workflows/verify.yml/badge.svg)](https://github.com/cendova/cendova-plan/actions/workflows/verify.yml)
 [![Demo](https://github.com/cendova/cendova-plan/actions/workflows/pages.yml/badge.svg)](https://cendova.de/cendova-plan/)
 
-Browser-basiertes Planungstool für **Hüft- und Knie-Endoprothetik** (DICOM) —
+Browser-basiertes Planungstool für **Hüft-, Knie- und Schulter-Endoprothetik**
+(DICOM) —
 Teil der **Cendova**-Suite (geplant: CendovaView · CendovaCare).
 Website: <https://cendova.de/>
 
@@ -30,6 +31,11 @@ oder Herstellerdaten) — Quellen & Lizenzen: [docs/screenshots/QUELLEN.md](docs
 - **Knie:** 17-Punkt-Vollvermessung (mHKA, mLDFA, mMPTA, JLCA),
   CPAK-Klassifikation, Implantat-Positionierung mit Live-CPAK,
   Zwei-Bild-Ansicht AP + seitlich
+- **Schulter:** Winkel- und Längenmaße (CSA, Akromion-Index,
+  Glenoid-Inklination, Hals-Schaft-Winkel, AHD, Humeruskopf-Zentrum/-Radius,
+  DTI zur lokalen Knochenqualität) sowie DSA/LSA für die inverse Prothese;
+  Templating für anatomische und inverse Prothesen (Humerus- und
+  Glenoid-Komponente)
 - Plan speichern/laden (JSON mit eingebettetem Bild), PDF-Export
 
 ## Datenschutz
@@ -70,7 +76,7 @@ Klinik-Installation: [docs/klinik-installation.md](docs/klinik-installation.md)
 
 ## Stack
 
-React 19 · TypeScript · Vite 6 · Tailwind CSS 4 · Cornerstone3D (WebGL) —
+React 19 · TypeScript · Vite 8 · Tailwind CSS 4 · Cornerstone3D (WebGL) —
 reines Frontend, kein Backend.
 
 ## Mitwirken

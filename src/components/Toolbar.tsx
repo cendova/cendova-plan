@@ -5,7 +5,9 @@
  *   - Universelle Tools (Bild laden, Pan/Zoom/Window-Level, Kalibrierung,
  *     Length/Angle, Notiz) leben jetzt im Header (siehe `HeaderTools`).
  *   - Diese Sidebar zeigt NUR den Block für den aktiven Planungs-Modus
- *     (Hüfte ODER Knie). Modus-Wechsel via Tabs oben in der Sidebar.
+ *     (Hüfte, Knie ODER Schulter). Modus-Wechsel via Tabs oben in der
+ *     Sidebar. Jeder Modus hat einen eigenen Zweig — siehe Begründung
+ *     unten an der Panel-Auswahl.
  *
  * Fertige Messungen und Templates bleiben über den Modus-Wechsel hinweg
  * sichtbar (`MeasurementPanel` rechts zeigt beide Modi); nur die
@@ -16,8 +18,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useViewerStore } from '../state/viewerStore'
 import { useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
+import { useShoulderStore } from '../state/shoulderStore'
+import { recipesForProsthesis } from '../lib/shoulder/recipes'
 import { useUiStore } from '../state/uiStore'
 import { Hint } from './Hint'
+import { KeinPaketHinweis } from './KeinPaketHinweis'
 import {
   applyNavToolsPane2,
   startSlopeToolPane2,
@@ -46,15 +51,26 @@ import {
 import {
   addCupTemplate,
   addKneeTemplate,
+  addShoulderTemplate,
   addStemTemplate,
   autoPlaceKneeImplant,
   openCalibrationChoice,
 } from '../lib/cornerstone/viewer'
 import { kneeKindPlaceable } from '../lib/knee/kneePlaceable'
+import { shoulderKindPlaceable } from '../lib/shoulder/shoulderPlaceable'
+import {
+  shoulderFamiliesForProsthesis,
+  shoulderSizeLabel,
+  SHOULDER_SIZE_LABELS,
+  type ShoulderImplantFamily,
+  type ShoulderImplantKind,
+} from '../lib/shoulder/shoulderCatalog'
+import { useShoulderTemplateStore } from '../state/shoulderTemplateStore'
 import { useTemplateTracerStore } from '../state/templateTracerStore'
 import {
   pickHipTool,
   pickKneeTool,
+  pickShoulderTool,
   setPlanningMode,
   toggleOsteophyteTool,
 } from '../lib/toolControls'
@@ -64,6 +80,8 @@ import { useKneeTemplateStore } from '../state/kneeTemplateStore'
 import { useTemplatePackageStore } from '../state/templatePackageStore'
 import {
   KNEE_IMPLANT_FAMILIES,
+  entdoppleGenesisTibia,
+  ohneTibiaVariantenZusatz,
   isHiddenKneeSize,
   LEGION_PS_FEMUR,
   SPHERE_FEMUR,
@@ -80,12 +98,14 @@ import { renderKneeTemplate } from '../lib/knee/templates'
 export function Toolbar() {
   const planningMode = useViewerStore((s) => s.planningMode)
   const hasImage = useViewerStore((s) => s.hasImage)
-  const hipActiveKind = useHipStore((s) => s.activeKind)
-  const kneeActiveKind = useKneeStore((s) => s.activeKind)
-
   return (
-    <aside className="flex w-52 flex-col border-r border-neutral-700 bg-neutral-900">
-      {/* Tab-Leiste oben: schaltet zwischen Hüft- und Knie-Werkzeugen um. */}
+    // w-60 statt w-52: bei 208px brachen die längsten Sektions-Titel selbst
+    // ohne Modul-Präfix noch um (gemessenes Titel-Budget 133px neben einem
+    // Status-Punkt). 240px kosten ~3% Bildfläche und lassen JEDEN Titel
+    // samt Badge einzeilig — inklusive Reserve für kommende Rubriken.
+    <aside className="flex w-60 flex-col border-r border-neutral-700 bg-neutral-900">
+      {/* Tab-Leiste oben: schaltet zwischen Hüft-, Knie- und
+          Schulter-Werkzeugen um. */}
       <div className="flex border-b border-neutral-700 bg-neutral-950">
         <TabButton
           label="Hüfte"
@@ -97,20 +117,24 @@ export function Toolbar() {
           active={planningMode === 'knee'}
           onClick={() => setPlanningMode('knee')}
         />
+        <TabButton
+          label="Schulter"
+          active={planningMode === 'shoulder'}
+          onClick={() => setPlanningMode('shoulder')}
+        />
       </div>
 
       <div className="flex flex-col gap-1 overflow-y-auto p-2">
-        {planningMode === 'hip' ? (
-          <HipSection
-            hasImage={hasImage}
-            activeKind={hipActiveKind}
-          />
-        ) : (
-          <KneeSection
-            hasImage={hasImage}
-            activeKind={kneeActiveKind}
-          />
-        )}
+        {/* Bewusst je Modus EIN eigener Zweig statt eines Ternaries:
+            Ein `mode === 'hip' ? Hüfte : Knie` hätte den Schulter-Modus
+            still in die Knie-Sektion fallen lassen — der Compiler warnt
+            bei einem Ternary nicht. */}
+        {/* Jede Sektion liest ihren activeKind SELBST aus ihrem Store —
+            die Toolbar abonnierte sonst Hüft- UND Knie-Toolwechsel auch in
+            Modi, die keinen von beiden rendern. */}
+        {planningMode === 'hip' && <HipSection hasImage={hasImage} />}
+        {planningMode === 'knee' && <KneeSection hasImage={hasImage} />}
+        {planningMode === 'shoulder' && <ShoulderSection hasImage={hasImage} />}
       </div>
 
       <Hint>
@@ -133,16 +157,18 @@ export function Toolbar() {
 // (KNEE_IMPLANT_FAMILIES, im öffentlichen Repo leer). Poly-Inserts werden
 // nicht separat platziert (TIBIA_INSERT-Regler am Tibia-Template) und
 // erscheinen deshalb nicht in der Auswahl.
-function KneeFamilienDropdown({
+function KneeFamilienDropdown<K extends string>({
   label,
   familien,
   disabled,
   onWahl,
 }: {
   label: string
-  familien: KneeImplantFamily[]
+  // Struktureller Typ statt KneeImplantFamily: die Schulter-Sektion nutzt
+  // dasselbe Dropdown mit ihren Familien (nur kind+label werden gebraucht).
+  familien: ReadonlyArray<{ kind: K; label: string }>
   disabled: boolean
-  onWahl: (kind: KneeImplantKind) => void
+  onWahl: (kind: K) => void
 }) {
   return (
     <div className="px-1">
@@ -153,7 +179,7 @@ function KneeFamilienDropdown({
         value=""
         disabled={disabled}
         onChange={(e) => {
-          if (e.target.value) onWahl(e.target.value as KneeImplantKind)
+          if (e.target.value) onWahl(e.target.value as K)
         }}
         className="mb-2 w-full rounded border border-neutral-700 bg-neutral-950 px-1 py-1 text-xs disabled:opacity-50"
       >
@@ -168,24 +194,8 @@ function KneeFamilienDropdown({
   )
 }
 
-// Gemeinsamer Hinweis für Hüfte + Knie, wenn kein Paket geladen ist
-// (Formulierung wie im rechten TemplatesPanel).
-function KeinPaketHinweis() {
-  return (
-    <p className="mx-1 mb-1 rounded border border-amber-800/60 bg-amber-950/40 px-2 py-1.5 text-[11px] leading-snug text-amber-300">
-      Kein Schablonen-Paket geladen — Schablonen sind erst nach dem Import
-      verfügbar (Paket-Symbol oben in der Kopfzeile). Messen geht auch ohne.
-    </p>
-  )
-}
-
-function HipSection({
-  hasImage,
-  activeKind,
-}: {
-  hasImage: boolean
-  activeKind: string | null
-}) {
+function HipSection({ hasImage }: { hasImage: boolean }) {
+  const activeKind = useHipStore((s) => s.activeKind)
   const calibrated = useViewerStore((s) => s.calibration != null)
   // „Erledigt"-Kriterien fürs Auto-Einklappen (Debug-Runde 2): Sobald ein
   // Schritt bearbeitet ist, klappt seine Sektion standardmäßig zu — bleibt
@@ -197,9 +207,12 @@ function HipSection({
   const hasOsteotomy = useHipStore((s) =>
     s.measurements.some((m) => m.kind === 'osteotomy'),
   )
-  // ≥ 2 Komponenten platziert (Pfanne + Schaft) = Templating erledigt.
-  const templateCount = useTemplateStore(
-    (s) => s.templates.length + s.stems.length,
+  // Pfanne UND Schaft platziert = Schablonen-Schritt erledigt.
+  // Vorher stand hier `templates.length + stems.length >= 2` — zwei Pfannen
+  // ohne Schaft meldeten damit „fertig". Das Knie prüft seit jeher auf zwei
+  // verschiedene KOMPONENTEN (Gruppen); die Hüfte tut das jetzt auch.
+  const templatesFertig = useTemplateStore(
+    (s) => s.templates.length > 0 && s.stems.length > 0,
   )
   const hasOsteophytes = useOsteophyteStore((s) => s.regions.length > 0)
   // Ohne Katalog (kein Schablonen-Paket) sind die Hinzufügen-Buttons
@@ -209,10 +222,19 @@ function HipSection({
   const pkgInfo = useTemplatePackageStore((s) => s.info)
   const cupsVerfuegbar = cupCatalogEntries().length > 0
   const stemsVerfuegbar = stemCatalogEntries().length > 0
-  const keinHipKatalog = !pkgInfo && !cupsVerfuegbar && !stemsVerfuegbar
+  // Zwei getrennte Fragen: Der Status-PUNKT hängt an der Katalog-LEERE
+  // dieses Moduls (auch ein importiertes Nur-Knie-Paket lässt die
+  // Hüft-Buttons tot — dann wäre amber eine Aufforderung ins Leere).
+  // Der HINWEIS hängt am fehlenden Paket, denn sein Text sagt „Kein
+  // Schablonen-Paket geladen" — bei einem Teil-Paket wäre das falsch.
+  const hipKatalogLeer = !cupsVerfuegbar && !stemsVerfuegbar
+  const keinHipKatalog = !pkgInfo && hipKatalogLeer
   return (
     <>
-      {/* Workflow-Reihenfolge: 1. Kalibrierung → 2. Messung → 3. Templating */}
+      {/* Ablauf: 1 Kalibrierung → 2 Messungen → 3 Schablonen, danach die
+          beiden optionalen Zusatzschritte 4 Osteotomie und 5 Osteophyten.
+          Optional heisst hier: emerald wenn getan, sonst gar kein Punkt —
+          amber wäre die Behauptung, es stünde noch etwas aus. */}
       <CollapsibleSection
         id="hip-cal"
         title="1 · Kalibrierung"
@@ -226,7 +248,7 @@ function HipSection({
 
       <CollapsibleSection
         id="hip-measure"
-        title="2 · Hüft-Messungen"
+        title="2 · Messungen"
         defaultCollapsed={hasHipMeasurement}
         statusDot={hasHipMeasurement ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -245,9 +267,19 @@ function HipSection({
 
       <CollapsibleSection
         id="hip-templates"
-        title="3 · Hüft-Schablonen"
-        defaultCollapsed={templateCount >= 2}
-        statusDot={templateCount >= 2 ? 'bg-emerald-500' : 'bg-amber-500'}
+        title="3 · Schablonen"
+        defaultCollapsed={templatesFertig}
+        // Ohne Katalog KEIN amber: die Hinzufügen-Buttons sind dann
+        // deaktiviert — ein „hier steht etwas aus"-Punkt fordert zu einer
+        // Handlung auf, die gerade unmöglich ist. Den fehlenden Import
+        // meldet der KeinPaketHinweis in der Sektion selbst.
+        statusDot={
+          templatesFertig
+            ? 'bg-emerald-500'
+            : hipKatalogLeer
+              ? undefined
+              : 'bg-amber-500'
+        }
       >
         {keinHipKatalog && <KeinPaketHinweis />}
         <ToolButton
@@ -269,7 +301,7 @@ function HipSection({
       <Divider />
 
       <CollapsibleSection
-        id="hip-osteo"
+        id="hip-osteotomy"
         title="4 · Osteotomie"
         defaultCollapsed={hasOsteotomy}
         statusDot={hasOsteotomy ? 'bg-emerald-500' : undefined}
@@ -320,7 +352,7 @@ function OsteophyteToolButton({ hasImage }: { hasImage: boolean }) {
           !hasImage ? 'cursor-not-allowed opacity-50' : '',
         ].join(' ')}
       >
-        {placing ? 'Markieren aktiv – fertig' : 'Osteophyten markieren'}
+        {placing ? 'Markieren aktiv — fertig' : 'Osteophyten markieren'}
       </button>
       <Hint>
         <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
@@ -426,21 +458,22 @@ function KneeCalibrationButtons({ hasImage }: { hasImage: boolean }) {
     !c ? 'none' : c.referenceMm > 0 ? 'manual' : 'dicom'
 
   const calText = (c: typeof leftCal) => {
-    if (!c) return 'nicht kalibriert'
+    if (!c) return 'Noch nicht kalibriert'
     const mag =
       c.magnificationFactor && c.magnificationFactor !== 1.0
         ? ` · Mag ${c.magnificationFactor.toFixed(2)}×`
         : ''
     return c.referenceMm > 0
       ? `Referenz ${c.referenceMm} mm${mag}`
-      : `aus DICOM (automatisch)${mag}`
+      : `aus DICOM-Pixelabstand${mag}`
   }
 
   // Einzelbild: ein Button fürs Haupt-Pane (identisch zur Hüfte).
   if (!splitView) {
     return (
       <PaneCalibrationButton
-        label="Kalibrieren"
+        label="Kalibrieren …"
+        labelDone="Kalibriert ✓"
         pane="left"
         mode={calMode(leftCal)}
         statusText={calText(leftCal)}
@@ -455,7 +488,8 @@ function KneeCalibrationButtons({ hasImage }: { hasImage: boolean }) {
   return (
     <div className="flex flex-col gap-1">
       <PaneCalibrationButton
-        label="AP (links) kalibrieren"
+        label="Kalibrieren: AP (links) …"
+        labelDone="Kalibriert: AP (links) ✓"
         pane="left"
         mode={calMode(leftCal)}
         statusText={calText(leftCal)}
@@ -463,10 +497,11 @@ function KneeCalibrationButtons({ hasImage }: { hasImage: boolean }) {
         highlight={activePane === 'left'}
       />
       <PaneCalibrationButton
-        label="Seitlich (rechts) kalibrieren"
+        label="Kalibrieren: seitlich (rechts) …"
+        labelDone="Kalibriert: seitlich (rechts) ✓"
         pane="right"
         mode={rightHasImage ? calMode(rightCal) : 'none'}
-        statusText={rightHasImage ? calText(rightCal) : 'kein Bild geladen'}
+        statusText={rightHasImage ? calText(rightCal) : 'Kein Bild geladen'}
         disabled={!rightHasImage}
         highlight={activePane === 'right'}
       />
@@ -478,6 +513,7 @@ type CalMode = 'manual' | 'dicom' | 'none'
 
 function PaneCalibrationButton({
   label,
+  labelDone,
   pane,
   mode,
   statusText,
@@ -485,6 +521,11 @@ function PaneCalibrationButton({
   highlight,
 }: {
   label: string
+  /** Beschriftung nach MANUELLER Kalibrierung — wie der Hüft-Button, der
+   *  von „Kalibrieren …" auf „Kalibriert ✓" kippt. Vorher blieb hier die
+   *  Aufforderung stehen und bekam nur einen Haken angehängt
+   *  („Kalibrieren … ✓"). */
+  labelDone: string
   pane: 'left' | 'right'
   mode: CalMode
   statusText: string
@@ -512,21 +553,15 @@ function PaneCalibrationButton({
     >
       <div className="flex items-center gap-1.5 font-medium">
         <span className={['inline-block h-2 w-2 rounded-full', dotColor].join(' ')} />
-        {label}
-        {mode === 'manual' ? ' ✓' : ''}
+        {mode === 'manual' ? labelDone : label}
       </div>
       <div className="mt-0.5 text-[10px] text-neutral-400">{statusText}</div>
     </button>
   )
 }
 
-function KneeSection({
-  hasImage,
-  activeKind,
-}: {
-  hasImage: boolean
-  activeKind: string | null
-}) {
+function KneeSection({ hasImage }: { hasImage: boolean }) {
+  const activeKind = useKneeStore((s) => s.activeKind)
   // Workflow oben als „Hero", Einzel-Messungen darunter als Spot-Tools.
   const workflow = AVAILABLE_KNEE_RECIPES.find((r) => r.kind === 'workflow')
   // Tibialer Slope wird ausschließlich auf dem seitlichen (rechten) Bild
@@ -549,15 +584,20 @@ function KneeSection({
     (rightCal.referenceMm > 0 || (rightCal.magnificationFactor ?? 1) !== 1.0)
   const allCalibrated =
     leftCalibrated && (!splitView || !rightHasImage || rightExplicitCal)
-  // Einzel-Messungen sind nach einer Vollvermessung obsolet (G2) — dann
-  // klappt die Sektion standardmäßig zu, bleibt aber per Klick erreichbar.
+  // Erledigt-Kriterium der Vollvermessung (Sektion 3).
   const hasWorkflow = useKneeStore((s) =>
     s.measurements.some((m) => m.kind === 'workflow'),
   )
-  // Auto-Einklappen (Debug-Runde 2): irgendeine Knie-Messung → Einzel-
-  // Messungen zu; ≥ 2 Implantat-Komponenten (Femur + Tibia; ein Klick
-  // platziert AP+seitlich als EINE Gruppe) → Schablonen zu.
-  const hasAnyKneeMeasurement = useKneeStore((s) => s.measurements.length > 0)
+  // EIGENER Fortschritt der Mess-Sektion (4) — die Vollvermessung zählt
+  // bewusst NICHT mit. Vorher lief beides über `measurements.length > 0`,
+  // wodurch der Status-Punkt fremden Fortschritt gemeldet hätte. Die Hüfte
+  // filtert an derselben Stelle die Osteotomie heraus; das Knie tut es
+  // jetzt genauso.
+  const hatEinzelmessung = useKneeStore((s) =>
+    s.measurements.some((m) => m.kind !== 'workflow'),
+  )
+  // ≥ 2 Implantat-Komponenten (Femur + Tibia; ein Klick platziert
+  // AP + seitlich als EINE Gruppe) → Schablonen erledigt.
   const kneeComponentCount = useKneeTemplateStore(
     (s) => new Set(s.templates.map((t) => t.groupId)).size,
   )
@@ -579,19 +619,33 @@ function KneeSection({
   const femurFamilien = KNEE_IMPLANT_FAMILIES.filter(
     (f) => f.bone === 'Femur' && zeigbar(f),
   )
-  const tibiaFamilien = KNEE_IMPLANT_FAMILIES.filter(
-    (f) => f.bone === 'Tibia' && zeigbar(f),
+  // EIN Genesis-II-Eintrag statt female/male tapered (s. Katalog-Helfer):
+  // die Entdopplung laeuft NACH dem Platzierbarkeits-Filter, damit die
+  // uebrig bleibende Variante sicher platzierbar ist.
+  const tibiaFamilien = entdoppleGenesisTibia(
+    KNEE_IMPLANT_FAMILIES.filter((f) => f.bone === 'Tibia' && zeigbar(f)),
   )
-  const keinKneeKatalog =
-    !pkgInfo && femurFamilien.length === 0 && tibiaFamilien.length === 0
+  // Punkt an der Katalog-Leere, Hinweis am fehlenden Paket — gleiche
+  // Trennung wie bei der Hüfte (s. dort).
+  const kneeKatalogLeer =
+    femurFamilien.length === 0 && tibiaFamilien.length === 0
+  const keinKneeKatalog = !pkgInfo && kneeKatalogLeer
 
   return (
     <>
-      {/* „Ansicht" gilt als erledigt, sobald beide Bilder da sind. */}
+      {/* Ablauf: 1 Ansicht → 2 Kalibrierung → 3 Vollvermessung →
+          4 Messungen → 5 Schablonen. „Ansicht" steht VOR der Kalibrierung,
+          weil man ein zweites Bild erst laden muss, um es kalibrieren zu
+          können — sie ist damit ein echter Schritt und trägt jetzt auch
+          eine Nummer. Als EINSTELLUNG bekommt sie ein Badge statt eines
+          Punkts (Doktrin s. CollapsibleSection): eingeklappt wäre sonst
+          unsichtbar, ob eine oder zwei Aufnahmen aktiv sind — und daran
+          hängt, wo der tibiale Slope gemessen wird. */}
       <CollapsibleSection
         id="knee-view"
-        title="Ansicht"
+        title="1 · Ansicht"
         defaultCollapsed={splitView && rightHasImage}
+        badge={splitView ? 'zwei Bilder' : 'ein Bild'}
       >
         <DualViewControls />
       </CollapsibleSection>
@@ -600,7 +654,7 @@ function KneeSection({
 
       <CollapsibleSection
         id="knee-cal"
-        title="1 · Kalibrierung"
+        title="2 · Kalibrierung"
         defaultCollapsed={allCalibrated}
         statusDot={allCalibrated ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -610,8 +664,8 @@ function KneeSection({
       <Divider />
 
       <CollapsibleSection
-        id="knee-workflow"
-        title="2 · Knie-Planung"
+        id="knee-fullmeasure"
+        title="3 · Vollvermessung"
         defaultCollapsed={hasWorkflow}
         statusDot={hasWorkflow ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -637,10 +691,16 @@ function KneeSection({
 
       <Divider />
 
+      {/* OPTIONALER Schritt: nach der Vollvermessung sind die Einzelmasse
+          in der Regel obsolet — deshalb emerald-oder-nichts statt amber,
+          wie bei Osteotomie und Osteophyten der Hüfte. Der Punkt meldet
+          den EIGENEN Fortschritt; dass die Sektion auch nach einer
+          Vollvermessung zuklappt, ist Absicht und steht getrennt davon. */}
       <CollapsibleSection
-        id="knee-singles"
-        title="3 · Einzel-Messungen"
-        defaultCollapsed={hasAnyKneeMeasurement}
+        id="knee-measure"
+        title="4 · Messungen"
+        defaultCollapsed={hasWorkflow || hatEinzelmessung}
+        statusDot={hatEinzelmessung ? 'bg-emerald-500' : undefined}
       >
         {singles.map((recipe) => (
           <ToolButton
@@ -658,16 +718,23 @@ function KneeSection({
 
       <CollapsibleSection
         id="knee-templates"
-        title="4 · Schablonen"
+        title="5 · Schablonen"
         defaultCollapsed={kneeComponentCount >= 2}
-        statusDot={kneeComponentCount >= 2 ? 'bg-emerald-500' : 'bg-amber-500'}
+        // Ohne Katalog kein amber — gleiche Begründung wie bei der Hüfte.
+        statusDot={
+          kneeComponentCount >= 2
+            ? 'bg-emerald-500'
+            : kneeKatalogLeer
+              ? undefined
+              : 'bg-amber-500'
+        }
       >
       {/* Seiten-Abfrage wie bei der Hüfte (UX-Befund P1-1: vorher war die
           Seite hart auf 'R' verdrahtet). */}
       {keinKneeKatalog && <KeinPaketHinweis />}
       {femurFamilien.length > 0 && (
         <KneeFamilienDropdown
-          label="Femur"
+          label="Femurkomponente"
           familien={femurFamilien}
           disabled={!hasImage}
           onWahl={setPendingSideKind}
@@ -675,7 +742,7 @@ function KneeSection({
       )}
       {tibiaFamilien.length > 0 && (
         <KneeFamilienDropdown
-          label="Tibia"
+          label="Tibiakomponente"
           familien={tibiaFamilien}
           disabled={!hasImage}
           onWahl={setPendingSideKind}
@@ -687,8 +754,12 @@ function KneeSection({
           {/* Gewählte Familie anzeigen — bei den Dropdowns ist die Wahl
               sonst nicht mehr sichtbar, sobald das Select zurückspringt. */}
           <div className="mb-1 truncate text-sky-200">
-            {KNEE_IMPLANT_FAMILIES.find((f) => f.kind === pendingSideKind)
-              ?.label ?? 'Schablone'}{' '}
+            {(() => {
+              const l = KNEE_IMPLANT_FAMILIES.find(
+                (f) => f.kind === pendingSideKind,
+              )?.label
+              return l ? ohneTibiaVariantenZusatz(l) : 'Schablone'
+            })()}{' '}
             — Seite?
           </div>
           <div className="flex items-center gap-1.5">
@@ -721,10 +792,12 @@ function KneeSection({
         </div>
       )}
       </CollapsibleSection>
-
-      <Divider />
-
-      {/* Bewusst außerhalb der Sektion (s. SelectedTemplatePanel, Hüfte). */}
+      {/* Bewusst außerhalb der Sektion (s. SelectedTemplatePanel, Hüfte) —
+          aber DIREKT dahinter, ohne Trenner: das Panel gehört noch zur
+          Schablonen-Sektion. Vorher stand hier ein <Divider /> davor; ohne
+          ausgewählte Schablone liefert das Panel null, und die Leiste endete
+          mit einer Trennlinie, unter der nichts mehr kam. Regel: Trenner nur
+          ZWISCHEN Sektionen, nie am Ende. */}
       <SelectedKneeTemplatePanel />
     </>
   )
@@ -884,7 +957,7 @@ function SelectedKneeTemplatePanel() {
         Ausgewählte Schablone
       </div>
       <div className="mb-2 text-[11px] text-neutral-300">
-        {family?.label ?? selected.kind}
+        {family ? ohneTibiaVariantenZusatz(family.label) : selected.kind}
       </div>
 
       <KneeSelect
@@ -926,8 +999,8 @@ function SelectedKneeTemplatePanel() {
         value={selected.view}
         onChange={(v) => store.setView(selected.id, v as 'AP' | 'lateral')}
         options={[
-          { value: 'AP', label: 'AP (frontal)' },
-          { value: 'lateral', label: 'lateral (seitlich)' },
+          { value: 'AP', label: 'AP' },
+          { value: 'lateral', label: 'seitlich' },
         ]}
       />
 
@@ -980,7 +1053,7 @@ function SelectedKneeTemplatePanel() {
             </>
           ) : (
             <p className="text-[10px] text-neutral-500">
-              Für „Mechanisch ausrichten" zuerst die Knie-Vollvermessung setzen.
+              Für „Mechanisch ausrichten" zuerst die Vollvermessung setzen.
             </p>
           )}
         </div>
@@ -1063,6 +1136,286 @@ function KneeSelect<T extends string | number>({
 // Gemeinsame UI-Bausteine
 // ----------------------------------------------------------------------
 
+/**
+ * Schulter-Sektion. Aufbau und Optik bewusst identisch zu `HipSection`
+ * und `KneeSection`: durchnummerierte, einklappbare Sektionen mit
+ * `Divider` dazwischen, Status-Punkt amber/grün und Auto-Einklappen,
+ * sobald ein Schritt erledigt ist.
+ *
+ * Reihenfolge 1 Kalibrierung → 2 Seite → 3 Prothese → 4 Messungen →
+ * 5 Schablonen. Die beiden Einstellungen stehen VOR den Messungen, weil
+ * sie festlegen, wie diese ausgewertet werden:
+ *  - Seite: „lateral" ist auf der a.p.-Aufnahme seitenabhängig (CSA,
+ *    Akromion-Index). Die Seite wird beim Anlegen jeder Messung
+ *    eingefroren, ein späteres Umschalten deutet Bestehendes NICHT um.
+ *  - Prothesentyp: filtert nur das Rezept-Angebot (die Bilanz-Winkel
+ *    DSA/LSA gelten nur invers) — nie die Rechenlogik.
+ *
+ * Beide tragen deshalb ein Header-Badge mit dem aktuellen Wert: eingeklappt
+ * bliebe eine Wahl sonst unsichtbar, die das Ergebnis mitbestimmt. Ein
+ * amber/grüner Punkt wäre hier falsch — es gibt nichts zu erledigen, der
+ * Wert ist immer gesetzt.
+ */
+function ShoulderSection({ hasImage }: { hasImage: boolean }) {
+  const calibrated = useViewerStore((s) => s.calibration != null)
+  const side = useShoulderStore((s) => s.side)
+  const setSide = useShoulderStore((s) => s.setSide)
+  const prosthesis = useShoulderStore((s) => s.prosthesis)
+  const setProsthesis = useShoulderStore((s) => s.setProsthesis)
+  const activeKind = useShoulderStore((s) => s.activeKind)
+  // „Erledigt"-Kriterium wie bei Hüfte/Knie: sobald gemessen wurde, klappen
+  // die vorgelagerten Einstellungen und die Werkzeugliste standardmäßig zu.
+  const hatMessung = useShoulderStore((s) => s.measurements.length > 0)
+  // Angebot haengt am Prothesentyp: die Bilanz-Winkel (DSA/LSA) sind nur
+  // bei der inversen Prothese sinnvoll. Die Rechnung kennt den Typ nicht.
+  const rezepte = recipesForProsthesis(prosthesis)
+
+  return (
+    <>
+      <CollapsibleSection
+        id="shoulder-cal"
+        title="1 · Kalibrierung"
+        defaultCollapsed={calibrated}
+        statusDot={calibrated ? 'bg-emerald-500' : 'bg-amber-500'}
+      >
+        <CalibrationButton hasImage={hasImage} />
+      </CollapsibleSection>
+
+      <Divider />
+
+      <CollapsibleSection
+        id="shoulder-side"
+        title="2 · Seite"
+        defaultCollapsed={hatMessung}
+        badge={side === 'R' ? 'rechts' : 'links'}
+      >
+        <div className="flex gap-1 px-1">
+          <SegmentButton
+            label="Rechts"
+            active={side === 'R'}
+            onClick={() => setSide('R')}
+          />
+          <SegmentButton
+            label="Links"
+            active={side === 'L'}
+            onClick={() => setSide('L')}
+          />
+        </div>
+      </CollapsibleSection>
+
+      <Divider />
+
+      <CollapsibleSection
+        id="shoulder-prosthesis"
+        title="3 · Prothese"
+        defaultCollapsed={hatMessung}
+        badge={prosthesis === 'reverse' ? 'invers' : 'anatomisch'}
+      >
+        <div className="flex gap-1 px-1">
+          <SegmentButton
+            label="Anatomisch"
+            active={prosthesis === 'anatomic'}
+            onClick={() => setProsthesis('anatomic')}
+          />
+          <SegmentButton
+            label="Invers"
+            active={prosthesis === 'reverse'}
+            onClick={() => setProsthesis('reverse')}
+          />
+        </div>
+      </CollapsibleSection>
+
+      <Divider />
+
+      <CollapsibleSection
+        id="shoulder-measure"
+        title="4 · Messungen"
+        defaultCollapsed={hatMessung}
+        statusDot={hatMessung ? 'bg-emerald-500' : 'bg-amber-500'}
+      >
+        {rezepte.map((r) => (
+          <ToolButton
+            key={r.kind}
+            label={r.label}
+            active={activeKind === r.kind}
+            disabled={!hasImage}
+            onClick={() => pickShoulderTool(r.kind)}
+          />
+        ))}
+        <Hint>
+          <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
+            Gilt für die echte a.p.-Aufnahme; Glenoid-Version und Walch-Typ
+            bleiben dem CT vorbehalten.
+          </p>
+        </Hint>
+      </CollapsibleSection>
+
+      <Divider />
+
+      <ShoulderTemplatesSection hasImage={hasImage} />
+    </>
+  )
+}
+
+/**
+ * Sektion „5 · Schablonen" der Schulter — amber/emerald-Muster wie Hüfte/
+ * Knie: amber nur, wenn der Schulter-Katalog NICHT leer ist (sonst gäbe es
+ * nichts zu tun); emerald sobald eine Schablone platziert wurde.
+ *
+ * Das Angebot ist doppelt gefiltert: `prosthesis` (anatomisch/revers, wie
+ * recipesForProsthesis — filtert nur das ANGEBOT, nie Rechnung) und
+ * `shoulderKindPlaceable` (nur Familien mit zeichenbarer Kontur).
+ * Die Seite kommt aus dem Schulter-Modul (Sektion „2 · Seite") — anders
+ * als beim Knie gibt es hier bereits eine explizite Seiten-Wahl, eine
+ * zweite Abfrage pro Schablone wäre redundant. Pro Schablone bleibt die
+ * Seite im Auswahl-Panel änderbar.
+ */
+function ShoulderTemplatesSection({ hasImage }: { hasImage: boolean }) {
+  const prosthesis = useShoulderStore((s) => s.prosthesis)
+  const side = useShoulderStore((s) => s.side)
+  const placedCount = useShoulderTemplateStore((s) => s.templates.length)
+  // pkgInfo triggert Re-Render nach Paket-Import (die Familien-Arrays
+  // werden in-place ersetzt und wären sonst referenz-gleich).
+  const pkgInfo = useTemplatePackageStore((s) => s.info)
+  void pkgInfo
+  const placeable = (f: ShoulderImplantFamily) => shoulderKindPlaceable(f.kind)
+  const familien = shoulderFamiliesForProsthesis(prosthesis).filter(placeable)
+  const humerusFamilien = familien.filter((f) => f.bone === 'Humerus')
+  const glenoidFamilien = familien.filter((f) => f.bone === 'Glenoid')
+  const katalogLeer = familien.length === 0
+  const keinKatalog = !pkgInfo && katalogLeer
+
+  function platziere(kind: ShoulderImplantKind) {
+    const id = addShoulderTemplate(kind, side)
+    if (id) {
+      useViewerStore
+        .getState()
+        .setStatus(
+          'Schablone platziert — per Drag verschieben, Griff/±-Tasten drehen.',
+        )
+    }
+  }
+
+  return (
+    <>
+      <CollapsibleSection
+        id="shoulder-templates"
+        title="5 · Schablonen"
+        defaultCollapsed={placedCount >= 1}
+        // Ohne Katalog kein amber — gleiche Begründung wie Hüfte/Knie.
+        statusDot={
+          placedCount >= 1
+            ? 'bg-emerald-500'
+            : katalogLeer
+              ? undefined
+              : 'bg-amber-500'
+        }
+      >
+        {keinKatalog && <KeinPaketHinweis />}
+        {humerusFamilien.length > 0 && (
+          <KneeFamilienDropdown
+            label="Humerus-Komponente"
+            familien={humerusFamilien}
+            disabled={!hasImage}
+            onWahl={platziere}
+          />
+        )}
+        {glenoidFamilien.length > 0 && (
+          <KneeFamilienDropdown
+            label="Glenoid-Komponente"
+            familien={glenoidFamilien}
+            disabled={!hasImage}
+            onWahl={platziere}
+          />
+        )}
+      </CollapsibleSection>
+      {/* Direkt hinter der Sektion, ohne Trenner (Regel: Trenner nur
+          ZWISCHEN Sektionen — s. SelectedKneeTemplatePanel). */}
+      <SelectedShoulderTemplatePanel />
+    </>
+  )
+}
+
+/** Eigenschaften-Panel der ausgewählten Schulter-Schablone (Knie-Muster,
+ *  ohne Ebene/Inlay — die Schulter kennt nur die a.p.-Sicht). */
+function SelectedShoulderTemplatePanel() {
+  const selected = useShoulderTemplateStore((s) =>
+    s.selectedId ? s.templates.find((t) => t.id === s.selectedId) ?? null : null,
+  )
+  if (!selected) return null
+  const store = useShoulderTemplateStore.getState()
+  const family = shoulderFamiliesForProsthesis('anatomic')
+    .concat(shoulderFamiliesForProsthesis('reverse'))
+    .find((f) => f.kind === selected.kind)
+  const labels = SHOULDER_SIZE_LABELS[selected.kind] ?? []
+
+  return (
+    <div className="mx-2 mt-2 rounded border border-pink-900/60 bg-pink-950/30 p-2 text-xs">
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-pink-300">
+        Ausgewählte Schablone
+      </div>
+      <div className="mb-2 text-[11px] text-neutral-300">
+        {family?.label ?? selected.kind}
+      </div>
+
+      <KneeSelect
+        label="Größe"
+        value={selected.sizeIndex}
+        onChange={(v) => store.setSizeIndex(selected.id, v)}
+        options={labels.map((l, i) => ({ value: i, label: l }))}
+      />
+
+      <KneeSelect
+        label="Seite"
+        value={selected.side}
+        onChange={(v) => store.setSide(selected.id, v as 'R' | 'L')}
+        options={[
+          { value: 'R', label: 'rechts' },
+          { value: 'L', label: 'links' },
+        ]}
+      />
+
+      <div className="text-[10px] text-neutral-500">
+        Größe: {shoulderSizeLabel(selected.kind, selected.sizeIndex)} · Drag =
+        verschieben · Pfeile/± = fein · Entf = löschen
+      </div>
+
+      <button
+        onClick={() => store.remove(selected.id)}
+        className="mt-2 w-full rounded border border-red-900/60 bg-red-950/40 px-2 py-1 text-[11px] text-red-300 transition hover:bg-red-900/40"
+      >
+        Schablone entfernen
+      </button>
+    </div>
+  )
+}
+
+/** Kleiner Zwei-/Mehrfach-Umschalter (Seite, Prothesentyp). */
+function SegmentButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={[
+        'flex-1 rounded border px-2 py-1.5 text-xs font-medium transition',
+        active
+          ? 'border-sky-600 bg-sky-950/60 text-sky-200'
+          : 'border-neutral-700 bg-neutral-800 text-neutral-400 hover:text-neutral-200',
+      ].join(' ')}
+    >
+      {label}
+    </button>
+  )
+}
+
 function TabButton({
   label,
   active,
@@ -1095,11 +1448,39 @@ function TabButton({
  * `defaultCollapsed` — darf dynamisch sein (z. B. Einzel-Messungen
  * zu, sobald eine Vollvermessung existiert).
  */
+/**
+ * DOKTRIN DER SEKTIONEN (gilt für Hüfte, Knie UND Schulter).
+ *
+ * Sie stand bisher nirgends und wurde deshalb in jedem Modul etwas anders
+ * ausgelegt. Vier Typen, mehr gibt es nicht:
+ *
+ *  SCHRITT (Pflicht)   `statusDot` amber → emerald. Der Ausdruck, der auf
+ *                      emerald schaltet, IST das `defaultCollapsed`-
+ *                      Kriterium: grün und zugeklappt bedeuten dasselbe.
+ *  SCHRITT (optional)  `statusDot` emerald ODER `undefined`. Kein amber —
+ *                      es wäre die Behauptung „hier ist noch etwas offen",
+ *                      obwohl der Schritt übersprungen werden darf.
+ *  EINSTELLUNG         `badge` statt Punkt. Ein Wert, der immer gesetzt
+ *                      ist, kann nicht „erledigt" sein; eingeklappt bliebe
+ *                      er ohne Badge unsichtbar, obwohl er die Auswertung
+ *                      mitbestimmt.
+ *  PLATZHALTER         weder noch, `defaultCollapsed` konstant. Sobald es
+ *                      Inhalt gibt, wird daraus ein SCHRITT.
+ *
+ * Die NUMMER im Titel sagt nur, an welcher Stelle des Ablaufs die Sektion
+ * steht — sie ist unabhängig vom Typ. Jede Sektion trägt eine, damit die
+ * Leiste in allen drei Modulen als durchgehende Abfolge lesbar ist.
+ *
+ * Der Titel trägt KEIN Modul-Präfix: welcher Modus aktiv ist, steht in der
+ * Tab-Leiste darüber, und es ist immer nur ein Modul sichtbar. Genau das
+ * macht die rechte Leiste seit jeher so („Messungen", „Schablonen").
+ */
 function CollapsibleSection({
   id,
   title,
   defaultCollapsed = false,
   statusDot,
+  badge,
   children,
 }: {
   id: string
@@ -1107,6 +1488,11 @@ function CollapsibleSection({
   defaultCollapsed?: boolean
   /** Tailwind-Farbklasse für einen Status-Punkt rechts im Header. */
   statusDot?: string
+  /** Kurzer Wert im Header — für Sektionen, die eine EINSTELLUNG halten
+   *  statt eines erledigt/offen-Schritts (Schulter: Seite, Prothese).
+   *  Ohne ihn würde das Einklappen eine Wahl verbergen, an der die
+   *  Auswertung hängt. */
+  badge?: string
   children: React.ReactNode
 }) {
   const stored = useUiStore((s) => s.collapsedSections[id])
@@ -1118,13 +1504,26 @@ function CollapsibleSection({
   // aufgeklappt hatte (Debug-Runde 3: „Kalibrierung fährt nicht ein").
   // Ein danach erneutes manuelles Aufklappen bleibt bis zum nächsten
   // Erledigt-Übergang respektiert.
-  const prevDefault = useRef(defaultCollapsed)
+  // Nur SCHRITT-Sektionen (statusDot) verwerfen die manuelle Wahl: dort
+  // bedeutet der Kipp-Übergang „dieser Schritt wurde gerade erledigt".
+  // Einstellungs-Sektionen (Badge) klappen dagegen durch FREMDEN
+  // Fortschritt zu — z. B. Seite/Prothese, sobald die erste Messung
+  // gesetzt ist. Wer sie bewusst offen hält, soll sie behalten.
+  //
+  // Die Flanke wird auf der KONJUNKTION (Schritt UND erledigt) verfolgt,
+  // nicht auf defaultCollapsed allein: Bei „4 · Messungen" (Knie) kippt
+  // defaultCollapsed schon durch die Vollvermessung, während der eigene
+  // Punkt noch fehlt — die Kante wäre verbraucht, und der spätere EIGENE
+  // Erledigt-Übergang (erste Einzelmessung) fände keine mehr vor.
+  const istSchritt = statusDot != null
+  const fertigerSchritt = istSchritt && defaultCollapsed
+  const prevFertig = useRef(fertigerSchritt)
   useEffect(() => {
-    if (defaultCollapsed && !prevDefault.current) {
+    if (fertigerSchritt && !prevFertig.current) {
       useUiStore.getState().clearSectionChoice(id)
     }
-    prevDefault.current = defaultCollapsed
-  }, [defaultCollapsed, id])
+    prevFertig.current = fertigerSchritt
+  }, [fertigerSchritt, id])
   return (
     <>
       <button
@@ -1142,9 +1541,23 @@ function CollapsibleSection({
         >
           ▶
         </span>
-        <span className="flex-1">{title}</span>
+        {/* `min-w-0 truncate` ist der Umbruch-Schutz: der Titel bleibt
+            einzeilig, statt die Kopfzeile auf zwei Zeilen zu sprengen.
+            Badge und Punkt bekommen `shrink-0`, damit nicht stattdessen
+            SIE gestaucht werden. Bei den heutigen Titeln greift `truncate`
+            nie — es ist das Netz für künftige längere Rubriken. */}
+        <span className="min-w-0 flex-1 truncate" title={title}>
+          {title}
+        </span>
+        {badge && (
+          <span className="shrink-0 rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-neutral-300">
+            {badge}
+          </span>
+        )}
         {statusDot && (
-          <span className={`inline-block h-2 w-2 rounded-full ${statusDot}`} />
+          <span
+            className={`inline-block h-2 w-2 shrink-0 rounded-full ${statusDot}`}
+          />
         )}
       </button>
       {!collapsed && children}
@@ -1190,7 +1603,7 @@ function ToolButton({
 }
 
 // ----------------------------------------------------------------------
-// Template-Eigenschaften-Panel (unverändert)
+// Hüft-Schablonen-Panels (Pfanne/Schaft der Auswahl)
 // ----------------------------------------------------------------------
 
 function SelectedTemplatePanel() {
@@ -1227,7 +1640,7 @@ function SelectedCupPanel({ cup }: { cup: CupTemplate }) {
   return (
     <div className="mx-2 mt-2 rounded border border-sky-900/60 bg-sky-950/30 p-2 text-xs">
       <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-sky-300">
-        Ausgewählte Pfanne
+        Ausgewählte Schablone
       </div>
 
       <label className="mb-1 block text-[10px] text-neutral-400">Typ</label>
@@ -1286,7 +1699,7 @@ function SelectedCupPanel({ cup }: { cup: CupTemplate }) {
         onClick={() => store.remove(cup.id)}
         className="w-full rounded border border-red-900/60 px-2 py-1 text-[11px] text-red-300 transition hover:bg-red-900/40"
       >
-        Pfanne entfernen
+        Schablone entfernen
       </button>
     </div>
   )
@@ -1301,7 +1714,7 @@ function SelectedStemPanel({ stem }: { stem: StemTemplate }) {
   return (
     <div className="mx-2 mt-2 rounded border border-sky-900/60 bg-sky-950/30 p-2 text-xs">
       <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-sky-300">
-        Ausgewählter Schaft
+        Ausgewählte Schablone
       </div>
 
       <label className="mb-1 block text-[10px] text-neutral-400">Familie</label>
@@ -1372,7 +1785,7 @@ function SelectedStemPanel({ stem }: { stem: StemTemplate }) {
         onClick={() => store.remove(stem.id)}
         className="w-full rounded border border-red-900/60 px-2 py-1 text-[11px] text-red-300 transition hover:bg-red-900/40"
       >
-        Schaft entfernen
+        Schablone entfernen
       </button>
     </div>
   )

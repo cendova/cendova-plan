@@ -21,6 +21,12 @@ import html2canvas from 'html2canvas-pro'
 import { useViewerStore } from '../../state/viewerStore'
 import { useKneePanesStore } from '../../state/kneePanesStore'
 import { useHipStore } from '../../state/hipStore'
+import { useShoulderStore } from '../../state/shoulderStore'
+import { useShoulderTemplateStore } from '../../state/shoulderTemplateStore'
+import {
+  SHOULDER_IMPLANT_FAMILIES,
+  shoulderSizeLabel,
+} from '../shoulder/shoulderCatalog'
 import { useKneeStore } from '../../state/kneeStore'
 import { useTemplateStore } from '../../state/templateStore'
 import { useNoteStore } from '../../state/noteStore'
@@ -44,6 +50,7 @@ import {
   operatedSideOf,
   formatLldForSide,
 } from '../hip/lldCalculation'
+import { getShoulderRecipe } from '../shoulder/recipes'
 import { getKneeRecipe, computeWorkflowRaw } from '../knee/recipes'
 import { computeCpak } from '../knee/cpak'
 
@@ -70,6 +77,10 @@ import { computeCpak } from '../knee/cpak'
  *  - „knee": Referenz-Screenshots mit SCHWARZEM Hintergrund, blaue
  *    Implantat-Linien, weiße Callouts. Alpha = 2·(B − R) (nur „blaue"
  *    Pixel bleiben; Schwarz und Weiß haben B≈R → transparent).
+ *  - „shoulder": synthetisch gerenderte Schablonen (sauberes Cyan auf
+ *    Schwarz, Antialiasing über die Helligkeit). Alpha = B − R, also
+ *    OHNE den Faktor 2 des Knies — der würde die AA-Ränder auf volle
+ *    Deckung ziehen und die Linien wieder hart/breit machen.
  *
  * Workaround-Mechanik: Transformation pixelweise in ein Canvas anwenden,
  * das eingefärbte Bitmap als data-URL ins href tauschen, Filter abnehmen.
@@ -117,7 +128,12 @@ async function pretintTemplateImages(
         data[i + 1] = TINT_G
         data[i + 2] = TINT_B
         // Alpha-Maske wie der jeweilige Live-feColorMatrix (s. Doku oben).
-        const newA = mode === 'knee' ? 2 * (b - r) : 1.5 * a - r - g - b
+        const newA =
+          mode === 'knee'
+            ? 2 * (b - r)
+            : mode === 'shoulder'
+              ? b - r
+              : 1.5 * a - r - g - b
         data[i + 3] = newA < 0 ? 0 : newA > 255 ? 255 : newA
       }
       ctx.putImageData(imgData, 0, 0)
@@ -510,6 +526,8 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
   const factor = calibration?.mmPerWorldUnit ?? 1
   const hipMeasurements = useHipStore.getState().measurements
   const kneeMeasurements = useKneeStore.getState().measurements
+  const shoulderMeasurements = useShoulderStore.getState().measurements
+  const shoulderTemplates = useShoulderTemplateStore.getState().templates
   const cups = useTemplateStore.getState().templates
   const stems = useTemplateStore.getState().stems
   const notes = useNoteStore.getState().notes
@@ -519,6 +537,7 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
   const hasSummary =
     hipMeasurements.length +
       kneeMeasurements.length +
+      shoulderMeasurements.length +
       cups.length +
       stems.length +
       notes.length >
@@ -692,6 +711,37 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
       writeSection('Knie-Messungen', lines)
     }
 
+    // Schulter-Messungen. Zwei bewusste Abweichungen vom Knie-Block:
+    //  - Die SEITE steht dabei; sie ist pro Messung eingefroren, weil
+    //    „lateral" auf der a.p.-Aufnahme seitenabhängig ist.
+    //  - IMMER eine Zeile je Wert (nie die Einzeiler-Variante): Der CSA
+    //    liefert neben der Zahl einen längeren Beurteilungstext. Als
+    //    Einzeiler überschritte die Zeile die nutzbare Blattbreite —
+    //    `pdf.text` bricht nicht um und clippt nicht, der Text liefe
+    //    über den Rand hinaus.
+    if (shoulderMeasurements.length > 0) {
+      const lines: string[] = []
+      for (const m of shoulderMeasurements) {
+        const recipe = getShoulderRecipe(m.kind)
+        if (!recipe) continue
+        const seite = m.side === 'R' ? 'rechts' : 'links'
+        if (m.points.length < recipe.steps.length) {
+          lines.push(
+            `• ${recipe.label} (${seite}): unvollständig (${m.points.length}/${recipe.steps.length} Punkte)`,
+          )
+          continue
+        }
+        try {
+          const { values } = recipe.compute(m.points, factor)
+          lines.push(`• ${recipe.label} (${seite}):`)
+          for (const v of values) lines.push(`   ${v.label}: ${v.value}`)
+        } catch {
+          lines.push(`• ${recipe.label} (${seite}): Wert nicht berechenbar`)
+        }
+      }
+      writeSection('Schulter-Messungen', lines)
+    }
+
     // Pfannen — mit klinischer Inklination statt SVG-Rotation. Die
     // Inklination berechnet sich aus dem Pfannen-Rim relativ zur
     // Becken-Referenzlinie (43° = typischer OP-Zielwert).
@@ -755,6 +805,26 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
       )
     }
 
+    // Schulter-Schablonen — Textliste wie Pfannen/Schäfte: Familie, Seite,
+    // Größe (Kombi-Label), Rotation. Die Konturen selbst stecken im
+    // Viewport-Schnappschuss von Seite 1.
+    if (shoulderTemplates.length > 0) {
+      writeSection(
+        'Schulter-Schablonen',
+        shoulderTemplates.map((t) => {
+          const familie = SHOULDER_IMPLANT_FAMILIES.find(
+            (f) => f.kind === t.kind,
+          )
+          const seite = t.side === 'R' ? 'rechts' : 'links'
+          return (
+            `• ${familie?.label ?? t.kind} (${seite})` +
+            ` | Gr. ${shoulderSizeLabel(t.kind, t.sizeIndex)}` +
+            ` | Drehung ${t.rotationDeg.toFixed(1)}°`
+          )
+        }),
+      )
+    }
+
     // Beinlängen-Bilanz (prä-OP + Implantat-Korrektur = post-OP)
     // Nur wenn LLD-Messung UND Implantate UND Referenzlinie da sind.
     const preopLLD = findPreopLLD(hipMeasurements, factor)
@@ -771,8 +841,10 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
       const lines: string[] = []
       lines.push(`Prä-OP: ${formatLldForSide(preopLLD, opSide)}`)
       for (const c of correction.perSide) {
+        // Seite ausgeschrieben wie in den Nachbarzeilen (Prä-/Post-OP) und
+        // im Messungen-Panel — „Korrektur R" war die einzige Abkürzung.
         lines.push(
-          `Korrektur ${c.side}: ${c.mm >= 0 ? '+' : ''}${(c.mm / 10).toFixed(2).replace('.', ',')} cm`,
+          `Korrektur ${c.side === 'R' ? 'rechts' : 'links'}: ${c.mm >= 0 ? '+' : ''}${(c.mm / 10).toFixed(2).replace('.', ',')} cm`,
         )
       }
       lines.push(`Post-OP: ${formatLldForSide(postopLLD, opSide)}`)

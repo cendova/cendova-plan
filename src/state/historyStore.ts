@@ -1,10 +1,18 @@
 import { create } from 'zustand'
 import { useHipStore, type HipMeasurement } from './hipStore'
+import {
+  useShoulderStore,
+  type ShoulderMeasurement,
+} from './shoulderStore'
 import { useKneeStore, type KneeMeasurement } from './kneeStore'
 import {
   useKneeTemplateStore,
   type KneeTemplate,
 } from './kneeTemplateStore'
+import {
+  useShoulderTemplateStore,
+  type ShoulderTemplate,
+} from './shoulderTemplateStore'
 import {
   useTemplateStore,
   type CupTemplate,
@@ -25,7 +33,11 @@ import type { Types } from '@cornerstonejs/core'
 interface Snapshot {
   hipMeasurements: HipMeasurement[]
   kneeMeasurements: KneeMeasurement[]
+  shoulderMeasurements: ShoulderMeasurement[]
   kneeTemplates: KneeTemplate[]
+  /** Schulter-Schablonen — wie stems: MUSS mit erfasst werden, sonst
+   *  erkennt snapsEqual ihre Änderungen nicht (Undo-Lücke). */
+  shoulderTemplates: ShoulderTemplate[]
   templates: CupTemplate[]
   /** Schaft-Schablonen. MUSS hier mit erfasst werden — sonst werden
    *  Schaft-Verschiebungen/-Rotationen nicht in die Undo-History
@@ -44,7 +56,9 @@ function takeSnapshot(): Snapshot {
   return {
     hipMeasurements: useHipStore.getState().measurements,
     kneeMeasurements: useKneeStore.getState().measurements,
+    shoulderMeasurements: useShoulderStore.getState().measurements,
     kneeTemplates: useKneeTemplateStore.getState().templates,
+    shoulderTemplates: useShoulderTemplateStore.getState().templates,
     templates: useTemplateStore.getState().templates,
     stems: useTemplateStore.getState().stems,
     referenceLine: useTemplateStore.getState().referenceLine,
@@ -58,8 +72,10 @@ function snapsEqual(a: Snapshot, b: Snapshot): boolean {
   // Referenzen identisch.
   return (
     a.hipMeasurements === b.hipMeasurements &&
+    a.shoulderMeasurements === b.shoulderMeasurements &&
     a.kneeMeasurements === b.kneeMeasurements &&
     a.kneeTemplates === b.kneeTemplates &&
+    a.shoulderTemplates === b.shoulderTemplates &&
     a.templates === b.templates &&
     a.stems === b.stems &&
     a.referenceLine === b.referenceLine &&
@@ -84,7 +100,9 @@ function restore(snap: Snapshot) {
     })
     useHipStore.setState({ measurements: snap.hipMeasurements })
     useKneeStore.setState({ measurements: snap.kneeMeasurements })
+    useShoulderStore.setState({ measurements: snap.shoulderMeasurements })
     useKneeTemplateStore.setState({ templates: snap.kneeTemplates })
+    useShoulderTemplateStore.setState({ templates: snap.shoulderTemplates })
     useNoteStore.setState({ notes: snap.notes })
   } finally {
     isRestoring = false
@@ -165,7 +183,9 @@ function scheduleCapture() {
 
 const unsubHip = useHipStore.subscribe(scheduleCapture)
 const unsubKnee = useKneeStore.subscribe(scheduleCapture)
+const unsubShoulder = useShoulderStore.subscribe(scheduleCapture)
 const unsubKneeTpl = useKneeTemplateStore.subscribe(scheduleCapture)
+const unsubShoulderTpl = useShoulderTemplateStore.subscribe(scheduleCapture)
 const unsubTemplate = useTemplateStore.subscribe(scheduleCapture)
 const unsubNote = useNoteStore.subscribe(scheduleCapture)
 
@@ -174,7 +194,9 @@ if (import.meta.hot) {
     if (captureTimer) clearTimeout(captureTimer)
     unsubHip()
     unsubKnee()
+    unsubShoulder()
     unsubKneeTpl()
+    unsubShoulderTpl()
     unsubTemplate()
     unsubNote()
   })

@@ -59,15 +59,18 @@ Maßgeblich ist `src/lib/templates/packageFormat.ts` (Typen +
 | `kneeImages` | Knie-Bild-Index, Schlüssel `kind\|view\|sizeIndex` → PNG-Pfad + Maße |
 | `kneeContours` | Pro-Größe-Konturen (normierte Polygone, optional Resektions-/Achsen-/Feature-Daten); werden schlüsselweise über den Bestand gelegt |
 | `kneeCatalog` | Größentabellen der Knie-Familien (`legionPsFemur`, `genesisTibia`, …, `implantFamilies`) |
+| `shoulderImages` | Schulter-Bild-Index, Schlüssel `kind\|AP\|sizeIndex` → PNG-Pfad + Maße; das Bild hat im Renderer Vorrang vor der Kontur |
+| `shoulderContours` | Pro-Größe-Konturen der Schulter (normierte Polygone); werden schlüsselweise über den Bestand gelegt |
+| `shoulderCatalog` | Schulter-Familien (`families` mit Hersteller/Prothesentyp/Knochen) + Größen-Labels je `kind` |
 | `medactaImages` / `medactaCatalog` | Hüft-Schablonen: Bilder `[folder][refNo]` + Katalog (Größen, Bezugspunkte, Kopfpositionen) |
 | `headOffsetsMm` | genau 5 Halslängen-Stufen (UI-Vertrag) |
 | `stemCcdByFolder` | CCD-Winkel (Grad) je Schaft-Ordnername; schlüsselweise Vereinigung, Plausibilitätsfenster 100–160° |
 | `backgrounds` | Tracer-Hintergründe, Schlüssel `kind\|view` bzw. `kind\|view\|band` |
 
 Addons (`merge:true`) dürfen beliebige Teilmengen liefern — z. B. nur
-`kneeContours` oder nur `stemCcdByFolder`; `kneeContours` und
-`stemCcdByFolder` werden schlüsselweise vereinigt (Addon gewinnt), alle
-anderen definierten Felder ersetzen die Basis.
+`kneeContours` oder nur `stemCcdByFolder`; `kneeContours`,
+`shoulderContours` und `stemCcdByFolder` werden schlüsselweise vereinigt
+(Addon gewinnt), alle anderen definierten Felder ersetzen die Basis.
 
 ## Eigene Pakete erzeugen (Generator-Skripte)
 
@@ -87,6 +90,15 @@ eigenen Herstellerunterlagen befüllen):
   merge-Addon-ZIP.
 - `scripts/export-template-package.mjs` — befüllte Datentabellen +
   `public/templates/**` → Voll-Paket-ZIP.
+- `scripts/build-schulter-zuordnung.mjs` — ordnet die Schulter-Screenshots
+  den Größen zu; die Serien-Tabelle (Quellordner, Zeitbereiche,
+  Hersteller-Größenlabels) liegt lokal in
+  `scripts/schulter-serien.local.json`, Aufbau im Skript-Kopf.
+- `scripts/build-shoulder-contours.mjs` — Schulter-Screenshots (mit
+  25-mm-Kugel) → normierte Konturen **und** veredelte Bild-Overlays
+  (`lib/schablonen-veredelung.mjs`; Qualitäts-Gate ≥ 6 px/mm).
+- `scripts/export-shoulder-package.mjs` — Schulter-Konturen + Bilder →
+  merge-Addon-ZIP (gegen die App-Validierung geprüft).
 - `scripts/export-knee-contours-addon.mjs` — Konturen (+ CCD-Winkel) →
   Nachzug-Addon für Bestandspakete.
 

@@ -131,6 +131,32 @@ Es öffnet sich **http://localhost:5173** — **lokal ist `localhost` korrekt**
 5. **Plan speichern** → erneut laden: Knie-Schablonen drin, keine ID-Kollision.
 6. Optional **PDF-Export**.
 
+### Fahrplan Schulter
+1. Schulter-AP-DICOM laden (oder `?beispiel=schulter` für das CC0-Bild).
+2. Tab **„Schulter"** → Seite (rechts/links) und Prothesentyp
+   (anatomisch/invers) setzen.
+3. **Messungen**: CSA und Akromion-Index brauchen keinen Maßstab. Für AHD,
+   Humeruskopf und DTI vorher **kalibrieren** — ohne Kalibrierung zeigt die
+   Oberfläche den Wert, aber ausdrücklich **keine** Beurteilung.
+   Beim DTI die Messebene beachten: Höhe des proximalen Endes der
+   Tuberositas deltoidea, dort wo die laterale Kortikalis erstmals parallel
+   verläuft (der erste Schritt-Text nennt es).
+4. **Schablonen** (nur mit importiertem Paket, sonst steht dort der
+   Paket-Hinweis): Prothesentyp umschalten → anatomisch zeigt die
+   anatomischen Familien, invers die inversen. Humerus- bzw.
+   Glenoid-Komponente wählen, platzieren, per Drag/Griff/Pfeiltasten
+   ausrichten, mit Entf löschen.
+   **Seiten-Konvention prüfen:** Schablone auf eine RECHTE Schulter legen —
+   passt der Umriss ohne Spiegelung? Falls nicht, ist
+   `SHOULDER_KANONISCHE_SEITE` in `src/lib/shoulder/shoulderPlacement.ts`
+   umzustellen (einzige Stelle, mit Tests abgesichert).
+5. **Sperre prüfen:** Bei aktiver Schulter-Messung dürfen Schablonen keine
+   Klicks abfangen (und umgekehrt).
+6. **Plan speichern** → erneut laden: Schulter-Messungen und -Schablonen
+   sind wieder da, keine ID-Kollision (Format v8).
+7. **PDF-Export** → Abschnitte „Schulter-Messungen" und
+   „Schulter-Schablonen" vorhanden, Schablonen im Ausdruck sichtbar.
+
 ---
 
 ## Gotchas / FAQ
