@@ -1337,9 +1337,10 @@ function ShaftFragmentSection({ hasImage }: { hasImage: boolean }) {
         <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
           Den Schaft mit Klicks umfahren, Enter schließt den Schnitt
           (Rücktaste nimmt einen Punkt zurück, Esc verwirft). Das
-          ausgeschnittene Stück lässt sich ziehen und mit ± drehen; die
-          gestrichelte Linie zeigt die Ausgangslage. Das Original bleibt
-          stehen — die Verschiebung ist als Vorher/Nachher lesbar.
+          ausgeschnittene Stück lässt sich ziehen und am Griff darüber
+          drehen (± = fein, Entf = löschen). An der Ausgangsstelle bleibt
+          eine schwarze Lücke, gestrichelt umrandet — die Verschiebung ist
+          damit als Vorher/Nachher lesbar.
         </p>
       </Hint>
     </CollapsibleSection>

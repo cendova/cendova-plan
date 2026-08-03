@@ -35,6 +35,28 @@ import {
  *
  * Liegt INNERHALB des `#viewport-capture-root` → erscheint im PDF-Export.
  */
+/** Radius des Drehgriffs in Bildschirm-Pixeln. */
+const GRIFF_RADIUS = 6
+/** Abstand des Griffs vom äußersten Konturpunkt (Bildschirm-Pixel). */
+const GRIFF_ABSTAND = 26
+
+/**
+ * Lage des Drehgriffs: senkrecht über dem Schwerpunkt, knapp außerhalb
+ * der Kontur. Der Abstand richtet sich nach dem äußersten Konturpunkt,
+ * damit der Griff bei jeder Fragmentgröße frei liegt.
+ */
+function griffPosition(
+  zielPoly: readonly (readonly [number, number] | Float32Array | number[])[],
+  zentrum: readonly number[],
+): [number, number] {
+  let max = 0
+  for (const p of zielPoly) {
+    const d = Math.hypot(p[0] - zentrum[0], p[1] - zentrum[1])
+    if (d > max) max = d
+  }
+  return [zentrum[0], zentrum[1] - (max + GRIFF_ABSTAND)]
+}
+
 export function ShaftFragmentOverlay() {
   useViewportSync()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -214,6 +236,29 @@ export function ShaftFragmentOverlay() {
       ctx.closePath()
       ctx.stroke()
       ctx.restore()
+
+      // Drehgriff am ausgewählten Fragment — wie bei den Schablonen, damit
+      // Drehen sichtbar möglich ist und nicht nur über die ±-Tasten.
+      if (gewaehlt) {
+        const g = griffPosition(zielPoly, zs)
+        ctx.save()
+        ctx.strokeStyle = '#7DD3FC'
+        ctx.lineWidth = 1
+        ctx.setLineDash([3, 3])
+        ctx.beginPath()
+        ctx.moveTo(zs[0], zs[1])
+        ctx.lineTo(g[0], g[1])
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.beginPath()
+        ctx.arc(g[0], g[1], GRIFF_RADIUS, 0, Math.PI * 2)
+        ctx.fillStyle = '#0EA5E9'
+        ctx.fill()
+        ctx.strokeStyle = '#E0F2FE'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+        ctx.restore()
+      }
     }
 
     // Offener Schnitt: Linienzug + Punkte.
@@ -255,8 +300,66 @@ export function ShaftFragmentOverlay() {
       const vp = getViewport()
       if (!vp) return
       const rect = (main as HTMLElement).getBoundingClientRect()
-      const start = vp.canvasToWorld([e.clientX - rect.left, e.clientY - rect.top])
-      // Oberstes Fragment unter dem Zeiger greifen.
+      const canvasPt: [number, number] = [
+        e.clientX - rect.left,
+        e.clientY - rect.top,
+      ]
+      const start = vp.canvasToWorld(canvasPt)
+
+      // ZUERST der Drehgriff des ausgewählten Fragments: Er liegt außerhalb
+      // der Kontur, würde also von der Polygon-Prüfung nie erfasst.
+      const gewaehlt = store.fragments.find(
+        (f) => f.id === store.selectedId && f.visible,
+      )
+      if (gewaehlt && gewaehlt.points.length >= 3) {
+        const zielWelt = fragmentPolygon(
+          gewaehlt.points,
+          gewaehlt.rotationDeg,
+          gewaehlt.offset,
+        )
+        const zs = vp.worldToCanvas(polygonSchwerpunkt(zielWelt))
+        const g = griffPosition(zielWelt.map((p) => vp.worldToCanvas(p)), zs)
+        const nahAmGriff =
+          Math.hypot(canvasPt[0] - g[0], canvasPt[1] - g[1]) <= GRIFF_RADIUS + 6
+        if (nahAmGriff) {
+          e.stopPropagation()
+          e.preventDefault()
+          // Winkel in WELT-Koordinaten rechnen, nicht auf dem Canvas: Nur
+          // so passt das Vorzeichen zur gespeicherten Drehung, auch wenn
+          // die Ansicht gespiegelt oder gedreht ist.
+          const zentrumWelt = polygonSchwerpunkt(zielWelt)
+          const startWinkel = Math.atan2(
+            start[1] - zentrumWelt[1],
+            start[0] - zentrumWelt[0],
+          )
+          const startRot = gewaehlt.rotationDeg
+          const dreh = (ev: MouseEvent) => {
+            const v = getViewport()
+            if (!v) return
+            const r = (main as HTMLElement).getBoundingClientRect()
+            const jetzt = v.canvasToWorld([ev.clientX - r.left, ev.clientY - r.top])
+            const winkel = Math.atan2(
+              jetzt[1] - zentrumWelt[1],
+              jetzt[0] - zentrumWelt[0],
+            )
+            useShaftFragmentStore
+              .getState()
+              .setRotationDeg(
+                gewaehlt.id,
+                startRot + ((winkel - startWinkel) * 180) / Math.PI,
+              )
+          }
+          const auf = () => {
+            window.removeEventListener('mousemove', dreh)
+            window.removeEventListener('mouseup', auf)
+          }
+          window.addEventListener('mousemove', dreh)
+          window.addEventListener('mouseup', auf)
+          return
+        }
+      }
+
+      // Sonst: oberstes Fragment unter dem Zeiger greifen und verschieben.
       const treffer = [...store.fragments]
         .reverse()
         .find(

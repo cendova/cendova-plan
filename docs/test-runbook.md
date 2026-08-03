@@ -153,8 +153,8 @@ Es öffnet sich **http://localhost:5173** — **lokal ist `localhost` korrekt**
 5. **Sperre prüfen:** Bei aktiver Schulter-Messung dürfen Schablonen keine
    Klicks abfangen (und umgekehrt).
 6. **Schaft-Crop** (Sektion 5, optional): Schaft mit Klicks
-   umfahren, Enter schließt den Schnitt. Das Stück ziehen und mit ±
-   drehen — an der Ausgangsstelle bleibt eine schwarze Lücke (gestrichelt
+   umfahren, Enter schließt den Schnitt. Das Stück ziehen und am Griff
+   über ihm drehen (± = fein) — an der Ausgangsstelle bleibt eine schwarze Lücke (gestrichelt
    umrandet), das Stück selbst liegt an der neuen Position. Beim
    Hineinzoomen muss es so scharf bleiben wie das Bild darunter, und
    Schablonen müssen DARÜBER sichtbar bleiben. Undo/Redo muss
