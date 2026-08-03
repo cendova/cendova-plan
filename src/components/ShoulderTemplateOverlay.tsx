@@ -26,6 +26,10 @@ import {
 } from '../state/shoulderTemplateStore'
 import { getShoulderContour } from '../lib/shoulder/shoulderContours'
 import { getShoulderImage } from '../lib/shoulder/shoulderImages'
+import {
+  shoulderGruppenTransform,
+  shoulderHalbmasse,
+} from '../lib/shoulder/shoulderPlacement'
 import { shoulderSizeLabel } from '../lib/shoulder/shoulderCatalog'
 import { resolveTemplateImage } from '../lib/templates/registry'
 
@@ -149,25 +153,21 @@ export function ShoulderTemplateOverlay() {
         const probeY = w2c([t.center[0], t.center[1] + oneMm, t.center[2]])
         const pxPerMmX = Math.abs(probeX[0] - centerC[0])
         const pxPerMmY = Math.abs(probeY[1] - centerC[1])
-        // Halbmaße: mit Bild aus dessen Pixel-Geometrie (inkl. Rand), sonst
-        // aus der Vektor-Kontur.
-        const halfWpx = img
-          ? (img.widthPx * img.mmPerPx * pxPerMmX) / 2
-          : (contour!.wMm / 2) * pxPerMmX
-        const halfHpx = img
-          ? (img.heightPx * img.mmPerPx * pxPerMmY) / 2
-          : (contour!.hMm / 2) * pxPerMmY
+        // Halbmaße und Spiegel-/Dreh-Transform: reine Geometrie, getestet
+        // in lib/shoulder/shoulderPlacement.ts (Seiten-Konvention!).
+        const { halfWpx, halfHpx } = shoulderHalbmasse(
+          { img: img ?? undefined, contour: contour ?? undefined },
+          pxPerMmX,
+          pxPerMmY,
+        )
         const cx = centerC[0]
         const cy = centerC[1]
-
-        // Kanonische Seite = wie aufgenommen; die Gegenseite spiegelt
-        // horizontal ums Zentrum. (Welche Seite die Quell-Screenshots
-        // zeigen, bestätigt der Autor bei der Sichtprüfung — ggf. hier
-        // die Bedingung auf 'R' drehen.)
-        const mirror = t.side === 'L'
-        const groupTransform =
-          `rotate(${t.rotationDeg} ${cx} ${cy})` +
-          (mirror ? ` translate(${cx} 0) scale(-1 1) translate(${-cx} 0)` : '')
+        const groupTransform = shoulderGruppenTransform(
+          t.side,
+          t.rotationDeg,
+          cx,
+          cy,
+        )
 
         const stroke = isSelected ? '#FFE08A' : '#FFC400'
 
