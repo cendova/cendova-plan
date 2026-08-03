@@ -33,6 +33,7 @@ import {
 import { beurteileCsa } from './csa'
 import { beurteileAcromionIndex } from './acromionIndex'
 import { beurteileAhd } from './ahd'
+import { beurteileDti } from './dti'
 
 type P = Types.Point3
 
@@ -62,6 +63,8 @@ export type ShoulderKind =
   | 'neckShaftAngle'
   /** Akromiohumeraler Abstand in mm (braucht Kalibrierung). */
   | 'ahd'
+  /** Deltoid Tuberosity Index — lokale Knochenqualität (Verhältnis). */
+  | 'dti'
   /** Humeruskopf-Zentrum/-Radius aus drei Konturpunkten. */
   | 'humeralHead'
   /** Distalization Shoulder Angle (nur Reverse). */
@@ -546,6 +549,85 @@ const lsa: ShoulderRecipe = {
   },
 }
 
+// ----------------------------------------------------------------------
+// DTI — Deltoid Tuberosity Index (Spross et al., CORR 2015)
+//
+// Verhältnis äußerer Kortikalisdurchmesser / innerer Markraumdurchmesser
+// auf Höhe des proximalen Endes der Tuberositas deltoidea. Reines
+// Verhältnis → keine Kalibrierung nötig (beide Strecken tragen denselben
+// Maßstab, er kürzt sich heraus).
+//
+// Die zweite Strecke wird auf die RICHTUNG der ersten projiziert: Beide
+// Durchmesser gehören definitionsgemäß auf dieselbe, quer zum Schaft
+// liegende Messlinie. Ohne die Projektion würde ein leicht schräg
+// gesetzter Markraum-Strich länger gemessen und der Index dadurch zu
+// klein — also fälschlich in Richtung „niedrige Knochendichte".
+// Quelle + Grenzen der Aussage: dti.ts.
+// ----------------------------------------------------------------------
+const dti: ShoulderRecipe = {
+  kind: 'dti',
+  label: 'DTI (Deltoid Tuberosity Index)',
+  needsCalibration: false,
+  steps: [
+    'Kortikalis außen — laterale Seite (Höhe: laterale Kortikalis wird erstmals parallel)',
+    'Kortikalis außen — mediale Seite',
+    'Markraum innen — laterale Seite',
+    'Markraum innen — mediale Seite',
+  ],
+  // Beide Strecken sind je als Ganzes verschiebbar.
+  lineGroups: [
+    [0, 1],
+    [2, 3],
+  ],
+  compute: (points) => {
+    const [aussenLat, aussenMed, innenLat, innenMed] = points
+    const aussen = dist(aussenLat, aussenMed)
+    // Innenstrecke auf die Außenrichtung projizieren (siehe Kommentar).
+    const rx = (aussenMed[0] - aussenLat[0]) / (aussen || 1)
+    const ry = (aussenMed[1] - aussenLat[1]) / (aussen || 1)
+    const innen = Math.abs(
+      (innenMed[0] - innenLat[0]) * rx + (innenMed[1] - innenLat[1]) * ry,
+    )
+    // Degeneriert: Ohne Markraumbreite ist das Verhältnis nicht definiert.
+    if (innen < 1e-6 || aussen < 1e-6) {
+      return {
+        values: [
+          {
+            label: '⚠ DTI',
+            value: 'Markraum- oder Kortikalisbreite ist null',
+          },
+        ],
+        geometry: {
+          lines: [{ from: aussenLat, to: aussenMed }],
+          circles: [],
+          labels: [{ at: aussenLat, text: 'DTI —' }],
+        },
+      }
+    }
+    const wert = aussen / innen
+    const befund = beurteileDti(wert)
+    return {
+      values: [
+        { label: 'DTI', value: wert.toFixed(2).replace('.', ',') },
+        { label: 'Beurteilung', value: befund.hinweis },
+      ],
+      geometry: {
+        lines: [
+          { from: aussenLat, to: aussenMed },
+          { from: innenLat, to: innenMed, dashed: true },
+        ],
+        circles: [],
+        labels: [
+          {
+            at: midpoint(aussenLat, aussenMed),
+            text: `DTI ${wert.toFixed(2).replace('.', ',')}`,
+          },
+        ],
+      },
+    }
+  },
+}
+
 /**
  * Registry der Rezepte — ab jetzt `Record` statt `Partial<Record>`, genau
  * wie `RECIPES` (Hüfte) und `KNEE_RECIPES` (Knie): alle in `ShoulderKind`
@@ -558,6 +640,7 @@ export const SHOULDER_RECIPES: Record<ShoulderKind, ShoulderRecipe> = {
   glenoidInclination,
   neckShaftAngle,
   ahd,
+  dti,
   humeralHead,
   dsa,
   lsa,
@@ -570,6 +653,7 @@ export const AVAILABLE_SHOULDER_RECIPES: ShoulderRecipe[] = [
   glenoidInclination,
   neckShaftAngle,
   ahd,
+  dti,
   humeralHead,
   dsa,
   lsa,

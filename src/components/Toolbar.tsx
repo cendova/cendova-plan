@@ -1375,25 +1375,6 @@ function SelectedShoulderTemplatePanel() {
         ]}
       />
 
-      <div className="mb-2">
-        <div className="mb-1 text-[10px] text-neutral-400">
-          Drehung · {selected.rotationDeg.toFixed(1)}°
-        </div>
-        <div className="grid grid-cols-4 gap-1">
-          {[-1, -0.2, 0.2, 1].map((d) => (
-            <button
-              key={d}
-              onClick={() =>
-                store.setRotationDeg(selected.id, selected.rotationDeg + d)
-              }
-              className="rounded border border-neutral-700 bg-neutral-900 px-1 py-0.5 text-[11px] transition hover:bg-neutral-800"
-            >
-              {d > 0 ? `+${d}` : d}°
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="text-[10px] text-neutral-500">
         Größe: {shoulderSizeLabel(selected.kind, selected.sizeIndex)} · Drag =
         verschieben · Pfeile/± = fein · Entf = löschen

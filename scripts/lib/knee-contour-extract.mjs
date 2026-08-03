@@ -47,6 +47,10 @@ const isLightBlue = (r, g, b) => b > 140 && b - r > 40 && g > r
 // Schwelle. Nur Barriere, zählt nicht als „echtes" Blau.
 const isDimBlue = (r, g, b) => b > 60 && b - r > 35 && g > r
 
+// Für den Silhouetten-Fallback (offene Umrisslinien) mit-exportiert —
+// die Helfer bleiben ansonsten intern.
+export { traceContour, simplifyClosed, morph, labelComponents }
+
 export async function extractContour(imagePath, ballMm = 25, opts = {}) {
   const img = await loadImage(imagePath)
   const W = img.width, H = img.height
@@ -87,10 +91,13 @@ export async function extractContour(imagePath, ballMm = 25, opts = {}) {
     // Löcher, die er in die Kontur reißt — zählt aber nie als Implantat.
     else if (opts.extraBarrier?.(r, g, b)) barrier[y * W + x] = 1
   }
-  // Mini-Closing (r=1) auf der Barriere: versiegelt echte 1–2-px-Brüche in
-  // den Zeichnungs-Linien. Bewusst klein, damit die 4–6-px-Lücken GEWOLLT
-  // gestrichelter Linien offen bleiben (deren Taschen sollen NICHT füllen).
-  const barrierClosed = morph(morph(barrier, W, H, 1, false), W, H, 1, true)
+  // Mini-Closing auf der Barriere: versiegelt echte Brüche in den
+  // Zeichnungs-Linien. Default r=1 (Knie-Verhalten) — bewusst klein, damit
+  // die 4–6-px-Lücken GEWOLLT gestrichelter Linien offen bleiben (deren
+  // Taschen sollen NICHT füllen). Serien mit offener Umrisslinie (einige
+  // Medacta-Ansichten) brauchen mehr; der Aufrufer steigert dann gezielt.
+  const closeRadius = opts.closeRadius ?? 1
+  const barrierClosed = morph(morph(barrier, W, H, closeRadius, false), W, H, closeRadius, true)
 
   // Kandidaten auf der Barrieren-Maske labeln (überbrückt die Lücken, die
   // weiße Linien in die blaue Kontur reißen). Kandidat = genug blaue Pixel.

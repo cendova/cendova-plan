@@ -16,6 +16,10 @@ export type ShoulderImplantKind =
   | 'affinis-short-head'
   | 'affinis-glenoid'
   | 'affinis-glenoid-vitamys'
+  | 'affinis-glenoid-vitamys-uncemented'
+  | 'medacta-anat-stem-short'
+  | 'medacta-anat-head'
+  | 'medacta-anat-glenoid'
   | 'medacta-rev-stem-short'
   | 'medacta-rev-stem-standard'
   | 'medacta-rev-liner'
@@ -25,6 +29,7 @@ export type ShoulderImplantKind =
   | 'reunion-rsa-cup'
   | 'reunion-rsa-insert'
   | 'reunion-rsa-glenosphere'
+  | 'reunion-rsa-baseplate'
 
 export interface ShoulderImplantFamily {
   kind: ShoulderImplantKind

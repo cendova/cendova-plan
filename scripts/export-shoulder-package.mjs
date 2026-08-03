@@ -48,7 +48,11 @@ const FAMILIEN = {
   'affinis-short-stem': { label: 'Affinis Short — Stem', manufacturer: 'Mathys', prosthesis: 'anatomic', bone: 'Humerus' },
   'affinis-short-head': { label: 'Affinis Short — Head', manufacturer: 'Mathys', prosthesis: 'anatomic', bone: 'Humerus' },
   'affinis-glenoid': { label: 'Affinis Glenoid (zementiert)', manufacturer: 'Mathys', prosthesis: 'anatomic', bone: 'Glenoid' },
-  'affinis-glenoid-vitamys': { label: 'Affinis Glenoid vitamys', manufacturer: 'Mathys', prosthesis: 'anatomic', bone: 'Glenoid' },
+  'affinis-glenoid-vitamys': { label: 'Affinis Glenoid vitamys (zementiert)', manufacturer: 'Mathys', prosthesis: 'anatomic', bone: 'Glenoid' },
+  'affinis-glenoid-vitamys-uncemented': { label: 'Affinis Glenoid vitamys (zementfrei)', manufacturer: 'Mathys', prosthesis: 'anatomic', bone: 'Glenoid' },
+  'medacta-anat-stem-short': { label: 'Medacta Anatomic — Short Stem', manufacturer: 'Medacta', prosthesis: 'anatomic', bone: 'Humerus' },
+  'medacta-anat-head': { label: 'Medacta Anatomic — Humeral Head', manufacturer: 'Medacta', prosthesis: 'anatomic', bone: 'Humerus' },
+  'medacta-anat-glenoid': { label: 'Medacta Anatomic — Pegged Glenoid', manufacturer: 'Medacta', prosthesis: 'anatomic', bone: 'Glenoid' },
   'medacta-rev-stem-short': { label: 'Medacta Reverse — Short Stem', manufacturer: 'Medacta', prosthesis: 'reverse', bone: 'Humerus' },
   'medacta-rev-stem-standard': { label: 'Medacta Reverse — Standard Stem', manufacturer: 'Medacta', prosthesis: 'reverse', bone: 'Humerus' },
   'medacta-rev-liner': { label: 'Medacta Reverse — HCPE Liner', manufacturer: 'Medacta', prosthesis: 'reverse', bone: 'Humerus' },
@@ -58,6 +62,7 @@ const FAMILIEN = {
   'reunion-rsa-cup': { label: 'ReUnion RSA — Humeral Cup', manufacturer: 'Stryker', prosthesis: 'reverse', bone: 'Humerus' },
   'reunion-rsa-insert': { label: 'ReUnion RSA — X3 Insert', manufacturer: 'Stryker', prosthesis: 'reverse', bone: 'Humerus' },
   'reunion-rsa-glenosphere': { label: 'ReUnion RSA — Glenosphäre', manufacturer: 'Stryker', prosthesis: 'reverse', bone: 'Glenoid' },
+  'reunion-rsa-baseplate': { label: 'ReUnion RSA — Baseplate', manufacturer: 'Stryker', prosthesis: 'reverse', bone: 'Glenoid' },
 }
 
 // Größen-Labels je kind aus der Zuordnung (Index = sizeIndex).

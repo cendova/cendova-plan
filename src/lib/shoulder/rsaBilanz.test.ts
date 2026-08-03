@@ -113,6 +113,7 @@ describe('Angebot nach Prothesentyp', () => {
         'ahd',
         'csa',
         'dsa',
+        'dti',
         'glenoidInclination',
         'humeralHead',
         'lsa',
