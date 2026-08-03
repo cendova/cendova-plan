@@ -49,8 +49,13 @@ export function shoulderHalbmasse(
  *
  * Die Screenshots der Planungssoftware zeigen alle Serien in derselben
  * Orientierung; diese Seite wird unverändert gezeichnet, die Gegenseite
- * horizontal gespiegelt. Ändert sich die Einordnung der Quellen, ist DIESE
- * Konstante die einzige Stelle, die angefasst werden muss.
+ * horizontal gespiegelt.
+ *
+ * RECHTS ist am echten Bild bestätigt (Sichtprüfung des Autors, 04.08.2026:
+ * Schaft-Schablone auf eine rechte Schulter gelegt, Hals-Richtung passt
+ * ohne Spiegelung). Kämen später Quellen in anderer Orientierung dazu, ist
+ * DIESE Konstante die einzige Stelle, die angefasst werden muss — die Tests
+ * in shoulderPlacement.test.ts prüfen relativ zu ihr.
  */
 export const SHOULDER_KANONISCHE_SEITE: 'R' | 'L' = 'R'
 
