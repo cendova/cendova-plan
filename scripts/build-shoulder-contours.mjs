@@ -24,7 +24,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { extractContour } from './lib/knee-contour-extract.mjs'
-import { rendereSchablonenBild } from './lib/schablonen-render.mjs'
+import { veredleSchablone } from './lib/schablonen-veredelung.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const BASIS = join(ROOT, 'Schablonen_Schulter')
@@ -75,17 +75,26 @@ for (const e of eintraege) {
       points: c.normPoints,
       approx: true, // Kugel-kalibriert (±2 %), ohne Hersteller-Soll-Snap
     }
-    // Bild-Overlay NEU RENDERN (nicht nur zuschneiden): einheitliche
-    // Hüft-Auflösung + einheitlich feine Strichstärke, mit Antialiasing.
-    // Begründung + Messwerte siehe lib/schablonen-render.mjs.
-    const bildDatei = `${e.kind}_${String(e.sizeIndex).padStart(2, '0')}.png`
-    const bild = await rendereSchablonenBild(pfad, res.mmPerPx)
-    writeFileSync(join(BILDER, bildDatei), bild.png)
-    bilder[key] = {
-      file: `bilder/${bildDatei}`,
-      widthPx: bild.widthPx,
-      heightPx: bild.heightPx,
-      mmPerPx: bild.mmPerPx,
+    // Bild-Overlay VEREDELN (Original-Treue): Subpixel-Resampling der
+    // weichen Maske auf Hüft-Auflösung + sanfte Breitenangleichung via
+    // Distanzfeld. Begründung + verworfene Ansätze: lib/schablonen-veredelung.mjs.
+    //
+    // Qualitäts-Gate: Bilder nur aus Quellen mit ≥ 6 px/mm (ReUnion-Serie
+    // 7,5–8,4; Knie-Referenz 6–8,5). Gröbere Serien (Affinis/Medacta,
+    // 3,4–4,0 px/mm) erreichen die geforderte Qualität physikalisch nicht —
+    // sie laufen bis zur Neuaufnahme über den Vektor-Fallback statt mit
+    // sichtbar schlechtem Bild ausgeliefert zu werden.
+    const pxProMm = 1 / res.mmPerPx
+    if (pxProMm >= 6) {
+      const bildDatei = `${e.kind}_${String(e.sizeIndex).padStart(2, '0')}.png`
+      const bild = await veredleSchablone(pfad, res.mmPerPx)
+      writeFileSync(join(BILDER, bildDatei), bild.png)
+      bilder[key] = {
+        file: `bilder/${bildDatei}`,
+        widthPx: bild.widthPx,
+        heightPx: bild.heightPx,
+        mmPerPx: bild.mmPerPx,
+      }
     }
     messungen.push({
       key,
