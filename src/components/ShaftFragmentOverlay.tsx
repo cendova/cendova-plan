@@ -25,6 +25,14 @@ import {
  * beim Hineinzoomen verwaschen. Gelesen wird der Bild-Canvas, nie dieses
  * Overlay, deshalb kann sich das Fragment nicht selbst kopieren.
  *
+ * Warum das Auslesen überhaupt geht: vtk.js rendert mit
+ * `preserveDrawingBuffer: false`, ein WebGL-Canvas wäre also nach dem
+ * Compositing leer. Cornerstone rendert aber OFFSCREEN und kopiert das
+ * Ergebnis in den 2D-Canvas des Viewports
+ * (`ContextPoolRenderingEngine._copyToOnscreenCanvas`) — `vp.canvas` ist
+ * damit ein gewöhnlicher 2D-Canvas und beliebig lesbar. Aus demselben
+ * Grund funktioniert der html2canvas-Schnappschuss im PDF-Export.
+ *
  * Liegt INNERHALB des `#viewport-capture-root` → erscheint im PDF-Export.
  */
 export function ShaftFragmentOverlay() {
@@ -140,14 +148,28 @@ export function ShaftFragmentOverlay() {
       zielPoly.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])))
       ctx.closePath()
       ctx.clip()
-      // Canvas-Drehwinkel aus zwei transformierten Punkten ableiten —
-      // so stimmt die Richtung auch, wenn der Viewport selbst gedreht
-      // oder gespiegelt ist.
-      const a0 = w2c(f.points[0])
-      const b0 = zielPoly[0]
+      // Canvas-Drehwinkel aus einem transformierten Referenzpunkt ableiten —
+      // so stimmt die Richtung auch, wenn der Viewport selbst gedreht oder
+      // gespiegelt ist. Genommen wird der Punkt mit dem GRÖSSTEN Abstand
+      // zum Schwerpunkt: Läge der Referenzpunkt nahe am Drehpunkt, würde
+      // schon Rundungsrauschen den Winkel beliebig ausschlagen lassen und
+      // das Fragment sichtbar verdrehen.
+      let refIdx = 0
+      let refDist = -1
+      for (let i = 0; i < quellPoly.length; i++) {
+        const d = Math.hypot(quellPoly[i][0] - qs[0], quellPoly[i][1] - qs[1])
+        if (d > refDist) {
+          refDist = d
+          refIdx = i
+        }
+      }
+      const a0 = quellPoly[refIdx]
+      const b0 = zielPoly[refIdx]
       const winkel =
-        Math.atan2(b0[1] - zs[1], b0[0] - zs[0]) -
-        Math.atan2(a0[1] - qs[1], a0[0] - qs[0])
+        refDist < 1e-6
+          ? 0
+          : Math.atan2(b0[1] - zs[1], b0[0] - zs[0]) -
+            Math.atan2(a0[1] - qs[1], a0[0] - qs[0])
       ctx.translate(zs[0], zs[1])
       ctx.rotate(winkel)
       ctx.translate(-qs[0], -qs[1])
@@ -204,6 +226,12 @@ export function ShaftFragmentOverlay() {
     function onMouseDown(e: MouseEvent) {
       const store = useShaftFragmentStore.getState()
       if (store.placing || e.button !== 0 || e.metaKey || e.ctrlKey) return
+      // Klicks, die einem SVG-Overlay gelten (Schablonen, Messpunkte),
+      // nicht abfangen: Dieser Listener läuft in der Capture-Phase und
+      // wäre sonst VOR deren eigenen Handlern dran — ein Fragment über
+      // einer Schablone würde deren Ziehen blockieren.
+      if ((e.target as Element | null)?.closest('svg, button, [data-overlay-ui]'))
+        return
       const vp = getViewport()
       if (!vp) return
       const rect = (main as HTMLElement).getBoundingClientRect()
