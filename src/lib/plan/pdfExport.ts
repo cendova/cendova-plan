@@ -23,6 +23,8 @@ import { useKneePanesStore } from '../../state/kneePanesStore'
 import { useHipStore } from '../../state/hipStore'
 import { useShoulderStore } from '../../state/shoulderStore'
 import { useShoulderTemplateStore } from '../../state/shoulderTemplateStore'
+import { useShaftFragmentStore } from '../../state/shaftFragmentStore'
+import { verschiebungBetrag } from '../shoulder/cropGeometry'
 import {
   SHOULDER_IMPLANT_FAMILIES,
   shoulderSizeLabel,
@@ -528,6 +530,7 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
   const kneeMeasurements = useKneeStore.getState().measurements
   const shoulderMeasurements = useShoulderStore.getState().measurements
   const shoulderTemplates = useShoulderTemplateStore.getState().templates
+  const shaftFragments = useShaftFragmentStore.getState().fragments
   const cups = useTemplateStore.getState().templates
   const stems = useTemplateStore.getState().stems
   const notes = useNoteStore.getState().notes
@@ -820,6 +823,29 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
             `• ${familie?.label ?? t.kind} (${seite})` +
             ` | Gr. ${shoulderSizeLabel(t.kind, t.sizeIndex)}` +
             ` | Drehung ${t.rotationDeg.toFixed(1)}°`
+          )
+        }),
+      )
+    }
+
+    // Schaft-Osteotomie: Betrag und Richtung der Verschiebung je Fragment.
+    // Die Konturen selbst stecken im Viewport-Schnappschuss von Seite 1
+    // (Ausgangslage gestrichelt, verschobenes Stück durchgezogen).
+    if (shaftFragments.length > 0) {
+      writeSection(
+        'Schaft-Osteotomie',
+        shaftFragments.map((f, i) => {
+          const betrag = verschiebungBetrag(f.offset, factor)
+          // Ohne Kalibrierung ist der Betrag eine Welt-Einheit und KEIN
+          // Millimeterwert — dieselbe Doktrin wie bei den Längenmaßen:
+          // lieber die Einheit offenlassen als eine falsche behaupten.
+          const strecke =
+            factor === 1
+              ? `${betrag.toFixed(1)} (unkalibriert)`
+              : `${betrag.toFixed(1)} mm`
+          return (
+            `• Fragment ${i + 1} | Verschiebung ${strecke}` +
+            ` | Drehung ${f.rotationDeg.toFixed(1)}°`
           )
         }),
       )
