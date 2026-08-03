@@ -20,6 +20,7 @@ import { KneeTemplateOverlay } from './KneeTemplateOverlay'
 import { ShoulderTemplateOverlay } from './ShoulderTemplateOverlay'
 import { TemplateOverlay } from './TemplateOverlay'
 import { OsteophyteOverlay } from './OsteophyteOverlay'
+import { ShaftFragmentOverlay } from './ShaftFragmentOverlay'
 import { useOsteophyteStore } from '../state/osteophyteStore'
 import { KneePane2 } from './KneePane2'
 import { StackImagePicker } from './StackImagePicker'
@@ -316,6 +317,12 @@ export function Viewport() {
         <div className="pointer-events-none absolute inset-2 rounded-lg border-2 border-dashed border-sky-500 bg-sky-500/10" />
       )}
 
+      {/* Reihenfolge = Stapelung. Das Schaft-Fragment liegt GANZ UNTEN
+          (direkt über dem Bild): Es ersetzt Bildinhalt, deshalb müssen
+          Messungen und vor allem die Schablonen darüber sichtbar
+          bleiben — sonst verdeckte ein verschobenes Fragment die
+          Schablone, die man gerade danach ausrichtet. */}
+      {hasImage && <ShaftFragmentOverlay />}
       {hasImage && <HipOverlay />}
       {hasImage && <KneeOverlay />}
       {hasImage && <ShoulderOverlay />}

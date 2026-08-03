@@ -73,8 +73,10 @@ import {
   pickShoulderTool,
   setPlanningMode,
   toggleOsteophyteTool,
+  toggleShaftFragmentTool,
 } from '../lib/toolControls'
 import { useOsteophyteStore } from '../state/osteophyteStore'
+import { useShaftFragmentStore } from '../state/shaftFragmentStore'
 import { useKneePanesStore } from '../state/kneePanesStore'
 import { useKneeTemplateStore } from '../state/kneeTemplateStore'
 import { useTemplatePackageStore } from '../state/templatePackageStore'
@@ -1252,13 +1254,101 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
 
       <Divider />
 
+      <ShaftFragmentSection hasImage={hasImage} />
+
+      <Divider />
+
       <ShoulderTemplatesSection hasImage={hasImage} />
     </>
   )
 }
 
 /**
- * Sektion „5 · Schablonen" der Schulter — amber/emerald-Muster wie Hüfte/
+ * Sektion „5 · Schaft-Crop": Schnittkontur um den Humerusschaft legen,
+ * das Fragment dann verschieben/drehen.
+ *
+ * VOR den Schablonen: Erst wird die Knochensituation hergestellt, dann
+ * die Komponente daran ausgerichtet — deshalb liegt das Fragment im
+ * Viewport auch UNTER den Schablonen. Emerald, sobald ein Fragment
+ * existiert; kein amber, weil der Schritt optional ist (wie die
+ * Osteophyten bei der Hüfte).
+ */
+function ShaftFragmentSection({ hasImage }: { hasImage: boolean }) {
+  const fragmente = useShaftFragmentStore((s) => s.fragments)
+  const placing = useShaftFragmentStore((s) => s.placing)
+  const draftPoints = useShaftFragmentStore((s) => s.draftPoints)
+  const store = useShaftFragmentStore()
+
+  return (
+    <CollapsibleSection
+      id="shoulder-crop"
+      title="5 · Schaft-Crop"
+      defaultCollapsed={fragmente.length === 0}
+      statusDot={fragmente.length > 0 ? 'bg-emerald-500' : undefined}
+    >
+      <button
+        onClick={toggleShaftFragmentTool}
+        disabled={!hasImage}
+        className={[
+          'rounded border px-3 py-2 text-left text-sm transition',
+          placing
+            ? 'border-sky-500 bg-sky-700/30 text-sky-100 ring-1 ring-sky-500'
+            : 'border-sky-900/60 bg-sky-950/20 text-sky-200 hover:bg-sky-900/30',
+          !hasImage ? 'cursor-not-allowed opacity-50' : '',
+        ].join(' ')}
+      >
+        {placing ? 'Schneiden aktiv — fertig' : 'Schaft ausschneiden'}
+      </button>
+
+      {placing && (
+        <button
+          onClick={() => store.finishFragment()}
+          disabled={draftPoints.length < 3}
+          className="mt-1 rounded border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-left text-[11px] text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Schnitt abschließen ({draftPoints.length} Punkte)
+        </button>
+      )}
+
+      {fragmente.map((f, i) => (
+        <div
+          key={f.id}
+          className="mt-1 flex items-center gap-2 rounded border border-neutral-800 px-2 py-1 text-[11px] text-neutral-300"
+        >
+          <span className="flex-1">Fragment {i + 1}</span>
+          <button
+            onClick={() => store.setVisible(f.id, !f.visible)}
+            className="text-neutral-400 transition hover:text-neutral-100"
+            title={f.visible ? 'ausblenden' : 'einblenden'}
+          >
+            {f.visible ? '👁' : '🚫'}
+          </button>
+          <button
+            onClick={() => store.remove(f.id)}
+            className="text-red-400 transition hover:text-red-200"
+            title="entfernen"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+
+      <Hint>
+        <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
+          Den Schaft mit Klicks umfahren, Enter schließt den Schnitt
+          (Rücktaste nimmt einen Punkt zurück, Esc verwirft). Das
+          ausgeschnittene Stück lässt sich ziehen und am Griff darüber
+          drehen (± = fein, Entf = löschen). An der Ausgangsstelle bleibt
+          eine schwarze Lücke, gestrichelt umrandet — die Verschiebung ist
+          damit als Vorher/Nachher lesbar.
+        </p>
+      </Hint>
+    </CollapsibleSection>
+  )
+}
+
+/**
+ * Sektion „6 · Schablonen" der Schulter — amber/emerald-Muster wie Hüfte/
  * Knie: amber nur, wenn der Schulter-Katalog NICHT leer ist (sonst gäbe es
  * nichts zu tun); emerald sobald eine Schablone platziert wurde.
  *
@@ -1300,7 +1390,7 @@ function ShoulderTemplatesSection({ hasImage }: { hasImage: boolean }) {
     <>
       <CollapsibleSection
         id="shoulder-templates"
-        title="5 · Schablonen"
+        title="6 · Schablonen"
         defaultCollapsed={placedCount >= 1}
         // Ohne Katalog kein amber — gleiche Begründung wie Hüfte/Knie.
         statusDot={

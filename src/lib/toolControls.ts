@@ -16,6 +16,7 @@ import { useKneeStore } from '../state/kneeStore'
 import { useShoulderStore } from '../state/shoulderStore'
 import { useNoteStore } from '../state/noteStore'
 import { useOsteophyteStore } from '../state/osteophyteStore'
+import { useShaftFragmentStore } from '../state/shaftFragmentStore'
 import { useTemplateStore } from '../state/templateStore'
 import type { HipKind } from './hip/recipes'
 import type { ShoulderKind } from './shoulder/recipes'
@@ -28,11 +29,10 @@ import {
 import { applyToolPane2 } from './cornerstone/viewer2'
 import { useKneePanesStore } from '../state/kneePanesStore'
 
-/** Bricht jedes laufende Mess- oder Notiz-Werkzeug ab. */
+/** Bricht jedes laufende Mess-, Notiz- oder Zusatz-Werkzeug ab. */
 function cancelOthers() {
   brichFremdeWerkzeugeAb()
-  useNoteStore.getState().setPlacing(false)
-  useOsteophyteStore.getState().setPlacing(false)
+  brichZusatzWerkzeugeAb()
 }
 
 /**
@@ -67,27 +67,41 @@ function brichFremdeWerkzeugeAb(ausser?: PlanningMode) {
   if (ausser !== 'shoulder') useShoulderStore.getState().cancelTool()
 }
 
+/**
+ * Bricht die modul-unabhängigen ZUSATZ-Werkzeuge ab (Notiz, Osteophyt,
+ * Schaft-Fragment) — außer optional einem.
+ *
+ * Aus demselben Grund zentral wie `brichFremdeWerkzeugeAb`: Vorher stand
+ * die Liste an fünf Aufrufstellen ausgeschrieben; mit dem dritten
+ * Zusatzwerkzeug wäre das Vergessen einer Stelle ein stiller Fehler —
+ * zwei scharfe Werkzeuge nähmen denselben Klick an.
+ */
+type Zusatzwerkzeug = 'note' | 'osteophyte' | 'fragment'
+
+function brichZusatzWerkzeugeAb(ausser?: Zusatzwerkzeug) {
+  if (ausser !== 'note') useNoteStore.getState().setPlacing(false)
+  if (ausser !== 'osteophyte') useOsteophyteStore.getState().setPlacing(false)
+  if (ausser !== 'fragment') useShaftFragmentStore.getState().setPlacing(false)
+}
+
 /** Aktiviert ein Hüft-Mess-Werkzeug (Toggle). */
 export function pickHipTool(kind: HipKind) {
   brichFremdeWerkzeugeAb('hip')
-  useNoteStore.getState().setPlacing(false)
-  useOsteophyteStore.getState().setPlacing(false)
+  brichZusatzWerkzeugeAb()
   useHipStore.getState().toggleTool(kind)
 }
 
 /** Aktiviert ein Knie-Mess-Werkzeug (Toggle). */
 export function pickKneeTool(kind: KneeKind) {
   brichFremdeWerkzeugeAb('knee')
-  useNoteStore.getState().setPlacing(false)
-  useOsteophyteStore.getState().setPlacing(false)
+  brichZusatzWerkzeugeAb()
   useKneeStore.getState().toggleTool(kind)
 }
 
 /** Aktiviert ein Schulter-Mess-Werkzeug (Toggle). */
 export function pickShoulderTool(kind: ShoulderKind) {
   brichFremdeWerkzeugeAb('shoulder')
-  useNoteStore.getState().setPlacing(false)
-  useOsteophyteStore.getState().setPlacing(false)
+  brichZusatzWerkzeugeAb()
   useShoulderStore.getState().toggleTool(kind)
 }
 
@@ -96,7 +110,7 @@ export function toggleNoteTool() {
   const next = !useNoteStore.getState().placing
   if (next) {
     brichFremdeWerkzeugeAb()
-    useOsteophyteStore.getState().setPlacing(false)
+    brichZusatzWerkzeugeAb('note')
   }
   useNoteStore.getState().setPlacing(next)
 }
@@ -107,12 +121,23 @@ export function toggleOsteophyteTool() {
   const next = !useOsteophyteStore.getState().placing
   if (next) {
     brichFremdeWerkzeugeAb()
-    useNoteStore.getState().setPlacing(false)
+    brichZusatzWerkzeugeAb('osteophyte')
     // Laufende Pfannen-/Schaft-Platzierung abbrechen, sonst würden zwei
     // Klick-Listener (Template + Osteophyt) denselben Klick verarbeiten.
     useTemplateStore.getState().cancelPlacement()
   }
   useOsteophyteStore.getState().setPlacing(next)
+}
+
+/** Toggelt das Schaft-Schneidewerkzeug (Osteotomie-Simulation). */
+export function toggleShaftFragmentTool() {
+  const next = !useShaftFragmentStore.getState().placing
+  if (next) {
+    brichFremdeWerkzeugeAb()
+    brichZusatzWerkzeugeAb('fragment')
+    useTemplateStore.getState().cancelPlacement()
+  }
+  useShaftFragmentStore.getState().setPlacing(next)
 }
 
 /**
@@ -128,5 +153,8 @@ export function toggleOsteophyteTool() {
  */
 export function setPlanningMode(mode: PlanningMode) {
   brichFremdeWerkzeugeAb(mode)
+  // Auch die modul-unabhängigen Zusatzwerkzeuge: ein scharfes
+  // Schneidewerkzeug soll nach dem Tab-Wechsel keine Klicks abfangen.
+  brichZusatzWerkzeugeAb()
   useViewerStore.getState().setPlanningMode(mode)
 }

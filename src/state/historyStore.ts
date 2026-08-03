@@ -14,6 +14,10 @@ import {
   type ShoulderTemplate,
 } from './shoulderTemplateStore'
 import {
+  useShaftFragmentStore,
+  type ShaftFragment,
+} from './shaftFragmentStore'
+import {
   useTemplateStore,
   type CupTemplate,
   type StemTemplate,
@@ -46,6 +50,10 @@ interface Snapshot {
   stems: StemTemplate[]
   referenceLine: [Types.Point3, Types.Point3] | null
   notes: TextNote[]
+  /** Schaft-Fragmente — aus demselben Grund wie die Schablonen: ohne sie
+   *  bliebe das Verschieben/Drehen eines Fragments außerhalb der
+   *  Undo-History. */
+  shaftFragments: ShaftFragment[]
 }
 
 const MAX_HISTORY = 50
@@ -63,6 +71,7 @@ function takeSnapshot(): Snapshot {
     stems: useTemplateStore.getState().stems,
     referenceLine: useTemplateStore.getState().referenceLine,
     notes: useNoteStore.getState().notes,
+    shaftFragments: useShaftFragmentStore.getState().fragments,
   }
 }
 
@@ -76,6 +85,7 @@ function snapsEqual(a: Snapshot, b: Snapshot): boolean {
     a.kneeMeasurements === b.kneeMeasurements &&
     a.kneeTemplates === b.kneeTemplates &&
     a.shoulderTemplates === b.shoulderTemplates &&
+    a.shaftFragments === b.shaftFragments &&
     a.templates === b.templates &&
     a.stems === b.stems &&
     a.referenceLine === b.referenceLine &&
@@ -104,6 +114,7 @@ function restore(snap: Snapshot) {
     useKneeTemplateStore.setState({ templates: snap.kneeTemplates })
     useShoulderTemplateStore.setState({ templates: snap.shoulderTemplates })
     useNoteStore.setState({ notes: snap.notes })
+    useShaftFragmentStore.setState({ fragments: snap.shaftFragments })
   } finally {
     isRestoring = false
   }
@@ -188,6 +199,7 @@ const unsubKneeTpl = useKneeTemplateStore.subscribe(scheduleCapture)
 const unsubShoulderTpl = useShoulderTemplateStore.subscribe(scheduleCapture)
 const unsubTemplate = useTemplateStore.subscribe(scheduleCapture)
 const unsubNote = useNoteStore.subscribe(scheduleCapture)
+const unsubFragment = useShaftFragmentStore.subscribe(scheduleCapture)
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
@@ -199,5 +211,6 @@ if (import.meta.hot) {
     unsubShoulderTpl()
     unsubTemplate()
     unsubNote()
+    unsubFragment()
   })
 }

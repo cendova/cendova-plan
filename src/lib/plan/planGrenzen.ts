@@ -40,6 +40,7 @@ export function pruefePlanGrenzen(plan: PlanFile): string | null {
     arrayOk(plan.shoulderTemplates, 'shoulderTemplates'),
     arrayOk(plan.notes, 'notes'),
     arrayOk(plan.osteophytes, 'osteophytes'),
+    arrayOk(plan.shaftFragments, 'shaftFragments'),
   ]
   const arrFehler = checks.find((c) => c !== null)
   if (arrFehler) return arrFehler

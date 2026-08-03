@@ -48,6 +48,10 @@ import {
   useOsteophyteStore,
   type OsteophyteRegion,
 } from '../../state/osteophyteStore'
+import {
+  useShaftFragmentStore,
+  type ShaftFragment,
+} from '../../state/shaftFragmentStore'
 import { usePlanningStore, type PlanningData } from '../../state/planningStore'
 import {
   useKneeTemplateStore,
@@ -94,7 +98,8 @@ export function setEmbeddedSaveHook(hook: (() => void) | null): void {
 // Version 6: + freie Längen-/Winkelmessungen (gingen vorher verloren)
 // Version 7: + Schulter-Messungen (CSA) inkl. Seite und Prothesentyp
 // Version 8: + Schulter-Schablonen (gingen vorher beim Speichern verloren)
-const PLAN_FORMAT_VERSION = 8
+// Version 9: + Schaft-Fragmente (Osteotomie-Simulation am Humerus)
+const PLAN_FORMAT_VERSION = 9
 
 export interface PlanFile {
   /** Schema-Version. Beim Laden prüfen und ggf. migrieren. */
@@ -155,6 +160,8 @@ export interface PlanFile {
   clinicalBld?: string
   /** Markierte Osteophyten-Flächen. Optional (alte Pläne ohne Feld). */
   osteophytes?: OsteophyteRegion[]
+  /** Ausgeschnittene Schaft-Fragmente. Optional (Pläne < v9 ohne Feld). */
+  shaftFragments?: ShaftFragment[]
   /** Organisatorische/klinische Planungsdaten (OP-Termin, Klinik,
    *  Versicherung, Reha …). Optional (alte Pläne ohne Feld). */
   planning?: PlanningData
@@ -249,6 +256,7 @@ export function buildPlan(): PlanFile {
     notes: useNoteStore.getState().notes,
     clinicalBld: useViewerStore.getState().clinicalBld,
     osteophytes: useOsteophyteStore.getState().regions,
+    shaftFragments: useShaftFragmentStore.getState().fragments,
     planning,
   }
 }
@@ -369,6 +377,7 @@ export async function applyPlan(plan: PlanFile): Promise<
   useShoulderTemplateStore.getState().reset()
   useNoteStore.getState().reset()
   useOsteophyteStore.getState().reset()
+  useShaftFragmentStore.getState().reset()
 
   // Neue Daten setzen. Bei Zustand reicht setState direkt — keine
   // Add-Funktion-Schleifen nötig, die Add-Side-Effects auslösen würden.
@@ -419,6 +428,19 @@ export async function applyPlan(plan: PlanFile): Promise<
     draftPoints: [],
     placing: false,
   })
+  // Schaft-Fragmente (v9+): fehlende Felder alter Einträge defaulten.
+  const shaftFragments = (plan.shaftFragments ?? []).map((f) => ({
+    ...f,
+    offset: (f.offset ?? [0, 0]) as [number, number],
+    rotationDeg: f.rotationDeg ?? 0,
+    visible: f.visible ?? true,
+  }))
+  useShaftFragmentStore.setState({
+    fragments: shaftFragments,
+    draftPoints: [],
+    placing: false,
+    selectedId: null,
+  })
   // Freie Längen-/Winkelmessungen (v6+): ersetzt vorhandene Annotationen;
   // alte Pläne ohne Feld räumen sie nur ab (konsistent zum Reset oben).
   restoreGenericMeasurements(plan.genericMeasurements ?? [])
@@ -433,6 +455,7 @@ export async function applyPlan(plan: PlanFile): Promise<
   ensureIdsAbove(shoulderTemplates)
   ensureIdsAbove(plan.notes)
   ensureIdsAbove(plan.osteophytes)
+  ensureIdsAbove(shaftFragments)
   // Klinische BLD-Notiz + Cave übernehmen; alte Pläne ohne Feld → Default.
   // Der frühere Platzhaltertext („± 0,x cm …") war nie ein echter Wert —
   // beim Laden alter Pläne auf leer normalisieren, sonst stünde er als
@@ -501,6 +524,8 @@ export async function applyPlan(plan: PlanFile): Promise<
     plan.notes?.length > 0 && `${plan.notes.length} Notiz(en)`,
     plan.osteophytes && plan.osteophytes.length > 0 &&
       `${plan.osteophytes.length} Osteophyten-Fläche(n)`,
+    (plan.shaftFragments?.length ?? 0) > 0 &&
+      `${plan.shaftFragments!.length} Schaft-Fragment(e)`,
   ].filter(Boolean) as string[]
   const prefix = imageLoaded
     ? rightImageLoaded
