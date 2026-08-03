@@ -16,7 +16,7 @@
     "shot": "node scripts/screenshot.mjs"
   },
   "dependencies": {
-    "@cornerstonejs/core": "^4.22.9",
+    "@cornerstonejs/core": "^5.6.12",
     "@cornerstonejs/dicom-image-loader": "^4.22.9",
     "@cornerstonejs/tools": "^4.22.9",
     "dicom-parser": "^1.8.21",
