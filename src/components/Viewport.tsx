@@ -20,6 +20,7 @@ import { KneeTemplateOverlay } from './KneeTemplateOverlay'
 import { ShoulderTemplateOverlay } from './ShoulderTemplateOverlay'
 import { TemplateOverlay } from './TemplateOverlay'
 import { OsteophyteOverlay } from './OsteophyteOverlay'
+import { ShaftFragmentOverlay } from './ShaftFragmentOverlay'
 import { useOsteophyteStore } from '../state/osteophyteStore'
 import { KneePane2 } from './KneePane2'
 import { StackImagePicker } from './StackImagePicker'
@@ -323,6 +324,7 @@ export function Viewport() {
       {hasImage && <ShoulderTemplateOverlay />}
       {hasImage && <TemplateOverlay />}
       {hasImage && <OsteophyteOverlay />}
+      {hasImage && <ShaftFragmentOverlay />}
       {hasImage && <StackImagePicker pane="left" />}
     </main>
 
