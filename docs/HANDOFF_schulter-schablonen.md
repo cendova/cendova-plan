@@ -29,9 +29,9 @@ dann `docs/schulter-modul-plan.md` (Abschnitte B.7 und B.8).
 ## Kontext
 
 CendovaPlan (Browser-Planungstool Hüfte/Knie/Schulter, reines Frontend,
-Lern-/Eigenprojekt, nicht CE). Das Schultermodul ist bis auf Schritt 7
-**fertig**: 8 Messungen (CSA, Akromion-Index, Glenoid-Inklination,
-Hals-Schaft-Winkel, AHD, Humeruskopf, DSA, LSA), Seiten-/Prothesen-
+Lern-/Eigenprojekt, nicht CE). Das Schultermodul ist **komplett** (Schritte
+0–7): 9 Messungen (CSA, Akromion-Index, Glenoid-Inklination,
+Hals-Schaft-Winkel, AHD, Humeruskopf, DSA, LSA, DTI), Seiten-/Prothesen-
 Schalter, Plan-Format v7, Undo/Redo, PDF, Beispielbild
 (`?beispiel=schulter`, CC0-Grashey, Pixelabstand 0,1 mm/px ist eine
 dokumentierte **Annahme**, s. `public/sample/LIESMICH.txt`).
@@ -44,8 +44,8 @@ lokale Sicherung `.cendova-daten/`, gitignored).
 ## Eckdaten
 
 - Branch: `claude/repos-context-sync-j97vb9` (alle Schulter-Arbeit,
-  11+ Commits seit `main`; `main` = Release v0.1.2 ohne Schulter)
-- Tests: `npm test` → 209 grün · Statisch: `npm run verify`
+  27+ Commits seit `main`; `main` = Release v0.1.2 ohne Schulter)
+- Tests: `npm test` → 228 grün · Statisch: `npm run verify`
 - Schulter-Commits in Reihenfolge: `9448e12` (Schritt 0) … `4857437`
   (Schritt 5 + Beispielbild), danach UI-Konsistenz `80c00d6`, `f9ae8c7`,
   `be00dfc`, `2ff59c7`, `4fab39c`

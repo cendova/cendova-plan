@@ -169,14 +169,31 @@ export async function veredleSchablone(pfad, mmPerPxQuelle, opt = {}) {
       const i = (y * W + x) * 4
       const r = data[i], g = data[i + 1], b = data[i + 2]
       if (r > 110 && r - g > 50 && r - b > 50) rot[y * W + x] = 1
-      const v = Math.max(0, Math.min(255, Math.min(g, b) - r)) / 255
-      maske[y * W + x] = v
-      if (v > 0.15) {
-        if (x < mnX) mnX = x
-        if (x > mxX) mxX = x
-        if (y < mnY) mnY = y
-        if (y > mxY) mxY = y
-      }
+      maske[y * W + x] = Math.max(0, Math.min(255, Math.min(g, b) - r)) / 255
+    }
+
+  // Pegel-Normierung der Rohmaske. Die Quell-Software zeichnet eine
+  // Serie gelegentlich im HERVORGEHOBENEN Zustand: statt reinem Cyan
+  // (0,255,255) dann z. B. (153,254,255) — min(G,B)−R ergibt nur noch
+  // 0,40 und KEIN Pixel überschreitet die Binarisierungsschwelle 0,5.
+  // Ergebnis wäre ein blasser Geisterumriss ohne Linienkern (Befund der
+  // Sichtprüfung an zwei Bildern). Die Geometrie ist dabei unversehrt,
+  // es fehlt nur der Pegel — also hochskalieren.
+  //
+  // Für normale Aufnahmen ein exaktes NO-OP: reines Cyan liefert
+  // min(255,255)−0 = 255, der Maximalwert ist dort 1,0.
+  let maxRoh = 0
+  for (let i = 0; i < maske.length; i++) if (maske[i] > maxRoh) maxRoh = maske[i]
+  if (maxRoh > 0.25 && maxRoh < 0.98)
+    for (let i = 0; i < maske.length; i++) maske[i] = Math.min(1, maske[i] / maxRoh)
+
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (maske[y * W + x] <= 0.15) continue
+      if (x < mnX) mnX = x
+      if (x > mxX) mxX = x
+      if (y < mnY) mnY = y
+      if (y > mxY) mxY = y
     }
   if (mxX < 0) throw new Error('keine Zeichnung (Cyan) gefunden')
 

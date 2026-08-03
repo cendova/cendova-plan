@@ -1,8 +1,9 @@
 # CLAUDE.md — CendovaPlan
 
-Browser-basiertes Planungstool für **Hüft-/Knie-Endoprothetik** (DICOM).
+Browser-basiertes Planungstool für **Hüft-, Knie- und Schulter-
+Endoprothetik** (DICOM).
 Lern-/Eigenprojekt, **nicht CE-zertifiziert**. Stack: React 19 + TypeScript +
-Vite 6 + Tailwind 4 + **Cornerstone3D** (WebGL). Reines Frontend, kein Backend.
+Vite 8 + Tailwind 4 + **Cornerstone3D** (WebGL). Reines Frontend, kein Backend.
 
 **Datenschutz (hart):** Patienten-DICOMs bleiben **lokal** — keine externe
 Übertragung, nicht in den Cloud-Container hochladen. DICOM-Dateien sind in
@@ -10,7 +11,7 @@ Vite 6 + Tailwind 4 + **Cornerstone3D** (WebGL). Reines Frontend, kein Backend.
 
 ## Architektur (Kurz)
 - `src/lib/cornerstone/` — Render-/WebGL-Schicht (Viewport, DICOM-Load).
-- `src/lib/{hip,knee}/` — fast reine Berechnungslogik (Winkel, Kataloge,
+- `src/lib/{hip,knee,shoulder}/` — fast reine Berechnungslogik (Winkel, Kataloge,
   Schablonen-Geometrie).
 - `src/lib/plan/` — Plan ↔ JSON (`serialize.ts`) + PDF (`pdfExport.ts`).
 - `src/state/` — Zustand-Stores (Modul-Singletons).

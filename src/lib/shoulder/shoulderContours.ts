@@ -5,7 +5,7 @@
 // Schablonen-Paket — lib/templates/registry.ts ersetzt SHOULDER_CONTOURS
 // beim Paket-Load in-place (Doktrin wie KNEE_CONTOURS). Eigene Daten
 // erzeugt scripts/build-shoulder-contours.mjs aus selbst beschafften
-// Quellen (Verpacken: scripts/export-shoulder-contours-addon.mjs).
+// Quellen (Verpacken: scripts/export-shoulder-package.mjs).
 //
 // Schlüssel `${kind}|AP|${sizeIndex}` — die Schulter kennt nur die
 // a.p.-Sicht (Grashey), das view-Segment bleibt aus Konsistenz zum

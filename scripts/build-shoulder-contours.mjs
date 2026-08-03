@@ -1,11 +1,12 @@
 // Batch-Pipeline Schulter: extrahiert aus den Screenshot-Serien
-// (Schablonen_Schulter/Schablonen_Felix) maßstabsgetreue Pro-Größe-Konturen.
+// (lokale Quellordner unter Schablonen_Schulter/) maßstabsgetreue
+// Pro-Größe-Konturen und Bild-Overlays.
 //
 // Unterschiede zur Knie-Pipeline:
 //  - Zuordnung Datei→(kind,sizeIndex) kommt aus zuordnung.local.json
 //    (Dateinamen tragen keine Semantik; Serien-Reihenfolge = Größen-
 //    Reihenfolge, vom Autor bestätigt) — erzeugt von
-//    scripts/build-schulter-zuordnung.mjs.
+//    scripts/build-schulter-zuordnung.mjs (Serien-Tabelle lokal).
 //  - Implantatfarbe ist Cyan (matcht das bestehende Blau-Prädikat), aber
 //    die Quell-Software zeichnet einen ROTEN Referenzkreis auf die Kontur:
 //    er geht als extraBarrier in die Engine (stopft seine Löcher, zählt

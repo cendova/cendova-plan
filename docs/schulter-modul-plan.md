@@ -1,8 +1,10 @@
 # Schultermodul — Recherche & Umsetzungsplan
 
-**Stand:** 2026-07-29 · **Status:** Schritte 0–4 umgesetzt, offen sind 5 und 7
+**Stand:** 2026-08-04 · **Status:** Schritte 0–7 umgesetzt (Modul komplett).
+Offen bleibt bewusst nur die RSA-Bilanz Soll/Ist — Begründung unten.
 **Ziel:** Drittes Planungsmodul (Schulter) konsistent zu Hüfte und Knie.
-**Schablonen:** kommen später vom Autor — der Plan hält die Schnittstelle frei.
+**Schablonen:** vom Autor geliefert und über die Paket-Schnittstelle
+eingebunden (18 Familien); das Repo selbst enthält keine Herstellerdaten.
 
 **Festgelegt (Rückmeldung 2026-07-29):**
 1. **Beides** — anatomische TSA **und** Reverse (RSA).
