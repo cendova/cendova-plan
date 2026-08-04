@@ -8,6 +8,15 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Cornerstone-5-Majors NICHT anbieten: Der Sprung 4->5 brach am
+      # 04.08.2026 das DICOM-Laden auf Anwender-Macs (unkomprimierte
+      # Bilder innerhalb der Texturgrenze wurden nicht dekodiert;
+      # Rollback in Commit b2b15f9). Erst nach erfolgreichem Test auf
+      # einem echten Mac mit echten Aufnahmen wieder freigeben — die
+      # Fehlermeldung zeigt dafuer jetzt die "Technische Ursache" an.
+      - dependency-name: '@cornerstonejs/*'
+        update-types: ['version-update:semver-major']
     groups:
       # Patch-/Minor-Updates gebündelt — ein PR statt vieler.
       abhaengigkeiten:
