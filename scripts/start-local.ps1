@@ -85,30 +85,76 @@ if ((Test-Path $curLink) -and (Test-Path $brandIcon)) {
   }
 }
 
-# Aktuellen Stand holen — nur wenn der Branch einen Upstream hat.
-git rev-parse --abbrev-ref '@{u}' *> $null
+# ---------------------------------------------------------------------------
+# Aktuellen Stand holen.
+#
+# WICHTIG - die Falle, die das hier verhindert: Frueher wurde ohne --prune
+# geholt und stumpf gegen @{u} gemergt. Wurde der eingestellte Branch auf dem
+# Server GELOESCHT (z. B. ein Test-Branch nach dem Merge), blieb die veraltete
+# Fernreferenz lokal bestehen, der Merge meldete "bereits aktuell" - und die
+# Installation blieb fuer immer auf dem alten Stand stehen, ohne jede
+# Fehlermeldung. Genau so verpasste eine Installation das Schultermodul.
+#
+# Jetzt: mit --prune holen, verschwundenen Upstream erkennen, auf main
+# zurueckfallen - und am Ende IMMER ausgeben, welcher Stand nun laeuft.
+# ---------------------------------------------------------------------------
+$hauptBranch = 'main'
+$branch = (git rev-parse --abbrev-ref HEAD 2>$null)
+
+git remote get-url origin *> $null
 if ($LASTEXITCODE -eq 0) {
-  Write-Host 'Hole aktuellen Stand ...' -ForegroundColor DarkGray
-  git fetch origin
+  Write-Host "Hole aktuellen Stand (Branch: $branch) ..." -ForegroundColor DarkGray
+  git fetch --prune origin
   if ($LASTEXITCODE -eq 0) {
-    git merge --ff-only '@{u}'
+    git rev-parse --verify --quiet "origin/$branch" *> $null
     if ($LASTEXITCODE -ne 0) {
-      # Upstream divergiert (z. B. nach der History-Bereinigung in Stufe C2):
-      # ohne lokale Aenderungen auf den Server-Stand zuruecksetzen.
+      Write-Host ''
+      Write-Host "HINWEIS: Der Branch `"$branch`" existiert auf dem Server nicht mehr" -ForegroundColor Yellow
+      Write-Host "         (ueblicherweise nach dem Zusammenfuehren geloescht)." -ForegroundColor Yellow
+      Write-Host "         Wechsle auf `"$hauptBranch`" - sonst bliebe diese" -ForegroundColor Yellow
+      Write-Host "         Installation dauerhaft auf einem alten Stand stehen." -ForegroundColor Yellow
+      Write-Host ''
       $dirty = git status --porcelain
-      if (-not $dirty) {
-        Write-Host 'Upstream divergiert - setze auf Server-Stand zurueck (git reset --hard) ...' -ForegroundColor Yellow
-        git reset --hard '@{u}'
+      if ($dirty) {
+        Write-Host 'WARNUNG: Lokale Aenderungen vorhanden - Wechsel uebersprungen.' -ForegroundColor Yellow
+        git status --short | Select-Object -First 5
       } else {
-        Write-Host 'WARNUNG: Lokale Aenderungen vorhanden - Update uebersprungen.' -ForegroundColor Yellow
+        git checkout $hauptBranch *> $null
+        if ($LASTEXITCODE -ne 0) { git checkout -b $hauptBranch "origin/$hauptBranch" *> $null }
+        git reset --hard "origin/$hauptBranch" *> $null
+        $branch = $hauptBranch
+        Write-Host "  -> jetzt auf $hauptBranch." -ForegroundColor Green
+      }
+    } else {
+      git merge --ff-only "origin/$branch" *> $null
+      if ($LASTEXITCODE -ne 0) {
+        $dirty = git status --porcelain
+        if (-not $dirty) {
+          Write-Host 'Stand divergiert - setze auf Server-Stand zurueck ...' -ForegroundColor Yellow
+          git reset --hard "origin/$branch" *> $null
+        } else {
+          Write-Host 'WARNUNG: Lokale Aenderungen vorhanden - Update uebersprungen.' -ForegroundColor Yellow
+          git status --short | Select-Object -First 5
+        }
       }
     }
   } else {
     Write-Host 'WARNUNG: git fetch fehlgeschlagen (offline?) - starte mit vorhandenem Stand.' -ForegroundColor Yellow
   }
 } else {
-  Write-Host 'Kein Upstream gesetzt - ueberspringe git pull.' -ForegroundColor Yellow
+  Write-Host 'Kein Server hinterlegt - ueberspringe Update.' -ForegroundColor Yellow
 }
+
+# Welcher Stand laeuft jetzt wirklich? Bewusst IMMER ausgeben.
+$stand = git log -1 --format='%h vom %ad' --date=format:'%d.%m.%Y %H:%M' 2>$null
+Write-Host ''
+Write-Host "  Stand: $(git rev-parse --abbrev-ref HEAD 2>$null) - $stand" -ForegroundColor Cyan
+if (Test-Path 'src/lib/shoulder/shoulderCatalog.ts') {
+  Write-Host '  Module: Huefte - Knie - Schulter' -ForegroundColor Cyan
+} else {
+  Write-Host '  Module: Huefte - Knie   (Schultermodul NICHT enthalten - Stand ist alt)' -ForegroundColor Yellow
+}
+Write-Host ''
 
 Write-Host 'npm install ...' -ForegroundColor DarkGray
 npm install
