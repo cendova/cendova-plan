@@ -22,6 +22,8 @@ import { initCornerstone } from './init'
 import { extractPatientInfo } from './dicomMeta'
 import { assertImageUsable } from './textureLimit'
 import { pruefeDicomGroesse } from '../importGrenzen'
+import { verkleinereDicomFallsNoetig } from './dicomVerkleinern'
+import { getMaxTextureSize } from './textureLimit'
 import {
   useViewerStore,
   DEFAULT_CLINICAL_BLD,
@@ -464,15 +466,38 @@ export async function loadFiles(files: File[]) {
   // Pixel-Grenze (GPU-Textur) prüft assertImageUsable nach dem Laden.
   pruefeDicomGroesse(dicomFiles[0].size, dicomFiles[0].name)
 
+  // Zu große Bilder VOR der Übergabe an Cornerstone verkleinern: Die
+  // GPU-Texturgrenze ist gerätespezifisch (oft 8192 px) — eine
+  // Ganzbeinaufnahme mit z. B. 8818 px lief sonst auf dem einen Rechner
+  // und blieb auf dem nächsten schwarz. Der Pixelabstand wächst dabei um
+  // denselben Faktor, Messungen bleiben exakt (dicomVerkleinern.ts).
+  const maxKante = getMaxTextureSize()
+  const verarbeitet = await Promise.all(
+    dicomFiles.map(async (file) => {
+      const r = verkleinereDicomFallsNoetig(await file.arrayBuffer(), maxKante)
+      if (!r.skaliert) return file
+      useViewerStore
+        .getState()
+        .setStatus(
+          `Bild für dieses Gerät von ${r.vorher.cols}×${r.vorher.rows} auf ` +
+            `${r.nachher.cols}×${r.nachher.rows} px verkleinert — Maßstab ` +
+            `automatisch angepasst.`,
+        )
+      return new File([r.bytes], file.name, { type: 'application/dicom' })
+    }),
+  )
+
   // Erste DICOM-Datei als Rohbytes merken — wird beim Plan-Export ins
   // JSON eingebettet, damit Plan + Bild als EINE self-contained Datei
   // gespeichert werden können (bei Kandidaten-Wechsel aktualisiert
-  // showImageCandidate die Bytes auf das dann sichtbare Bild).
-  currentDicomBytes = await dicomFiles[0].arrayBuffer()
-  currentDicomFileName = dicomFiles[0].name
+  // showImageCandidate die Bytes auf das dann sichtbare Bild). Bewusst
+  // die ggf. VERKLEINERTEN Bytes: So passt der Plan auch auf Geräte mit
+  // derselben Grenze.
+  currentDicomBytes = await verarbeitet[0].arrayBuffer()
+  currentDicomFileName = verarbeitet[0].name
 
-  candidateFiles = dicomFiles
-  candidateImageIds = dicomFiles.map((file) =>
+  candidateFiles = verarbeitet
+  candidateImageIds = verarbeitet.map((file) =>
     dicomImageLoader.wadouri.fileManager.add(file),
   )
 

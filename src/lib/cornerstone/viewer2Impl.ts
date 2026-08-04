@@ -38,6 +38,8 @@ import { initCornerstone } from './init'
 import { extractPatientInfo } from './dicomMeta'
 import { assertImageUsable } from './textureLimit'
 import { pruefeDicomGroesse } from '../importGrenzen'
+import { verkleinereDicomFallsNoetig } from './dicomVerkleinern'
+import { getMaxTextureSize } from './textureLimit'
 import { useKneePanesStore } from '../../state/kneePanesStore'
 import { useKneeTemplateStore } from '../../state/kneeTemplateStore'
 import {
@@ -428,14 +430,26 @@ export async function loadFilesToPane2(files: File[]): Promise<void> {
   // Größengrenze VOR dem Einlesen in den RAM (Security-Report §10).
   pruefeDicomGroesse(dicomFiles[0].size, dicomFiles[0].name)
 
-  // Patienteninfo aus den Rohbytes der ersten Datei.
-  const bytes = await dicomFiles[0].arrayBuffer()
+  // Zu große Bilder verkleinern — gleiche Logik wie im Haupt-Pane
+  // (loadFiles in viewerImpl.ts), Maßstab wächst mit.
+  const maxKante = getMaxTextureSize()
+  const verarbeitet = await Promise.all(
+    dicomFiles.map(async (f) => {
+      const r = verkleinereDicomFallsNoetig(await f.arrayBuffer(), maxKante)
+      return r.skaliert
+        ? new File([r.bytes], f.name, { type: 'application/dicom' })
+        : f
+    }),
+  )
+
+  // Patienteninfo aus den (ggf. verkleinerten) Rohbytes der ersten Datei.
+  const bytes = await verarbeitet[0].arrayBuffer()
   store.setRightPatientInfo(extractPatientInfo(bytes))
   currentDicomBytes2 = bytes
-  currentDicomFileName2 = dicomFiles[0].name
+  currentDicomFileName2 = verarbeitet[0].name
 
-  candidateFiles2 = dicomFiles
-  candidateImageIds2 = dicomFiles.map((f) =>
+  candidateFiles2 = verarbeitet
+  candidateImageIds2 = verarbeitet.map((f) =>
     dicomImageLoader.wadouri.fileManager.add(f),
   )
   // Ein-Bild-Stack wie im Haupt-Pane: Kandidaten-Wechsel nur über
