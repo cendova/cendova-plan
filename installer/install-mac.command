@@ -48,8 +48,13 @@ info '====================================================='
 echo "  Quelle : $REPO_HTTPS"
 echo "  Ziel   : $INSTALL_DIR"
 echo
-# Branch waehlbar (Enter = main). Fuer Test-Staende den Branch-Namen eingeben.
-read -r -p 'Branch [main]: ' BRANCH
+# Branch waehlbar (Enter = main). NUR fuer Test-Staende einen Namen eingeben:
+# Der Launcher holt danach immer genau diesen Branch. Bleibt dort die
+# Entwicklung stehen, friert die Installation unbemerkt ein — genau so hing
+# eine Installation wochenlang auf einer alten Version. Der Launcher wechselt
+# deshalb von selbst auf main zurueck, sofern keine Datei
+# .cendova-branch-pin im Projektordner liegt.
+read -r -p 'Branch [main] — im Zweifel einfach Enter: ' BRANCH
 BRANCH=${BRANCH:-main}
 echo "  Branch : $BRANCH"
 echo

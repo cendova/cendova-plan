@@ -52,6 +52,37 @@ fi
 HAUPT_BRANCH=main
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
 
+# Auf einem NEBENBRANCH gelandet? Dann zurueck auf main.
+#
+# Der Installer fragt beim Einrichten nach einem Branch. Wird dort einmal
+# ein Test-Branch eingetragen, aktualisiert der Launcher fortan brav genau
+# diesen Branch — der aber nie wieder etwas Neues bekommt. Eine
+# Installation hing so wochenlang auf einer alten Version fest, waehrend
+# git bei jedem Start "Already up to date" meldete. Fuer Anwender ist das
+# nicht durchschaubar; "Icon klicken" muss die aktuelle Version bringen.
+#
+# Wer bewusst auf einem Branch bleiben will (Entwicklung/Test), legt die
+# Datei .cendova-branch-pin an — dann bleibt dieser Branch unangetastet.
+if [ "$BRANCH" != "$HAUPT_BRANCH" ] && [ ! -f .cendova-branch-pin ]; then
+  echo
+  echo "HINWEIS: Diese Installation steht auf dem Branch „$BRANCH", nicht"
+  echo "         auf „$HAUPT_BRANCH" — dort kommen keine Aktualisierungen an."
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "WARNUNG: Lokale Änderungen vorhanden — Wechsel übersprungen."
+    git status --short | head -5
+  else
+    echo "         Wechsle auf $HAUPT_BRANCH ..."
+    git fetch --prune origin >/dev/null 2>&1
+    if git checkout -B "$HAUPT_BRANCH" "origin/$HAUPT_BRANCH" >/dev/null 2>&1; then
+      BRANCH="$HAUPT_BRANCH"
+      echo "  → jetzt auf $HAUPT_BRANCH."
+    else
+      echo "WARNUNG: Wechsel fehlgeschlagen — starte mit vorhandenem Stand."
+    fi
+  fi
+  echo
+fi
+
 if git remote get-url origin >/dev/null 2>&1; then
   echo "Hole aktuellen Stand (Branch: $BRANCH) ..."
   # --prune räumt Fernreferenzen gelöschter Branches weg.

@@ -101,6 +101,34 @@ if ((Test-Path $curLink) -and (Test-Path $brandIcon)) {
 $hauptBranch = 'main'
 $branch = (git rev-parse --abbrev-ref HEAD 2>$null)
 
+# Auf einem NEBENBRANCH gelandet? Dann zurueck auf main. Der Installer fragt
+# beim Einrichten nach einem Branch; ein dort eingetragener Test-Branch wird
+# sonst dauerhaft brav aktualisiert, bekommt aber nie wieder etwas Neues -
+# eine Installation hing so wochenlang fest, waehrend git "Already up to
+# date" meldete. Wer bewusst auf einem Branch bleiben will, legt die Datei
+# .cendova-branch-pin an.
+if ($branch -ne $hauptBranch -and -not (Test-Path '.cendova-branch-pin')) {
+  Write-Host ''
+  Write-Host "HINWEIS: Diese Installation steht auf dem Branch `"$branch`", nicht" -ForegroundColor Yellow
+  Write-Host "         auf `"$hauptBranch`" - dort kommen keine Aktualisierungen an." -ForegroundColor Yellow
+  $dirty = git status --porcelain
+  if ($dirty) {
+    Write-Host 'WARNUNG: Lokale Aenderungen vorhanden - Wechsel uebersprungen.' -ForegroundColor Yellow
+    git status --short | Select-Object -First 5
+  } else {
+    Write-Host "         Wechsle auf $hauptBranch ..." -ForegroundColor Yellow
+    git fetch --prune origin *> $null
+    git checkout -B $hauptBranch "origin/$hauptBranch" *> $null
+    if ($LASTEXITCODE -eq 0) {
+      $branch = $hauptBranch
+      Write-Host "  -> jetzt auf $hauptBranch." -ForegroundColor Green
+    } else {
+      Write-Host 'WARNUNG: Wechsel fehlgeschlagen - starte mit vorhandenem Stand.' -ForegroundColor Yellow
+    }
+  }
+  Write-Host ''
+}
+
 git remote get-url origin *> $null
 if ($LASTEXITCODE -eq 0) {
   Write-Host "Hole aktuellen Stand (Branch: $branch) ..." -ForegroundColor DarkGray
