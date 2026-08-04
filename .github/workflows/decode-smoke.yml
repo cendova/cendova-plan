@@ -1,0 +1,41 @@
+# DICOM-Decode-Smoke-Test: baut die App und prüft in ECHTEM Chrome
+# (headless), dass alle drei Beispielbilder dekodiert werden — auf Linux
+# UND auf einem echten macOS-Runner.
+#
+# Anlass: Der Cornerstone-5-Sprung (08/2026) brach das DICOM-Laden nur auf
+# Macs; `npm run verify` konnte das nicht sehen (Decode läuft erst zur
+# Laufzeit im Browser). Drei Anwender nutzen das Programm aktiv — solche
+# Regressionen müssen VOR dem Merge auffallen, nicht in der Sprechstunde.
+name: Decode-Smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  decode-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      # Actions auf Commit-SHA gepinnt (Security-Report §13).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # Produktions-Build servieren und im vorinstallierten Runner-Chrome testen.
+      - run: |
+          npx vite preview --port 4179 &
+          node scripts/decode-smoke.mjs --url http://localhost:4179/
