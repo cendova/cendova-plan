@@ -1,3 +1,5 @@
+import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -5,8 +7,23 @@ import os from 'node:os'
 import path from 'node:path'
 import { lokaleSicherung } from './vite-lokale-sicherung'
 
+// Version + Commit zur BAUZEIT einbrennen. Anwender konnten bisher nicht
+// erkennen, welcher Stand bei ihnen laeuft — bei einer Installation, die
+// still auf einem alten Commit festhing, war genau das die Huerde.
+const paket = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+let commit = ''
+try {
+  commit = execSync('git log -1 --format=%h', { encoding: 'utf8' }).trim()
+} catch {
+  // Kein Git (z. B. ZIP-Download) — dann bleibt nur die Version.
+}
+
 export default defineConfig({
   plugins: [react(), tailwindcss(), lokaleSicherung()],
+  define: {
+    __APP_VERSION__: JSON.stringify(paket.version),
+    __APP_COMMIT__: JSON.stringify(commit),
+  },
   // Relative Asset-Pfade: Das Build läuft unverändert standalone UND unter
   // einem Prefix (CendovaView liefert es als /plan/ mit aus — Weg B der
   // Integration). Absolute '/assets/…'-URLs würden dort ins Leere zeigen.

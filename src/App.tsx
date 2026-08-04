@@ -151,7 +151,18 @@ function App() {
         <div className="mx-2 h-5 w-px bg-neutral-800" />
         <HeaderTools />
 
-        <span className="ml-auto rounded bg-amber-900/60 px-2 py-0.5 text-xs text-amber-300">
+        {/* Laufender Stand. Bewusst sichtbar statt nur in der Konsole:
+            Eine Installation hing still auf einem alten Commit fest, und
+            ohne diese Angabe liess sich das am Bildschirm nicht erkennen. */}
+        <span
+          className="ml-auto text-[10px] tabular-nums text-neutral-600"
+          title={`CendovaPlan ${__APP_VERSION__}${__APP_COMMIT__ ? ` · Commit ${__APP_COMMIT__}` : ''} — beim Melden eines Problems bitte mit angeben.`}
+        >
+          v{__APP_VERSION__}
+          {__APP_COMMIT__ ? ` · ${__APP_COMMIT__}` : ''}
+        </span>
+
+        <span className="ml-2 rounded bg-amber-900/60 px-2 py-0.5 text-xs text-amber-300">
           Lern-/Eigenprojekt — nicht für klinische Nutzung
         </span>
       </header>
