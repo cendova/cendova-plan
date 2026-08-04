@@ -49,7 +49,14 @@ fi
 # auf main zurückfallen. Am Ende wird IMMER ausgegeben, welcher Stand nun
 # läuft — sonst ist „welche Version habe ich eigentlich?" nicht beantwortbar.
 # ---------------------------------------------------------------------------
-HAUPT_BRANCH=main
+# Anwender-Installationen folgen dem FREIGABE-Branch "stable", nicht main:
+# main erreicht Anwender erst, nachdem der Stand auf einem echten Mac
+# getestet und per `git push origin main:stable` freigegeben wurde. Grund:
+# Die Cornerstone-5-Regression (08/2026) brach das DICOM-Laden nur auf
+# Anwender-Macs und war weder in Tests noch in der CI sichtbar — so etwas
+# darf eine laufende Installation nicht mehr ungeprüft erreichen.
+# Tester bleiben per .cendova-branch-pin bewusst auf main (siehe unten).
+HAUPT_BRANCH=stable
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
 
 # ERZEUGTE Dateien zurücksetzen, bevor irgendetwas mit git passiert.
@@ -68,7 +75,7 @@ if [ -n "$(git status --porcelain -- package-lock.json 2>/dev/null)" ]; then
   git checkout -- package-lock.json 2>/dev/null || true
 fi
 
-# Auf einem NEBENBRANCH gelandet? Dann zurueck auf main.
+# Auf einem NEBENBRANCH gelandet? Dann zurueck auf den Freigabe-Branch.
 #
 # Der Installer fragt beim Einrichten nach einem Branch. Wird dort einmal
 # ein Test-Branch eingetragen, aktualisiert der Launcher fortan brav genau

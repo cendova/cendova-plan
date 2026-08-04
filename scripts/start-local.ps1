@@ -98,7 +98,12 @@ if ((Test-Path $curLink) -and (Test-Path $brandIcon)) {
 # Jetzt: mit --prune holen, verschwundenen Upstream erkennen, auf main
 # zurueckfallen - und am Ende IMMER ausgeben, welcher Stand nun laeuft.
 # ---------------------------------------------------------------------------
-$hauptBranch = 'main'
+# Anwender-Installationen folgen dem FREIGABE-Branch "stable", nicht main:
+# main erreicht Anwender erst nach Test auf einem echten Mac und Freigabe
+# per `git push origin main:stable` (Cornerstone-5-Lektion 08/2026 — die
+# Regression war weder in Tests noch in der CI sichtbar). Tester bleiben
+# per .cendova-branch-pin bewusst auf main.
+$hauptBranch = 'stable'
 $branch = (git rev-parse --abbrev-ref HEAD 2>$null)
 
 # ERZEUGTE Dateien zuruecksetzen, bevor irgendetwas mit git passiert.
@@ -112,7 +117,7 @@ if (git status --porcelain -- package-lock.json) {
   git checkout -- package-lock.json *> $null
 }
 
-# Auf einem NEBENBRANCH gelandet? Dann zurueck auf main. Der Installer fragt
+# Auf einem NEBENBRANCH gelandet? Dann zurueck auf stable. Der Installer fragt
 # beim Einrichten nach einem Branch; ein dort eingetragener Test-Branch wird
 # sonst dauerhaft brav aktualisiert, bekommt aber nie wieder etwas Neues -
 # eine Installation hing so wochenlang fest, waehrend git "Already up to

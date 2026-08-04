@@ -41,7 +41,7 @@ Was die IT freigeben muss (nur fuer Code-Updates, NIE Patientendaten):
 Datenschutz: CendovaPlan ist eine reine Browser-App und laeuft nur lokal
 (localhost). Patienten-DICOMs verlassen den Rechner NICHT.
 
-Anderen Branch verfolgen? (Standard: main)
+Anderen Branch verfolgen? (Standard: stable — der geprüfte Freigabe-Stand; main = Test-Kanal)
   Installieren.cmd  -Branch  <branchname>
 Anderes Repository?
   Installieren.cmd  -RepoUrl <url>  -Branch <branchname>

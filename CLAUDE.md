@@ -35,8 +35,35 @@ Vite 8 + Tailwind 4 + **Cornerstone3D** (WebGL). Reines Frontend, kein Backend.
   über **`playwright-core`** + **vorinstalliertes** Chromium (`/opt/pw-browsers/...`,
   da Browser-**Download geblockt**). Nur nötig, um die Laufzeit im Container zu
   prüfen — der Nutzer braucht es nicht.
+- **Decode-Smoke (CI + lokal):** `node scripts/decode-smoke.mjs` gegen einen
+  laufenden `vite preview` — lädt alle Beispielbilder + zwei synthetische
+  Ganzbein-Großformate headless in echtem Chrome und verlangt die
+  „Bild geladen"-Zeile. Läuft in der CI auf ubuntu **und macOS**
+  (`.github/workflows/decode-smoke.yml`).
 - Abhängigkeiten installiert der **async** SessionStart-Hook automatisch
   (`.claude/hooks/session-start.sh`, nur im Container).
+
+## Freigabe-Prozess (hart, seit der Cornerstone-5-Regression 08/2026)
+Das Programm wird von mehreren Anwendern **klinisch aktiv** genutzt.
+Deren Installationen (Launcher + Installer + öffentliche Pages-Demo)
+folgen dem Branch **`stable`** — NICHT main.
+- **`main` = Test-Kanal**: dorthin wird gemergt und vom Nutzer (Philipp)
+  lokal getestet; Tester-Installationen bleiben per `.cendova-branch-pin`
+  auf main.
+- **Freigabe** erst nach bestätigtem Test: `git push origin main:stable`.
+  Änderungen am Render-/Decode-Stack (`@cornerstonejs/*`, `dicom-parser`,
+  Worker-/Vite-Konfiguration) brauchen vor der Freigabe zusätzlich einen
+  Test auf einem **echten Mac**.
+- Grund: Die v5-Regression brach das DICOM-Laden nur auf Anwender-Macs
+  und war **weder** in `npm run verify` **noch** im Decode-Smoke auf
+  macos-latest sichtbar (validiert 04.08.2026 via Probe-PR #30, auch mit
+  8100-px-Großformaten) — CI-Runner (headless/SwiftShader) reproduzieren
+  diese Fehlerklasse nicht. Automatik reicht hier prinzipiell nicht.
+- Dependabot bietet Cornerstone-Majors bewusst nicht mehr an
+  (`.github/dependabot.yml` ignore) — erst nach Mac-Test wieder freigeben.
+- Bei Decode-Fehlern zeigt die rote Meldung „Technische Ursache: …"
+  (echter Loader-Fehler via `assertImageUsableMitUrsache`) — diese Zeile
+  beim Anwender erfragen statt zu raten.
 
 ## Konventionen
 - Kommentare/Commits auf **Deutsch** (siehe bestehende History).

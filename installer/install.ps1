@@ -19,7 +19,7 @@
 # Idempotent: erneutes Ausfuehren aktualisiert nur (holt neueste Version + npm).
 #
 # Aufruf (am einfachsten): Installieren.cmd doppelklicken. Oder:
-#   powershell -ExecutionPolicy Bypass -File install.ps1 [-Branch main] [-RepoUrl ...]
+#   powershell -ExecutionPolicy Bypass -File install.ps1 [-Branch stable] [-RepoUrl ...]
 #
 # Datenschutz: CendovaPlan laeuft danach rein LOKAL im Browser; es werden keine
 # Patientendaten uebertragen. Die einzige Netzverbindung dient dem Laden/
@@ -27,7 +27,8 @@
 
 param(
   [string]$RepoUrl = 'https://github.com/cendova/cendova-plan.git',
-  [string]$Branch = 'main',
+  # 'stable' = geprüfter Freigabe-Stand; main nur für Tester (siehe Launcher).
+  [string]$Branch = 'stable',
   [string]$InstallDir = (Join-Path $env:USERPROFILE 'CendovaPlan'),
   # Fuer die lokale Kopie ohne Admin/winget; gleiche Version wie am Mac.
   [string]$NodeVersion = 'v22.22.2'

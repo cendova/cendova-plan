@@ -6,7 +6,9 @@ name: Demo (GitHub Pages)
 
 on:
   push:
-    branches: [main]
+    # Die öffentliche Demo folgt dem FREIGABE-Branch, nicht main — sie soll
+    # exakt den Stand zeigen, den auch die Anwender-Installationen bekommen.
+    branches: [stable]
   workflow_dispatch:
 
 # Rechte am Workflow minimal; die schreibenden Pages-Rechte nur im Deploy-Job
