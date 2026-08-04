@@ -80,7 +80,7 @@ export function assertImageUsable(
   if (longest <= 0) {
     const hdr = diagBytes ? extractImageHeader(diagBytes) : null
     console.info(
-      `[viewer] Bild NICHT dekodiert (0×0)` +
+      `[viewer] Bild NICHT dekodiert (0×0) · GPU-Texturgrenze ${max} px` +
         (hdr
           ? ` · Header ${hdr.columns}×${hdr.rows} px · Transfersyntax ` +
             `${hdr.transferSyntaxUid ?? '?'} (${hdr.transferSyntaxName})` +
@@ -104,12 +104,35 @@ export function assertImageUsable(
         `${hdr.transferSyntaxUid ?? '?'} (${hdr.transferSyntaxName})` +
         `${hdr.photometric ? `, ${hdr.photometric}` : ''}` +
         `${hdr.bitsAllocated ? `, ${hdr.bitsAllocated} bit` : ''}. `
+
+      // ZUERST die Größe prüfen — vor der Format-Frage. Sprengt das Bild
+      // die Texturgrenze der Grafikkarte, scheitert es dort und kommt gar
+      // nicht erst als dekodiertes Bild zurück; „Maße 0×0" ist dann nur die
+      // Folge, nicht die Ursache. Ohne diese Prüfung riet die Meldung bei
+      // unkomprimierten Bildern zum Neustart der App — nutzloser Rat, wenn
+      // in Wahrheit eine 8818 px hohe Ganzbeinaufnahme an einer 8192-px-
+      // Grenze scheitert (echter Befund auf einem Anwender-Mac).
+      const laengsteKante = Math.max(hdr.rows, hdr.columns)
+      if (laengsteKante > max) {
+        throw new Error(
+          kopf +
+            `Damit ist die längste Kante (${laengsteKante} px) größer als ` +
+            `diese Grafikkarte darstellen kann (${max} px) — das Bild lässt ` +
+            `sich nicht als Textur laden. Bitte die Aufnahme verkleinert ` +
+            `exportieren (längste Kante höchstens ${max} px) oder mit ` +
+            `scripts/downscale-dicom.mjs herunterskalieren. Dasselbe Bild ` +
+            `kann auf einem Gerät mit stärkerer Grafik problemlos laufen.`,
+        )
+      }
+
       throw new Error(
         kopf +
           (unkomprimiert
-            ? `Das Bild ist bereits unkomprimiert — der Fehler liegt nicht ` +
-              `am Format. Bitte die App einmal neu starten (aktualisiert den ` +
-              `Zwischenspeicher); besteht der Fehler fort, bitte melden.`
+            ? `Das Bild ist bereits unkomprimiert und passt in die ` +
+              `Texturgrenze (${max} px) — der Fehler liegt also weder am ` +
+              `Format noch an der Größe. Bitte die App einmal neu starten ` +
+              `(aktualisiert den Zwischenspeicher); besteht der Fehler fort, ` +
+              `bitte melden.`
             : `Dieses Format/dieser Codec wird vom Viewer derzeit nicht ` +
               `unterstützt — bitte das Bild als unkomprimiertes DICOM exportieren.`),
       )
