@@ -15,7 +15,38 @@
  * Datenschutz: loggt/meldet ausschließlich Maße + Format — KEINE Patientendaten.
  */
 import { metaData } from '@cornerstonejs/core'
+import dicomImageLoader from '@cornerstonejs/dicom-image-loader'
 import { extractImageHeader } from './dicomMeta'
+
+/**
+ * Prüft ein geladenes Bild wie `assertImageUsable` — holt aber bei einem
+ * 0×0-Ergebnis zusätzlich den ECHTEN Loader-Fehler ein, indem das Bild
+ * gezielt noch einmal geladen wird (nur im Fehlerfall, kostet dann nichts
+ * Nennenswertes). Ohne diese Ursache kann die Meldung nur raten.
+ */
+export async function assertImageUsableMitUrsache(
+  imageId: string | null | undefined,
+  diagBytes?: ArrayBuffer | null,
+): Promise<void> {
+  try {
+    assertImageUsable(imageId, diagBytes)
+    return
+  } catch (erster) {
+    if (!imageId || !String(erster).includes('nicht dekodiert')) throw erster
+    let ursache: string | null = null
+    try {
+      await dicomImageLoader.wadouri.loadImage(imageId).promise
+    } catch (echt) {
+      ursache =
+        echt instanceof Error
+          ? echt.message
+          : typeof echt === 'string'
+            ? echt
+            : JSON.stringify(echt)
+    }
+    assertImageUsable(imageId, diagBytes, ursache)
+  }
+}
 
 /** Konservativer Fallback, falls die WebGL-Abfrage scheitert — viele
  *  ältere GPUs/Treiber deckeln die Texturkante hier. */
@@ -65,6 +96,12 @@ export function getMaxTextureSize(): number {
 export function assertImageUsable(
   imageId: string | null | undefined,
   diagBytes?: ArrayBuffer | null,
+  /** Tatsächlicher Lade-/Dekodierfehler des Loaders, falls eingefangen —
+   *  wird der Meldung als „Technische Ursache" beigelegt. Ohne ihn kann
+   *  die Diagnose nur raten (Befund: ein Mac scheiterte an einem Bild,
+   *  das Format UND Texturgrenze erfüllte — die Meldung riet dann
+   *  fälschlich zum Neustart). */
+  ladefehler?: string | null,
 ): void {
   const plane = imageId
     ? (metaData.get('imagePlaneModule', imageId) as
@@ -125,21 +162,23 @@ export function assertImageUsable(
         )
       }
 
+      const ursache = ladefehler ? ` Technische Ursache: ${ladefehler}` : ''
       throw new Error(
         kopf +
           (unkomprimiert
             ? `Das Bild ist bereits unkomprimiert und passt in die ` +
               `Texturgrenze (${max} px) — der Fehler liegt also weder am ` +
-              `Format noch an der Größe. Bitte die App einmal neu starten ` +
-              `(aktualisiert den Zwischenspeicher); besteht der Fehler fort, ` +
-              `bitte melden.`
+              `Format noch an der Größe. Bitte die technische Ursache ` +
+              `unten mitmelden.` + ursache
             : `Dieses Format/dieser Codec wird vom Viewer derzeit nicht ` +
-              `unterstützt — bitte das Bild als unkomprimiertes DICOM exportieren.`),
+              `unterstützt — bitte das Bild als unkomprimiertes DICOM ` +
+              `exportieren.` + ursache),
       )
     }
     throw new Error(
       `Bild konnte nicht geladen werden (keine gültigen Pixel-/Maß-Daten) — ` +
-        `möglicherweise keine gültige DICOM-Bilddatei.`,
+        `möglicherweise keine gültige DICOM-Bilddatei.` +
+        (ladefehler ? ` Technische Ursache: ${ladefehler}` : ''),
     )
   }
 

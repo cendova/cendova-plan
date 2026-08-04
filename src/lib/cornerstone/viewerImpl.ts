@@ -20,7 +20,7 @@ import {
 import dicomImageLoader from '@cornerstonejs/dicom-image-loader'
 import { initCornerstone } from './init'
 import { extractPatientInfo } from './dicomMeta'
-import { assertImageUsable } from './textureLimit'
+import { assertImageUsableMitUrsache } from './textureLimit'
 import { pruefeDicomGroesse } from '../importGrenzen'
 import { verkleinereDicomFallsNoetig } from './dicomVerkleinern'
 import { getMaxTextureSize } from './textureLimit'
@@ -509,7 +509,7 @@ export async function loadFiles(files: File[]) {
   // Cornerstone lautlos schwarz (setStack/render werfen nicht). Lieber JETZT
   // mit klarer Meldung abbrechen. currentDicomBytes (= erste Datei) erlaubt
   // bei einem Dekodier-Fehler die Header-Diagnose (Transfersyntax/Maße).
-  assertImageUsable(viewport.getCurrentImageId(), currentDicomBytes)
+  await assertImageUsableMitUrsache(viewport.getCurrentImageId(), currentDicomBytes)
   viewport.render()
 
   const label =
@@ -555,7 +555,7 @@ export async function showImageCandidate(index: number): Promise<void> {
     const file = candidateFiles[i]
     const bytes = await file.arrayBuffer()
     await viewport.setStack([candidateImageIds[i]])
-    assertImageUsable(viewport.getCurrentImageId(), bytes)
+    await assertImageUsableMitUrsache(viewport.getCurrentImageId(), bytes)
     viewport.render()
 
     currentDicomBytes = bytes

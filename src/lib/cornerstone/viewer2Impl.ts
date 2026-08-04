@@ -36,7 +36,7 @@ import {
 import dicomImageLoader from '@cornerstonejs/dicom-image-loader'
 import { initCornerstone } from './init'
 import { extractPatientInfo } from './dicomMeta'
-import { assertImageUsable } from './textureLimit'
+import { assertImageUsableMitUrsache } from './textureLimit'
 import { pruefeDicomGroesse } from '../importGrenzen'
 import { verkleinereDicomFallsNoetig } from './dicomVerkleinern'
 import { getMaxTextureSize } from './textureLimit'
@@ -459,7 +459,7 @@ export async function loadFilesToPane2(files: File[]): Promise<void> {
   // lautlos schwarz. Mit klarer Meldung abbrechen statt schwarzem seitlichen
   // Pane. `bytes` (oben gelesen) erlaubt die Header-Diagnose bei Decode-Fehler.
   try {
-    assertImageUsable(vp.getCurrentImageId(), bytes)
+    await assertImageUsableMitUrsache(vp.getCurrentImageId(), bytes)
   } catch (err) {
     // Der unbrauchbare Stack ist bereits gesetzt → Pane wäre schwarz.
     // Empty-State erzwingen, damit die Fehlermeldung SICHTBAR wird
@@ -536,7 +536,7 @@ export async function showImageCandidate2(index: number): Promise<void> {
     const file = candidateFiles2[i]
     const bytes = await file.arrayBuffer()
     await vp.setStack([candidateImageIds2[i]])
-    assertImageUsable(vp.getCurrentImageId(), bytes)
+    await assertImageUsableMitUrsache(vp.getCurrentImageId(), bytes)
     vp.render()
     // Erst NACH erfolgreichem Wechsel aufräumen — schlägt der Kandidat
     // fehl, bleibt der alte Zustand (inkl. Slope) unangetastet.
