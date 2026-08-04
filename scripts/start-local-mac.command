@@ -52,6 +52,22 @@ fi
 HAUPT_BRANCH=main
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
 
+# ERZEUGTE Dateien zurücksetzen, bevor irgendetwas mit git passiert.
+#
+# `npm install` schreibt die package-lock.json auf einer anderen Plattform
+# um (plattformspezifische Binärpakete). Damit gilt das Verzeichnis nach
+# JEDEM Start als geändert — und jede Update-Logik, die bei lokalen
+# Änderungen vorsichtshalber abbricht, blockiert dann dauerhaft. Genau
+# daran scheiterte der Wechsel auf einem Anwender-Mac:
+#   "error: Your local changes to the following files would be overwritten
+#    by checkout: package-lock.json"
+# Die Datei ist maschinell erzeugt und wird gleich wieder neu geschrieben;
+# sie zu verwerfen ist gefahrlos. ECHTE Änderungen bleiben unberührt.
+if [ -n "$(git status --porcelain -- package-lock.json 2>/dev/null)" ]; then
+  echo "Setze erzeugte package-lock.json zurück (wird von npm neu geschrieben) ..."
+  git checkout -- package-lock.json 2>/dev/null || true
+fi
+
 # Auf einem NEBENBRANCH gelandet? Dann zurueck auf main.
 #
 # Der Installer fragt beim Einrichten nach einem Branch. Wird dort einmal

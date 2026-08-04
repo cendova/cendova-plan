@@ -101,6 +101,17 @@ if ((Test-Path $curLink) -and (Test-Path $brandIcon)) {
 $hauptBranch = 'main'
 $branch = (git rev-parse --abbrev-ref HEAD 2>$null)
 
+# ERZEUGTE Dateien zuruecksetzen, bevor irgendetwas mit git passiert.
+# `npm install` schreibt die package-lock.json plattformabhaengig um; damit
+# gilt das Verzeichnis nach JEDEM Start als geaendert und jede Update-Logik,
+# die bei lokalen Aenderungen abbricht, blockiert dauerhaft. Genau daran
+# scheiterte der Branch-Wechsel auf einem Anwender-Mac. Die Datei ist
+# maschinell erzeugt - sie zu verwerfen ist gefahrlos.
+if (git status --porcelain -- package-lock.json) {
+  Write-Host 'Setze erzeugte package-lock.json zurueck (wird von npm neu geschrieben) ...' -ForegroundColor DarkGray
+  git checkout -- package-lock.json *> $null
+}
+
 # Auf einem NEBENBRANCH gelandet? Dann zurueck auf main. Der Installer fragt
 # beim Einrichten nach einem Branch; ein dort eingetragener Test-Branch wird
 # sonst dauerhaft brav aktualisiert, bekommt aber nie wieder etwas Neues -
