@@ -4,11 +4,15 @@
 // trotzdem - der Planen-Knopf lief auf einem Build ohne Embedded-Vertrag v2.
 // Genau das muss hier rot werden, wenn die Logik je aufweicht.
 
-import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { pruefeDist } from './plan-dist.mjs'
+
+const skriptOrdner = dirname(fileURLToPath(import.meta.url))
 
 const angelegt = []
 afterEach(() => {
@@ -73,5 +77,35 @@ describe('pruefeDist', () => {
   it('erkennt Quelldateien, die neuer sind als der Build', () => {
     const gruende = pruefeDist(baueAttrappe({ quelleNeuer: true }))
     expect(gruende.join(' ')).toMatch(/Quelldateien sind neuer/)
+  })
+})
+
+describe('Aufruf als Programm', () => {
+  // Realtest 05.08.: Beide Skripte pruefen "bin ich direkt aufgerufen?" - und
+  // taten das mit `file://${process.argv[1]}`. Auf WINDOWS trifft das nie zu
+  // (Backslash-Pfad gegen file:///C:/...), also passierte dort NICHTS, mit
+  // Exit-Code 0. Der Launcher meldete "in Ordnung", dist/ blieb alt und der
+  // Build trug keine Visitenkarte. Auf Linux/macOS lief alles - der Fehler
+  // war also nur auf der Plattform des Nutzers sichtbar.
+  it('vergleicht das Hauptmodul plattformneutral (pathToFileURL)', () => {
+    for (const datei of readdirSync(skriptOrdner).filter((d) => d.endsWith('.mjs'))) {
+      const quelle = readFileSync(join(skriptOrdner, datei), 'utf8')
+      const zeilen = quelle
+        .split('\n')
+        .filter((z) => !z.trim().startsWith('//') && /file:\/\/\$\{process\.argv\[1\]\}/.test(z))
+      expect(zeilen, `${datei} baut die file://-URL von Hand (bricht auf Windows)`).toEqual([])
+    }
+  })
+
+  it('meldet beim direkten Aufruf ein Ergebnis statt stillzuschweigen', () => {
+    // Fängt jede Neuauflage von „lief durch, tat aber nichts" ab.
+    // Bewusst OHNE Erwartung an den Exit-Code: ob dist/ gerade aktuell ist,
+    // hängt am Repo-Zustand (jeder neue Commit veraltet es) - geprüft wird
+    // nur, DASS das Skript ein Urteil abgibt.
+    const lauf = spawnSync(process.execPath, [join(skriptOrdner, 'plan-dist.mjs'), '--nur-pruefen'], {
+      encoding: 'utf8',
+      cwd: tmpdir(), // bewusst NICHT im Repo: der Pfad kommt aus dem Skript selbst
+    })
+    expect(lauf.stdout).toMatch(/CendovaPlan-Build/)
   })
 })

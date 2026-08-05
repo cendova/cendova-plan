@@ -27,7 +27,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { commitOderNull, vertragAusQuelle } from './build-info.mjs'
 
 const wurzel = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -109,7 +109,11 @@ function warneVorZwilling() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Siehe build-info.mjs: der naive `file://`-Vergleich ist auf Windows immer
+// falsch. Hier wog das doppelt schwer - das Skript tat dort NICHTS und ging
+// mit 0 nach Hause, also meldete start-local "alles in Ordnung", waehrend
+// dist/ unangetastet alt blieb.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   warneVorZwilling()
   const gruende = pruefeDist()
   if (gruende.length === 0) {
