@@ -207,5 +207,16 @@ if ($LASTEXITCODE -ne 0) {
   exit 1
 }
 
+# dist/ mitziehen: CendovaView liefert genau diesen Ordner unter /plan aus.
+# Frueher startete dieser Launcher nur den Dev-Server - wer "nur CendovaPlan"
+# startete, hatte danach zwar eine aktuelle 5173-Seite, aber der Planen-Knopf
+# in CendovaView lief weiter auf einem alten Build (Realtest 05.08.: die
+# Meldung "Build ist aelter und kennt kein zweites Bildfenster"). Gebaut wird
+# nur, wenn noetig - die Pruefung steckt in scripts/plan-dist.mjs.
+node scripts/plan-dist.mjs
+if ($LASTEXITCODE -ne 0) {
+  Write-Host 'Hinweis: dist/ konnte nicht aktualisiert werden - der Dev-Server (5173) ist trotzdem aktuell.' -ForegroundColor Yellow
+}
+
 Write-Host 'Starte Dev-Server und oeffne Browser (Strg+C beendet) ...' -ForegroundColor Green
 npm run dev -- --open

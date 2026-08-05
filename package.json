@@ -8,6 +8,8 @@
     "dev": "vite",
     "dev:open": "vite --open",
     "build": "tsc -b && vite build",
+    "postbuild": "node scripts/build-info.mjs",
+    "plan:dist": "node scripts/plan-dist.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

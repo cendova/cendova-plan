@@ -166,6 +166,10 @@ if ! npm install; then
   exit 1
 fi
 
+# dist/ mitziehen — CendovaView liefert genau diesen Ordner unter /plan aus
+# (gebaut wird nur, wenn nötig; Details in scripts/plan-dist.mjs).
+node scripts/plan-dist.mjs || echo "Hinweis: dist/ konnte nicht aktualisiert werden — der Dev-Server ist trotzdem aktuell."
+
 # ---------------------------------------------------------------------------
 # Browser: Chrome bevorzugen.
 #

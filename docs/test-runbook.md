@@ -102,7 +102,7 @@ git switch <branch>                        # nur falls nicht main
 ### Danach jedes Mal: nahtloser Ein-Klick-Start
 
 Im Projektordner liegt ein Launcher, der **Stand holt → installiert →
-Dev-Server startet → Browser öffnet**:
+`dist/` auffrischt → Dev-Server startet → Browser öffnet**:
 
 - **Doppelklick** auf `scripts\start-local.cmd` (umgeht die PowerShell-
   Skript-Sperre automatisch), **oder**
@@ -121,6 +121,22 @@ Es öffnet sich **http://localhost:5173** — **lokal ist `localhost` korrekt**
 > `package.json`). Kontrolle: `git rev-parse --show-toplevel`. Der `git pull` im
 > Launcher betrifft den **aktuell ausgecheckten** Branch — für einen anderen
 > vorher `git switch <branch>`.
+
+**Der „Planen"-Knopf in CendovaView** liefert nicht den Dev-Server aus, sondern
+den **gebauten** Stand aus `dist/`. Der Launcher frischt ihn deshalb mit auf —
+sonst wäre CendovaPlan auf Port 5173 aktuell und unter `/plan` trotzdem alt
+(Realtest 05.08.). Entschieden wird das in `scripts/plan-dist.mjs`; direkt
+aufrufbar:
+
+```powershell
+node scripts\plan-dist.mjs --nur-pruefen   # nur melden (Exit 1 = veraltet)
+node scripts\plan-dist.mjs                 # bei Bedarf bauen
+```
+
+Geprüft wird nicht bloß der Commit, sondern auch die **Embedded-Vertrags-
+version** aus `dist/.build-info.json` und ob Quelldateien neuer sind als der
+Build. Läuft CendovaView daneben und bedient es einen **anderen**
+CendovaPlan-Ordner, sagt das Skript das beim Start.
 
 ### Fahrplan Knie-Schablonen (Fork „knie-schablonen-optimierung")
 1. Knie-/Ganzbein-AP-DICOM laden.
