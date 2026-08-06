@@ -15,6 +15,7 @@ import type { Types } from '@cornerstonejs/core'
 import { getViewport } from '../lib/cornerstone/viewer'
 import { useViewportSync } from '../lib/cornerstone/useViewportSync'
 import { useViewerStore } from '../state/viewerStore'
+import { fokusArt, schabloneDarfTaste } from '../lib/tastaturFokus'
 import { useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
 import { useShoulderStore } from '../state/shoulderStore'
@@ -85,16 +86,11 @@ export function ShoulderTemplateOverlay() {
         .getState()
         .templates.find((t) => t.id === sel)
       if (!tmpl) return
-      const target = e.target as HTMLElement | null
-      const tag = target?.tagName.toLowerCase() ?? ''
-      if (
-        tag === 'input' ||
-        tag === 'select' ||
-        tag === 'textarea' ||
-        target?.isContentEditable
-      ) {
-        return
-      }
+      // „+"/„−" ist die ausdrückliche Implantat-Geste und überstimmt ein
+      // fokussiertes Dropdown; blanke Pfeiltasten gehören ihm weiterhin
+      // (Begründung in lib/tastaturFokus.ts).
+      const fokus = fokusArt(e.target)
+      if (!schabloneDarfTaste(fokus, e.key === '+' || e.key === '-')) return
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()
         useShoulderTemplateStore.getState().remove(tmpl.id)

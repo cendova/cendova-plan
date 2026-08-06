@@ -14,6 +14,7 @@ import { getViewport } from '../lib/cornerstone/viewer'
 import { getViewport2 } from '../lib/cornerstone/viewer2'
 import { useViewportSync } from '../lib/cornerstone/useViewportSync'
 import { useViewerStore } from '../state/viewerStore'
+import { fokusArt, schabloneDarfTaste } from '../lib/tastaturFokus'
 import { useKneePanesStore } from '../state/kneePanesStore'
 import {
   useKneeTemplateStore,
@@ -273,16 +274,11 @@ export function KneeTemplateOverlay({
       if ((tmpl.pane ?? 'left') !== pane) return
       // Nicht eingreifen, wenn der Fokus in einem Eingabefeld/Dropdown
       // liegt (sonst würden die Pfeile z. B. das Größen-Select kapern).
-      const target = e.target as HTMLElement | null
-      const tag = target?.tagName.toLowerCase() ?? ''
-      if (
-        tag === 'input' ||
-        tag === 'select' ||
-        tag === 'textarea' ||
-        target?.isContentEditable
-      ) {
-        return
-      }
+      // „+"/„−" ist die ausdrückliche Implantat-Geste und überstimmt ein
+      // fokussiertes Dropdown; blanke Pfeiltasten gehören ihm weiterhin
+      // (Begründung in lib/tastaturFokus.ts).
+      const fokus = fokusArt(e.target)
+      if (!schabloneDarfTaste(fokus, e.key === '+' || e.key === '-')) return
 
       // Entfernen-Taste löscht die selektierte Schablone — gruppenweit, also
       // verschwindet das gekoppelte AP+lateral-Paar gemeinsam.

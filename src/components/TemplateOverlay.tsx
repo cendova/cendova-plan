@@ -8,6 +8,7 @@ import {
 } from '../lib/cornerstone/viewer'
 import { useViewportSync } from '../lib/cornerstone/useViewportSync'
 import { useViewerStore } from '../state/viewerStore'
+import { fokusArt, schabloneDarfTaste } from '../lib/tastaturFokus'
 import { useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
 import { useShoulderStore } from '../state/shoulderStore'
@@ -140,22 +141,18 @@ export function TemplateOverlay() {
       // Pfeiltasten-Navigation für die selektierte Schablone.
       // Ohne Modifier: feine Verschiebung in 0,5-mm-Schritten (mit Shift: 2 mm).
       // Alt-Modifier: feine Rotation um 0,2° (mit Shift: 1°).
-      // Ignorieren, wenn Fokus in einem Eingabefeld liegt.
-      const target = e.target as HTMLElement | null
-      if (
-        target?.tagName === 'INPUT' ||
-        target?.tagName === 'TEXTAREA' ||
-        target?.tagName === 'SELECT' ||
-        target?.isContentEditable
-      ) {
-        return
-      }
       const isArrow =
         e.key === 'ArrowUp' ||
         e.key === 'ArrowDown' ||
         e.key === 'ArrowLeft' ||
         e.key === 'ArrowRight'
       if (!isArrow) return
+      // Alt+Pfeil ist die ausdrückliche Implantat-Geste — sie überstimmt ein
+      // fokussiertes Dropdown (Begründung in lib/tastaturFokus.ts). Blanke
+      // Pfeiltasten gehören weiterhin dem Dropdown, sonst ließe sich die
+      // Größe nicht mehr per Tastatur wählen.
+      const fokus = fokusArt(e.target)
+      if (!schabloneDarfTaste(fokus, e.altKey)) return
       const s = useTemplateStore.getState()
       const selId = s.selectedId
       if (!selId) return
@@ -163,6 +160,11 @@ export function TemplateOverlay() {
       const cup = s.templates.find((t) => t.id === selId)
       if (!stem && !cup) return
       e.preventDefault()
+      // Fokus aus dem Dropdown holen, sobald der Nutzer erkennbar das
+      // Implantat steuert. Sonst würde die NÄCHSTE blanke Pfeiltaste wieder
+      // die Größe verstellen — genau die Falle, die den Umweg über das
+      // Hand-Werkzeug nötig machte.
+      if (fokus === 'dropdown') (e.target as HTMLElement | null)?.blur()
       const calibration = useViewerStore.getState().calibration
       const mmPerWorldUnit = calibration?.mmPerWorldUnit ?? 1
       const isRotate = e.altKey
