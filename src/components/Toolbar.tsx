@@ -1381,7 +1381,7 @@ function ShoulderTemplatesSection({ hasImage }: { hasImage: boolean }) {
       useViewerStore
         .getState()
         .setStatus(
-          'Schablone platziert — per Drag verschieben, Griff/±-Tasten drehen.',
+          'Schablone platziert — per Drag verschieben, Griff oder Alt+Pfeil drehen.',
         )
     }
   }

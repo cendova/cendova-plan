@@ -14,7 +14,11 @@ import { getViewport } from '../lib/cornerstone/viewer'
 import { getViewport2 } from '../lib/cornerstone/viewer2'
 import { useViewportSync } from '../lib/cornerstone/useViewportSync'
 import { useViewerStore } from '../state/viewerStore'
-import { fokusArt, schabloneDarfTaste } from '../lib/tastaturFokus'
+import {
+  fokusArt,
+  rotationsDelta,
+  schabloneDarfTaste,
+} from '../lib/tastaturFokus'
 import { useKneePanesStore } from '../state/kneePanesStore'
 import {
   useKneeTemplateStore,
@@ -257,7 +261,7 @@ export function KneeTemplateOverlay({
       ? computeWorkflowRaw(workflowPoints, factor)
       : null
 
-  // Pfeiltasten verschieben / „+"/„−" rotieren die selektierte Schablone —
+  // Pfeiltasten verschieben / Alt+Pfeil (oder „+"/„−") rotieren die Schablone —
   // analog zum Hüft-Schaft (siehe TemplateOverlay). Bewusst VOR dem
   // frühen `return null` unten, damit der Hook nicht bedingt läuft.
   useEffect(() => {
@@ -277,8 +281,9 @@ export function KneeTemplateOverlay({
       // „+"/„−" ist die ausdrückliche Implantat-Geste und überstimmt ein
       // fokussiertes Dropdown; blanke Pfeiltasten gehören ihm weiterhin
       // (Begründung in lib/tastaturFokus.ts).
+      const rot = rotationsDelta(e)
       const fokus = fokusArt(e.target)
-      if (!schabloneDarfTaste(fokus, e.key === '+' || e.key === '-')) return
+      if (!schabloneDarfTaste(fokus, rot !== null)) return
 
       // Entfernen-Taste löscht die selektierte Schablone — gruppenweit, also
       // verschwindet das gekoppelte AP+lateral-Paar gemeinsam.
@@ -293,16 +298,15 @@ export function KneeTemplateOverlay({
         e.key === 'ArrowRight' ||
         e.key === 'ArrowUp' ||
         e.key === 'ArrowDown'
-      const isRot = e.key === '+' || e.key === '-'
-      if (!isArrow && !isRot) return
+      if (!isArrow && rot === null) return
       e.preventDefault()
+      // Fokus aus dem Dropdown holen, sobald erkennbar das Implantat
+      // gesteuert wird (s. Hueft-Overlay).
+      if (fokus === 'dropdown') (e.target as HTMLElement | null)?.blur()
 
       const store = useKneeTemplateStore.getState()
-      if (isRot) {
-        // Feinrotation: Shift = 1°, sonst 0.2° (wie beim Schaft).
-        const rotStep = e.shiftKey ? 1 : 0.2
-        const delta = e.key === '+' ? rotStep : -rotStep
-        store.setRotationDeg(tmpl.id, tmpl.rotationDeg + delta)
+      if (rot !== null) {
+        store.setRotationDeg(tmpl.id, tmpl.rotationDeg + rot)
         return
       }
       // Bewegung: Shift = 2 Welt-Einheiten (grob), sonst 0.5 (fein).

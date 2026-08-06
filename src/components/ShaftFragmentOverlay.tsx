@@ -4,6 +4,11 @@ import { getViewport } from '../lib/cornerstone/viewer'
 import { useViewportSync } from '../lib/cornerstone/useViewportSync'
 import { useShaftFragmentStore } from '../state/shaftFragmentStore'
 import {
+  fokusArt,
+  rotationsDelta,
+  schabloneDarfTaste,
+} from '../lib/tastaturFokus'
+import {
   fragmentPolygon,
   polygonSchwerpunkt,
   punktImPolygon,
@@ -115,12 +120,17 @@ export function ShaftFragmentOverlay() {
         return
       }
       const istPfeil = e.key.startsWith('Arrow')
-      const istDreh = e.key === '+' || e.key === '-'
-      if (!istPfeil && !istDreh) return
+      const dreh = rotationsDelta(e)
+      if (!istPfeil && dreh === null) return
+      // Fokus-Regel wie bei den Schablonen-Overlays — hier fehlte sie ganz,
+      // sodass Pfeiltasten das Fragment auch beim Tippen in einem Feld
+      // verschoben hätten.
+      const fokus = fokusArt(e.target)
+      if (!schabloneDarfTaste(fokus, dreh !== null)) return
       e.preventDefault()
-      if (istDreh) {
-        const schritt = e.shiftKey ? 1 : 0.2
-        store.setRotationDeg(id, f.rotationDeg + (e.key === '+' ? schritt : -schritt))
+      if (fokus === 'dropdown') (e.target as HTMLElement | null)?.blur()
+      if (dreh !== null) {
+        store.setRotationDeg(id, f.rotationDeg + dreh)
         return
       }
       const s = e.shiftKey ? 2 : 0.5

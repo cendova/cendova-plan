@@ -45,3 +45,33 @@ export function schabloneDarfTaste(
   if (fokus === 'dropdown') return istImplantatGeste
   return true
 }
+
+/** Feiner Rotationsschritt in Grad; mit Shift der grobe. */
+const ROT_FEIN = 0.2
+const ROT_GROB = 1
+
+/**
+ * Rotations-Schritt in Grad — oder `null`, wenn die Taste keine
+ * Rotations-Geste ist.
+ *
+ * EINHEITLICH über Hüfte, Knie und Schulter (Nutzer-Entscheidung 08/2026;
+ * vorher drehte die Hüfte mit Alt+Pfeil, Knie und Schulter mit „+"/„−"):
+ *
+ *   Alt + Pfeil rechts/oben   im Uhrzeigersinn
+ *   Alt + Pfeil links/unten   gegen den Uhrzeigersinn
+ *   „+" / „−"                 dasselbe ohne Alt — bleibt als Kurzform
+ *                             erhalten, damit eingeübte Handgriffe im
+ *                             Knie-Modul weiter funktionieren
+ *
+ * Mit Shift grob (1°) statt fein (0,2°). Auf deutscher Tastatur ist „+"
+ * ungeshiftet, die Kurzform bleibt dort also fein.
+ */
+export function rotationsDelta(e: KeyboardEvent): number | null {
+  const schritt = e.shiftKey ? ROT_GROB : ROT_FEIN
+  if (e.key === '+') return +schritt
+  if (e.key === '-') return -schritt
+  if (!e.altKey) return null
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp') return +schritt
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') return -schritt
+  return null
+}

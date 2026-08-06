@@ -8,7 +8,11 @@ import {
 } from '../lib/cornerstone/viewer'
 import { useViewportSync } from '../lib/cornerstone/useViewportSync'
 import { useViewerStore } from '../state/viewerStore'
-import { fokusArt, schabloneDarfTaste } from '../lib/tastaturFokus'
+import {
+  fokusArt,
+  rotationsDelta,
+  schabloneDarfTaste,
+} from '../lib/tastaturFokus'
 import { useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
 import { useShoulderStore } from '../state/shoulderStore'
@@ -146,13 +150,16 @@ export function TemplateOverlay() {
         e.key === 'ArrowDown' ||
         e.key === 'ArrowLeft' ||
         e.key === 'ArrowRight'
-      if (!isArrow) return
-      // Alt+Pfeil ist die ausdrückliche Implantat-Geste — sie überstimmt ein
-      // fokussiertes Dropdown (Begründung in lib/tastaturFokus.ts). Blanke
-      // Pfeiltasten gehören weiterhin dem Dropdown, sonst ließe sich die
-      // Größe nicht mehr per Tastatur wählen.
+      // Rotations-Geste (Alt+Pfeil, „+"/„−") — Belegung und Schrittweite
+      // liegen zentral in lib/tastaturFokus.ts, damit alle drei Module
+      // dieselbe haben.
+      const rot = rotationsDelta(e)
+      if (rot === null && !isArrow) return
+      // Die Rotations-Geste überstimmt ein fokussiertes Dropdown; blanke
+      // Pfeiltasten gehören weiterhin ihm, sonst ließe sich die Größe nicht
+      // mehr per Tastatur wählen.
       const fokus = fokusArt(e.target)
-      if (!schabloneDarfTaste(fokus, e.altKey)) return
+      if (!schabloneDarfTaste(fokus, rot !== null)) return
       const s = useTemplateStore.getState()
       const selId = s.selectedId
       if (!selId) return
@@ -167,19 +174,17 @@ export function TemplateOverlay() {
       if (fokus === 'dropdown') (e.target as HTMLElement | null)?.blur()
       const calibration = useViewerStore.getState().calibration
       const mmPerWorldUnit = calibration?.mmPerWorldUnit ?? 1
-      const isRotate = e.altKey
       // Feine Verschiebung: 0,5 mm pro Tastendruck (mit Shift 2 mm) —
       // analog zur feinen Rotation, für die präzise Schaft-/Pfannen-
       // Platzierung.
       const step = e.shiftKey ? 2 : 0.5
-      if (isRotate && stem) {
-        // Rotation: Up/Right = CW, Down/Left = CCW. Deutlich feinere
-        // Schritte als die Verschiebung — für die präzise Varus/Valgus-
-        // Ausrichtung: 0,2° pro Tastendruck, mit Shift 1°.
-        const rotStep = e.shiftKey ? 1 : 0.2
-        const deltaDeg =
-          e.key === 'ArrowRight' || e.key === 'ArrowUp' ? +rotStep : -rotStep
-        s.setRotation(stem.id, stem.rotationDeg + deltaDeg)
+      if (rot !== null) {
+        // Rotation für BEIDE Schablonen-Arten: beim Schaft die
+        // Varus/Valgus-Ausrichtung, bei der Pfanne die Inklination.
+        // Vorher fiel Alt+Pfeil auf einer Pfanne still in die Verschiebung —
+        // dieselbe Überraschung wie beim Dropdown, nur andersherum.
+        const ziel = stem ?? cup!
+        s.setRotation(ziel.id, ziel.rotationDeg + rot)
         return
       }
       // Verschiebung — in Welt-Einheiten umrechnen.
