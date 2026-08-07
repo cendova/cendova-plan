@@ -109,7 +109,7 @@ fi
 if git remote get-url origin >/dev/null 2>&1; then
   echo "Hole aktuellen Stand (Branch: $BRANCH) ..."
   # --prune räumt Fernreferenzen gelöschter Branches weg.
-  if git fetch --prune origin; then
+  if git fetch --prune --quiet origin; then
     # Gibt es den eigenen Branch auf dem Server überhaupt noch?
     if ! git rev-parse --verify --quiet "origin/$BRANCH" >/dev/null; then
       echo
@@ -160,7 +160,7 @@ fi
 echo
 
 echo "npm install ..."
-if ! npm install; then
+if ! npm install --no-audit --no-fund; then
   echo "npm install fehlgeschlagen — Abbruch."
   read -r -p "Enter zum Schließen "
   exit 1

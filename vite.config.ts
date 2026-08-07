@@ -5,7 +5,9 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import os from 'node:os'
 import path from 'node:path'
-import { lokaleSicherung } from './vite-lokale-sicherung'
+// Dateiendung ausdruecklich: ohne sie warnt Vite bei JEDEM Build UND jedem
+// Dev-Start vor dem kuenftigen `configLoader: 'native'`.
+import { lokaleSicherung } from './vite-lokale-sicherung.ts'
 
 // Version + Commit zur BAUZEIT einbrennen. Anwender konnten bisher nicht
 // erkennen, welcher Stand bei ihnen laeuft — bei einer Installation, die
@@ -52,7 +54,11 @@ export default defineConfig({
     // jspdf/html2canvas eager). Regex mit `[\\/]` (Win+Linux).
     rolldownOptions: {
       output: {
-        advancedChunks: {
+        // `advancedChunks` ist in Rolldown veraltet; `codeSplitting` nimmt
+        // dieselbe `groups`-Form. Gegenprobe nach der Umstellung: der Chunk
+        // `react-vendor` muss weiterhin entstehen und `viewerImpl` getrennt
+        // bleiben (sonst waere Cornerstone wieder eager).
+        codeSplitting: {
           groups: [
             {
               name: 'react-vendor',

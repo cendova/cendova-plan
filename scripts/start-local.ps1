@@ -148,7 +148,9 @@ if ($branch -ne $hauptBranch -and -not (Test-Path '.cendova-branch-pin')) {
 git remote get-url origin *> $null
 if ($LASTEXITCODE -eq 0) {
   Write-Host "Hole aktuellen Stand (Branch: $branch) ..." -ForegroundColor DarkGray
-  git fetch --prune origin
+  # --quiet: `--prune` listet sonst jeden entfernten Fremd-Branch auf; auf
+  # einer lange nicht aktualisierten Installation sind das Dutzende Zeilen.
+  git fetch --prune --quiet origin
   if ($LASTEXITCODE -eq 0) {
     git rev-parse --verify --quiet "origin/$branch" *> $null
     if ($LASTEXITCODE -ne 0) {
@@ -201,7 +203,10 @@ if (Test-Path 'src/lib/shoulder/shoulderCatalog.ts') {
 Write-Host ''
 
 Write-Host 'npm install ...' -ForegroundColor DarkGray
-npm install
+# --no-audit --no-fund: die Spenden- und Schwachstellen-Bloecke sind fuer
+# Anwender nicht handlungsleitend (audit fix --force ist hier sogar
+# verboten) und verdecken nur echte Meldungen. Sicherheit prueft die CI.
+npm install --no-audit --no-fund
 if ($LASTEXITCODE -ne 0) {
   Write-Host 'npm install fehlgeschlagen - Abbruch.' -ForegroundColor Red
   exit 1

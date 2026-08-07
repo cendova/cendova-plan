@@ -128,12 +128,31 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.log('Achtung: npm install fehlgeschlagen - Build uebersprungen.')
     process.exit(1)
   }
-  console.log('Baue CendovaPlan (fuer den Planen-Knopf) ...')
-  if (lauf(['run', 'build']) !== 0) {
+  console.log('Baue CendovaPlan (fuer den Planen-Knopf) - das dauert einen Moment ...')
+  // Ausgabe AUFFANGEN statt durchreichen: Der Build schreibt rund 50 Zeilen,
+  // die fuer den Anwender nichts bedeuten - Externalisierungs-Hinweise aus
+  // den Cornerstone-Codec-Paketen (nicht von uns behebbar), die Dateitabelle
+  // und Bundlegroessen-Tipps. Genau solches Rauschen hat schon einmal eine
+  // echte Meldung verdeckt ("Update uebersprungen" blieb wochenlang
+  // unbemerkt). Bei einem FEHLER wird alles ungekuerzt ausgegeben.
+  const bau = spawnSync('npm', ['run', 'build'], {
+    cwd: wurzel,
+    shell: true,
+    encoding: 'utf8',
+  })
+  if (bau.status !== 0) {
+    process.stdout.write(bau.stdout ?? '')
+    process.stderr.write(bau.stderr ?? '')
     console.log('Achtung: CendovaPlan-Build fehlgeschlagen - der Planen-Knopf laeuft weiter')
     console.log('auf dem alten Stand. Naechster Start versucht es erneut.')
     process.exit(1)
   }
+  // Kurzfassung: die Stempel-Zeile des postbuild-Hooks ist die einzige
+  // Build-Ausgabe, die den Anwender wirklich betrifft.
+  const stempel = (bau.stdout ?? '')
+    .split('\n')
+    .find((z) => z.startsWith('Build gestempelt:'))
+  if (stempel) console.log('  ' + stempel.trim())
 
   // Gegenprobe: hat der Build wirklich geliefert, was fehlte?
   const rest = pruefeDist()
