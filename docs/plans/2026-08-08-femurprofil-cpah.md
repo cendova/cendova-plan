@@ -64,7 +64,11 @@ Erwartet: `feat/hip-femurprofil-cpah`.
 git status --short
 ```
 
-Erwartet: nur die beiden Dokumentationsdateien, falls deren Commit noch nicht vorhanden ist; sonst leer.
+Erwartet: leer. Die Dokumentation dieses Vorhabens (dieser Plan,
+`docs/HANDOFF_femurprofil-cpah.md`, das Mockup
+`docs/screenshots/cpah-matrix-mockup.png` und der zugehörige
+`docs/screenshots/QUELLEN.md`-Eintrag) ist bereits committet — kein
+späterer Task stagt diese Dateien noch.
 
 3. Baseline verifizieren:
 
@@ -209,11 +213,11 @@ git commit -m "Dorr- und CPAH-Klassifikation ergänzen"
 10    äußere Kortikalis lateral bei 10 cm
 11    innerer Kanalrand medial auf Höhe Mitte Trochanter minor (Calcar-Ebene)
 12    innerer Kanalrand lateral auf Höhe Mitte Trochanter minor (Calcar-Ebene)
+```
 
 > Terminologie: bewusst NICHT „Calcaristhmus" — der Isthmus ist die engste
 > Stelle der Diaphyse und liegt deutlich distaler. Gemeint ist die
 > Kanalbreite auf Calcar-Höhe (Dorr-Referenzebene, CCR-Nenner).
-```
 
 **Schritt 1: Failing Tests mit synthetischer Geometrie**
 
@@ -377,20 +381,38 @@ schlicht nicht setzen.
 **Designentscheidung:** Keine harte Cornerstone-/Pointer-Sonderlogik. Das Recipe darf eine optionale Draft-Geometrie liefern:
 
 ```ts
-computeDraft?: (points: P[], mmPerWorldUnit: number) => RenderGeometry
+computeDraft?: (points: P[], mmPerWorldUnit: number | null) => RenderGeometry
 ```
 
-`HipOverlay` ruft `recipe.computeDraft?.(draftPoints, factor)` auf und
-übergibt das Ergebnis an `MeasurementSvg`; dort wird es zusätzlich zum
-bestehenden Draft-Punkt-Linienzug gezeichnet.
+**`number | null` ist die entscheidende Stelle, nicht Kosmetik:**
+`HipOverlay` berechnet heute `const factor = calibration?.mmPerWorldUnit ?? 1`.
+Wer diesen `factor` durchreicht, löscht genau die Information, die
+Schritt 2 verlangt — unkalibriert und echte DICOM-Kalibrierung mit Faktor
+1 wären im Rezept ununterscheidbar, und dort bliebe nur die verbotene
+Prüfung `=== 1`. Deshalb `null` für „nicht kalibriert":
+
+```ts
+recipe?.computeDraft?.(draftPoints, calibration ? factor : null)
+```
+
+(`calibration` liegt in `HipOverlay` bereits vor; `recipe` ist dort
+`Recipe | undefined`, das Fragezeichen muss also auch hinter `recipe` —
+genau wie beim bestehenden `draftLineGroups={recipe?.lineGroups}`.)
+Das Ergebnis geht an `MeasurementSvg` und wird dort über denselben
+`OverlayGeometry`-Renderpfad gezeichnet, den fertige Messungen benutzen —
+kein zweiter Zeichen-Pfad.
 
 **TDD-Schritte:**
 
 1. Test, dass ab Punkt 6 eine Linie 10 cm distal und senkrecht zur Schaftachse berechnet wird.
-2. Test, dass ohne Kalibrierung keine scheinbar metrische Linie entsteht.
+2. Test, dass ohne Kalibrierung keine scheinbar metrische Linie entsteht:
+   `computeDraft(punkte, null)` liefert keine bemaßte Linie,
+   `computeDraft(punkte, 1)` sehr wohl.
    **Kriterium ist `calibration != null`, NICHT `mmPerWorldUnit === 1`** —
    bei Kalibrierung aus DICOM-Pixelabstand ist der Faktor exakt 1 als
    ECHTER Wert (Cornerstone-Welt = mm; dieselbe Falle wie beim AHD).
+   Weil `HipOverlay` das `null` einsetzt, bleibt der Test ein reiner
+   Rezept-Test in `recipes.test.ts` — ohne Viewer-Store.
 3. Recipe-Interface und Overlay minimal erweitern.
 4. Rezepte ohne `computeDraft` müssen exakt wie bisher rendern — Knie- und
    Schulter-Overlay setzen den neuen Prop nicht und bleiben unverändert.
@@ -416,7 +438,9 @@ git commit -m "10-cm-Hilfslinie im Femurprofil anzeigen"
 **Dateien:**
 
 - Modify: `src/components/Toolbar.tsx`
-- Test: falls UI-Testmuster vorhanden, dort ergänzen; sonst Typecheck plus manueller Smoke-Test dokumentieren.
+- Test: keiner. Im Repo existiert kein UI-Testmuster (keine einzige
+  `*.test.tsx` unter `src/components/`) — Absicherung über `npm run typecheck`
+  plus den in Task 11 dokumentierten manuellen Smoke-Test.
 
 **Gewünschte Reihenfolge:**
 
@@ -738,7 +762,15 @@ git commit -m "Femurprofil in Planformat v10 speichern"
 **Dateien:**
 
 - Modify: `src/lib/plan/pdfExport.ts`
-- Optional test/script: bestehendes PDF-Testmuster verwenden oder kleinen reinen Formatter extrahieren und testen.
+- Create: `src/lib/plan/femurProfilText.ts` — reiner Formatter
+  (Rohwerte → Textzeilen), keine DOM-/jsPDF-Abhängigkeit.
+- Create: `src/lib/plan/femurProfilText.test.ts`
+
+Der Formatter ist nicht optional: `pdfExport.ts` arbeitet auf DOM und
+jsPDF und ist als Ganzes nicht sinnvoll testbar (dort gibt es bis heute
+keinen Test), während die ausgegebenen Zeilen klinische Werte tragen.
+Die Trennung folgt dem Muster `stemDisplayName`/`cupDisplayName`, nur als
+eigenes, testbares Modul.
 
 **Ausgabe:**
 
@@ -767,7 +799,7 @@ Wenn ein PDF-Testskript ergänzt wird, dessen Artefakte nur unter `.test-artifac
 **Commit:**
 
 ```bash
-git add src/lib/plan/pdfExport.ts
+git add src/lib/plan/pdfExport.ts src/lib/plan/femurProfilText.ts src/lib/plan/femurProfilText.test.ts
 git commit -m "Femurprofil in Zusammenfassung aufnehmen"
 ```
 
@@ -821,15 +853,31 @@ git commit -m "CCD-Landmarken im Femurprofil wiederverwenden"
 
 1. Hüft-AP-DICOM ausschließlich lokal laden.
 2. Kalibrieren.
-3. `Femurprofil` öffnen.
-4. Workflow komplett ohne vorhandene CCD durchführen.
-5. Ergebniswerte plausibilisieren.
-6. Messpunkte verschieben; Werte müssen live aktualisieren.
-7. Dorr bestätigen und abweichend mit Grund überschreiben.
-8. Plan speichern/laden; Review und Werte erhalten.
-9. PDF exportieren; Femurprofilabschnitt vorhanden.
-10. Zweiter Durchlauf mit bestehender CCD-Messung; Punkte 0–5 werden übernommen.
-11. Grenzfälle A/B und B/C mit nichtpatientenbezogenen Testbildern oder synthetischer Geometrie prüfen.
+3. **Toolbar-Smoke** (dies ist der in Task 5 und im Review-Ergebnis
+   zugesagte dokumentierte Smoke-Test, da es kein UI-Testmuster gibt):
+   Sektion „Femurprofil" ist eingeklappt, trägt vor dem Start KEINEN
+   amberfarbenen Punkt, steht vor den Schablonen; ohne Kalibrierung ist
+   der Startknopf deaktiviert; die übrigen Sektionen haben ihre gemerkten
+   Einklapp-Zustände behalten (ids unverändert); das Femurprofil taucht
+   NICHT als Werkzeug in „Messungen" auf.
+4. `Femurprofil` öffnen — die **Bildqualitäts-Checkliste** erscheint zuerst.
+5. Gate bewusst NICHT bestehen lassen: Messung ist möglich, aber Dorr/CPAH
+   erscheinen als `nicht zuverlässig bestimmbar`, und die CPAH-Matrix wird
+   nicht gerendert.
+6. Messung abbrechen und neu starten: die Checkliste erscheint erneut
+   (kein Gate-Zustand von der vorigen Aufnahme).
+7. Gate bestehen; Workflow komplett ohne vorhandene CCD durchführen.
+8. Ergebniswerte plausibilisieren.
+9. **CPAH-Matrix sichtprüfen:** aktive Zelle passt zu Dorr und NSA, der
+   Punkt sitzt an der erwarteten Stelle, FOR-Leiste zeigt N bzw. H.
+10. Messpunkte verschieben; Werte und Matrix müssen live aktualisieren.
+11. Dorr bestätigen und abweichend mit Grund überschreiben; Undo prüfen.
+12. Plan speichern/laden; Review und Werte erhalten.
+13. PDF exportieren; Femurprofilabschnitt vorhanden.
+14. Zweiter Durchlauf mit bestehender CCD-Messung; Punkte 0–5 werden übernommen.
+15. Grenzfälle A/B und B/C mit nichtpatientenbezogenen Testbildern oder
+    synthetischer Geometrie prüfen — der Punkt muss sichtbar im amber
+    Grenzband liegen.
 
 **Commit:**
 
@@ -883,7 +931,14 @@ git diff --check
 - Femurprofil optional und standardmäßig eingeklappt.
 - Dorr/CPAH kommen aus einer einzigen Rechen-Engine.
 - CI/CCR/FOR numerisch getestet.
-- Grenzbereiche sichtbar.
+- Bei nicht bestandenem Bildqualitäts-Gate werden Dorr und CPAH als
+  `nicht zuverlässig bestimmbar` unterdrückt und die CPAH-Matrix nicht
+  gerendert; nach Abbruch beginnt ein Neustart wieder mit der Checkliste.
+- Grenzbereiche sichtbar — als amberfarbener Hinweis in der Karte UND als
+  Grenzband in der Matrix.
+- CPAH-Matrix zeigt die Zellen 1–9, die Grenzbänder 0,58–0,62 / 0,48–0,52
+  und die FOR-Leiste; alle Schwellen aus den Konstanten in
+  `femurProfile.ts` abgeleitet, nicht doppelt gepflegt.
 - Dorr bleibt Vorschlag bis zur Bestätigung.
 - Dorr C erzeugt eine vorsichtige Fixationswarnung, keine autonome Entscheidung.
 - alte v9-Pläne laden.
@@ -1019,12 +1074,14 @@ Geprüft gegen den Code auf `main` (`dcb96d1`); alle Korrekturen stehen
 direkt in den Tasks. Kurzfassung der Antworten:
 
 1. **Draft-Geometrie:** Ja, die kleine Erweiterung ist nötig.
-   `computeDraft` existiert nirgends; der geteilte Kern zeichnet zwar
-   schon Draft-Punkte UND Draft-Verbindungslinien (`draftLineGroups`),
-   aber nur zwischen gesetzten Punkten — eine BERECHNETE Geometrie wie
-   die 10-cm-Senkrechte kann er nicht darstellen. Gerendert wird sie im
-   Kern, berechnet in `HipOverlay` (dem Muster von `draftLineGroups`
-   folgend); Knie und Schulter bleiben unberührt (in Task 4 eingearbeitet).
+   `computeDraft` existiert nirgends. Während der laufenden Platzierung
+   zeichnet der Kern nur Draft-Punkte und Verbindungslinien zwischen
+   GESETZTEN Punkten (`draftLineGroups`); berechnete Geometrie rendert er
+   bisher nur für fertige Messungen (`computed`). Der neue Prop benutzt
+   genau diesen vorhandenen `OverlayGeometry`-Renderpfad weiter — kein
+   zweiter Zeichen-Pfad. Berechnet wird in `HipOverlay` (dem Muster von
+   `draftLineGroups` folgend), inklusive `null` bei fehlender
+   Kalibrierung; Knie und Schulter bleiben unberührt (Task 4).
 2. **CCD-Prefill:** Ja — `toggleTool` hat mit `prefillFromGlobalRefLine`
    bereits exakt dieses Muster; das CCD-Prefill wird die zweite Quelle.
    Punktreihenfolge verifiziert: `ccd` = 6 Punkte in identischer
