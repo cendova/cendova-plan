@@ -1,6 +1,11 @@
 # Femurprofil, Dorr/CPAH und optionale Schaftstrategie – Implementierungsplan
 
 > **Für Claude/Hermes:** Diesen Plan taskweise und testgetrieben umsetzen. Vor Beginn `CLAUDE.md`, `docs/test-runbook.md` und `docs/HANDOFF_femurprofil-cpah.md` lesen.
+>
+> **Review eingearbeitet (08.08.2026):** Der Plan wurde gegen den Code auf
+> `main`/`dcb96d1` geprüft; die Reviewfragen am Ende sind beantwortet, die
+> Korrekturen stehen direkt in den Tasks. Commit-Messages folgen der
+> Repo-History (deutsche Prosa-Titel, KEIN `feat(...)`-Präfix).
 
 **Ziel:** Eine optionale Hüft-„Vollvermessung“ namens **Femurprofil** implementieren, die aus nachvollziehbaren Landmarken CI, CCR, FOR, einen bestätigbaren Dorr-Vorschlag und CPAH berechnet und später schaftspezifische Planungshinweise ermöglicht.
 
@@ -138,7 +143,9 @@ export type OffsetSubtype = 'N' | 'H'
 export interface DorrSuggestion {
   suggested: DorrType
   borderline: DorrBorderline
-  confidence: 'hoch' | 'grenzwertig'
+  // BEWUSST KEIN eigenes confidence-Feld: es wäre vollständig aus
+  // `borderline` ableitbar (null = sicher, sonst grenzwertig) — zwei
+  // Felder für eine Information laufen auseinander.
 }
 
 export interface CpahResult {
@@ -148,7 +155,19 @@ export interface CpahResult {
 }
 ```
 
-Regeln ausschließlich als benannte Konstanten an einer Stelle definieren. Im Kommentar Quelle und Unterschied zum ISCD-DXA-Trigger dokumentieren.
+Regeln ausschließlich als benannte Konstanten an einer Stelle definieren.
+Quellenpflicht (Projekt-Leitplanke, Muster DSA/LSA):
+
+- CI-Grenzen 0,50/0,60, NSA-Grenzen 120°/140° und FOR 1,60 stammen laut
+  Handoff aus dem CPAH-Paper (Stauss et al., J Arthroplasty 2026,
+  [DOI 10.1016/j.arth.2026.05.011](https://doi.org/10.1016/j.arth.2026.05.011)).
+  **Das Abstract enthält die Zahlen nicht** — vor dem Festschreiben gegen
+  den Volltext prüfen und die Fundstelle im Code-Kommentar nennen.
+- Die Grenz**zonen** 0,58–0,62 und 0,48–0,52 sind eine **eigene
+  Konvention** dieses Projekts (im Handoff „vorgeschlagen"), keine
+  Paper-Angabe — im Kommentar ausdrücklich so kennzeichnen.
+- Unterschied zum ISCD-DXA-Trigger (CI < 0,40 = DXA-Empfehlung, KEINE
+  CPAH-Grenze) im selben Kommentar dokumentieren.
 
 **Schritt 4: Test erneut ausführen**
 
@@ -162,7 +181,7 @@ Erwartet: PASS.
 
 ```bash
 git add src/lib/hip/femurProfile.ts src/lib/hip/femurProfile.test.ts
-git commit -m "feat(hip): Dorr- und CPAH-Klassifikation ergänzen"
+git commit -m "Dorr- und CPAH-Klassifikation ergänzen"
 ```
 
 ---
@@ -188,8 +207,12 @@ git commit -m "feat(hip): Dorr- und CPAH-Klassifikation ergänzen"
 8     innere Kortikalis medial bei 10 cm
 9     innere Kortikalis lateral bei 10 cm
 10    äußere Kortikalis lateral bei 10 cm
-11    innerer Kanalrand medial am Calcaristhmus
-12    innerer Kanalrand lateral am Calcaristhmus
+11    innerer Kanalrand medial auf Höhe Mitte Trochanter minor (Calcar-Ebene)
+12    innerer Kanalrand lateral auf Höhe Mitte Trochanter minor (Calcar-Ebene)
+
+> Terminologie: bewusst NICHT „Calcaristhmus" — der Isthmus ist die engste
+> Stelle der Diaphyse und liegt deutlich distaler. Gemeint ist die
+> Kanalbreite auf Calcar-Höhe (Dorr-Referenzebene, CCR-Nenner).
 ```
 
 **Schritt 1: Failing Tests mit synthetischer Geometrie**
@@ -199,7 +222,7 @@ Testfälle müssen bekannte Werte erzeugen, zum Beispiel:
 - äußerer Durchmesser 40 mm,
 - innerer Durchmesser 20 mm,
 - `CI = 0,50`,
-- Calcaristhmus 40 mm,
+- Kanalbreite auf Calcar-Höhe 40 mm,
 - `CCR = 0,50`,
 - FO 64 mm und Z 40 mm,
 - `FOR = 1,60`.
@@ -207,6 +230,11 @@ Testfälle müssen bekannte Werte erzeugen, zum Beispiel:
 Zusätzlich testen:
 
 - vertauschte Klickrichtung medial/lateral liefert positive identische Distanzen,
+- ein 2 mm NEBEN der 10-cm-Linie gesetzter Kortikalis-Punkt liefert dieselbe
+  Breite (Breiten entstehen aus der PROJEKTION der vier Punkte auf die
+  Senkrechte zur Schaftachse, nicht aus rohen Punktabständen — sonst
+  überschätzt jede Klick-Toleranz systematisch; Helfer
+  `closestPointOnLine`/`perpendicularDistance` existieren in `lib/geometry`),
 - ungültige Geometrie bei Z <= 0 oder X > Z,
 - nahezu kollineare Hüftkopfpunkte erzeugen Warnung statt Absturz,
 - fehlende/zu wenige Punkte liefern `null`.
@@ -233,7 +261,7 @@ export interface FemurProfileRaw {
   medialCortexMm: number
   lateralCortexMm: number
   corticalIndex: number
-  calcarIsthmusMm: number
+  canalCalcarMm: number // Kanalbreite auf Calcar-Höhe (Mitte Troch. minor)
   canalCalcarRatio: number
   femoralOffsetRatio: number
   dorr: DorrSuggestion
@@ -261,7 +289,7 @@ npm test -- src/lib/hip
 
 ```bash
 git add src/lib/hip/femurProfile.ts src/lib/hip/femurProfile.test.ts
-git commit -m "feat(hip): Femurprofil aus Landmarken berechnen"
+git commit -m "Femurprofil aus Landmarken berechnen"
 ```
 
 ---
@@ -280,6 +308,10 @@ git commit -m "feat(hip): Femurprofil aus Landmarken berechnen"
 Prüfen:
 
 - `getRecipe('femurProfile')` existiert,
+- `AVAILABLE_RECIPES` enthält `femurProfile` NICHT (wie `osteotomy`: in der
+  `RECIPES`-Registry, aber nicht in der Angebotsliste der Mess-Sektion —
+  sonst erscheint das Werkzeug DOPPELT: als ToolButton in „2 · Messungen"
+  UND als eigene Sektion),
 - `needsCalibration === true`,
 - exakt 13 Steps in dokumentierter Reihenfolge,
 - `compute` liefert bei gültigen Punkten CI, CCR, Dorr und CPAH,
@@ -310,7 +342,7 @@ Geometrie:
 - Hals- und Schaftachse,
 - 10-cm-Referenzlinie,
 - äußere/innere Femurbreite,
-- Calcaristhmus,
+- Kanalbreite auf Calcar-Höhe,
 - sparsame Labels.
 
 **Schritt 4: Tests und Commit**
@@ -318,7 +350,7 @@ Geometrie:
 ```bash
 npm test -- src/lib/hip/recipes.test.ts src/lib/hip/femurProfile.test.ts
 git add src/lib/hip/recipes.ts src/lib/hip/recipes.test.ts
-git commit -m "feat(hip): geführtes Femurprofil registrieren"
+git commit -m "geführtes Femurprofil registrieren"
 ```
 
 ---
@@ -330,9 +362,17 @@ git commit -m "feat(hip): geführtes Femurprofil registrieren"
 **Dateien:**
 
 - Modify: `src/lib/hip/recipes.ts`
-- Modify: `src/components/HipOverlay.tsx`
-- Modify, falls generisch sinnvoll: `src/components/measurementOverlay.tsx`
+- Modify: `src/components/measurementOverlay.tsx` — das **Rendern** gehört
+  in den geteilten Kern (`MeasurementSvg`), als weiterer optionaler Prop.
+- Modify: `src/components/HipOverlay.tsx` — das **Berechnen** gehört hierher.
+  Das ist keine Doppelarbeit, sondern das bestehende Muster: `MeasurementSvg`
+  kennt weder das aktive Rezept noch den Kalibrierfaktor; `HipOverlay` hat
+  beides (`recipe`, `factor`) und reicht rezept-abgeleitete Daten schon
+  heute als Prop durch (`draftLineGroups={recipe?.lineGroups}`).
 - Test: `src/lib/hip/recipes.test.ts`
+
+Knie- und Schulter-Overlay bleiben unberührt, weil sie den neuen Prop
+schlicht nicht setzen.
 
 **Designentscheidung:** Keine harte Cornerstone-/Pointer-Sonderlogik. Das Recipe darf eine optionale Draft-Geometrie liefern:
 
@@ -340,14 +380,20 @@ git commit -m "feat(hip): geführtes Femurprofil registrieren"
 computeDraft?: (points: P[], mmPerWorldUnit: number) => RenderGeometry
 ```
 
-Die Draft-Geometrie wird im `HipOverlay` zusätzlich zum bestehenden Punkt-Linienzug gerendert.
+`HipOverlay` ruft `recipe.computeDraft?.(draftPoints, factor)` auf und
+übergibt das Ergebnis an `MeasurementSvg`; dort wird es zusätzlich zum
+bestehenden Draft-Punkt-Linienzug gezeichnet.
 
 **TDD-Schritte:**
 
 1. Test, dass ab Punkt 6 eine Linie 10 cm distal und senkrecht zur Schaftachse berechnet wird.
 2. Test, dass ohne Kalibrierung keine scheinbar metrische Linie entsteht.
+   **Kriterium ist `calibration != null`, NICHT `mmPerWorldUnit === 1`** —
+   bei Kalibrierung aus DICOM-Pixelabstand ist der Faktor exakt 1 als
+   ECHTER Wert (Cornerstone-Welt = mm; dieselbe Falle wie beim AHD).
 3. Recipe-Interface und Overlay minimal erweitern.
-4. Bereits bestehende Hip-/Knee-Overlays dürfen nicht verändert werden, wenn kein `computeDraft` vorhanden ist.
+4. Rezepte ohne `computeDraft` müssen exakt wie bisher rendern — Knie- und
+   Schulter-Overlay setzen den neuen Prop nicht und bleiben unverändert.
 5. Tests ausführen:
 
 ```bash
@@ -358,7 +404,7 @@ npm test -- src/lib/hip/recipes.test.ts
 
 ```bash
 git add src/lib/hip/recipes.ts src/lib/hip/recipes.test.ts src/components/HipOverlay.tsx src/components/measurementOverlay.tsx
-git commit -m "feat(hip): 10-cm-Hilfslinie im Femurprofil anzeigen"
+git commit -m "10-cm-Hilfslinie im Femurprofil anzeigen"
 ```
 
 ---
@@ -383,12 +429,24 @@ git commit -m "feat(hip): 10-cm-Hilfslinie im Femurprofil anzeigen"
 
 **Verhalten:**
 
+- Section-id `hip-femurprofil` (NEU); die bestehenden ids (`hip-cal`,
+  `hip-measure`, `hip-templates`, `hip-osteotomy`, `hip-osteophytes`)
+  NICHT umbenennen — sie sind localStorage-Schlüssel der gemerkten
+  Einklapp-Zustände. Nur die Titel-Nummern (Strings) ändern sich.
 - standardmäßig eingeklappt,
-- kein amberfarbener Statuspunkt, solange nicht begonnen,
+- kein amberfarbener Statuspunkt, solange nicht begonnen (Doktrin
+  „optionaler Schritt": emerald oder nichts),
 - grüner Punkt nach abgeschlossener `femurProfile`-Messung,
-- Button `Femurprofil starten`,
-- deaktiviert ohne Bild oder Kalibrierung,
+- Button `Femurprofil starten` im Hero-Stil der Knie-Vollvermessung
+  (violett), damit „geführter Workflow" wiedererkennbar ist,
+- deaktiviert ohne Bild oder ohne Kalibrierung (`calibration != null`),
 - Hilfetext: `Optional: Dorr, CPAH und Femurmorphologie quantitativ bestimmen.`
+- **Doktrin-Ausnahme dokumentieren:** Die HipSection-Regel „optionale
+  Schritte hinten" wird hier bewusst durchbrochen — das Femurprofil ist
+  eine Messung und muss VOR den Schablonen stehen, weil sein Ergebnis die
+  Schaftwahl informiert. Begründung in den Ablauf-Kommentar der
+  HipSection aufnehmen, sonst „repariert" die nächste Konsistenz-Runde
+  die Position zurück.
 
 Die allgemeine Messsektion darf `femurProfile` nicht als gewöhnliche Einzelmessung zählen:
 
@@ -407,7 +465,7 @@ npm test
 
 ```bash
 git add src/components/Toolbar.tsx
-git commit -m "feat(hip): optionales Femurprofil in Toolbar ergänzen"
+git commit -m "optionales Femurprofil in Toolbar ergänzen"
 ```
 
 ---
@@ -421,7 +479,7 @@ git commit -m "feat(hip): optionales Femurprofil in Toolbar ergänzen"
 - Modify: `src/state/hipStore.ts`
 - Create: `src/components/FemurProfileQualityGate.tsx`
 - Modify: `src/components/Toolbar.tsx`
-- Create/Modify Test: `src/state/hipStore.test.ts`
+- Create Test: `src/state/hipStore.test.ts` (existiert noch nicht)
 
 **Datenmodell:**
 
@@ -448,11 +506,20 @@ export interface FemurProfileImageQuality {
 - Keine automatische Rotationserkennung im MVP behaupten.
 - Qualität und Ausschlussgründe müssen zusammen mit der Femurprofil-Messung persistierbar sein; die genaue Kopplung an das Measurement wird in Task 7 abgeschlossen.
 
+Das Gate als schlanke Variante des bestehenden `ConfirmDialog`-Musters
+bauen — kein neues Dialogsystem.
+
+**Zwischenzustand definiert:** Bricht der Nutzer die Messung nach
+bestandenem Gate ab (`cancelTool`), wird der Gate-Zustand verworfen —
+ein späterer Neustart beginnt wieder mit der Checkliste. Sonst klebte
+eine alte Bestätigung an einer neuen Aufnahme.
+
 **Tests:**
 
 - `isFemurProfileClassifiable` ist nur bei bestandenem Gate wahr.
 - fehlende Kalibrierung sperrt metrische Klassifikation.
 - mindestens ein Ausschlussgrund bleibt beim Store-Roundtrip erhalten.
+- `cancelTool` verwirft den Gate-Zustand.
 
 **Verifikation und Commit:**
 
@@ -460,7 +527,7 @@ export interface FemurProfileImageQuality {
 npm test -- src/state/hipStore.test.ts
 npm run typecheck
 git add src/state/hipStore.ts src/state/hipStore.test.ts src/components/FemurProfileQualityGate.tsx src/components/Toolbar.tsx
-git commit -m "feat(hip): Bildqualität vor Femurklassifikation prüfen"
+git commit -m "Bildqualität vor Femurklassifikation prüfen"
 ```
 
 ---
@@ -473,7 +540,7 @@ git commit -m "feat(hip): Bildqualität vor Femurklassifikation prüfen"
 
 - Create: `src/components/FemurProfileCard.tsx`
 - Modify: `src/components/MeasurementPanel.tsx`
-- Optional create: `src/components/CpahMatrix.tsx`
+- Create: `src/components/CpahMatrix.tsx`
 - Test: `src/lib/hip/femurProfile.test.ts`; UI per statischem/visuellem Smoke-Test.
 
 **Anzeigetext:**
@@ -490,7 +557,46 @@ Verbotene Formulierungen:
 - `zementfrei kontraindiziert`
 - `Osteoporose diagnostiziert`
 
-**CPAH-Matrix:** Analog `src/components/CpakMatrix.tsx`, aber nur wenn der Aufwand klein bleibt. Sonst zunächst Textcode; Matrix in Folgecommit.
+**CPAH-Matrix (Design beschlossen 08.08.2026, Mockup:
+`docs/screenshots/cpah-matrix-mockup.png`):**
+
+Eigene kleine Komponente `CpahMatrix.tsx` nach dem MUSTER der
+`CpakMatrix` — KEINE Verallgemeinerung der CpakMatrix (die trägt
+knie-spezifische Semantik). Wie beim Knie ist es ein kontinuierlicher
+2D-Plot mit Zellen-Overlay, kein reines Raster — der Punkt zeigt, wie
+nah die Anatomie an einer Klassengrenze liegt:
+
+- **X-Achse: NSA**, geclampt auf [105°..155°]; Spalten vara | norma |
+  valga mit Trennlinien bei 120°/140°.
+- **Y-Achse: CI**, geclampt auf [0,30..0,80], hohe CI OBEN; Zeilen
+  Dorr A (oben) | B | C (unten) mit Trennlinien bei 0,60/0,50.
+- Zellen tragen die Typ-Nummern 1–9 (A: 1/2/3, B: 4/5/6, C: 7/8/9),
+  aktive Zelle violett hervorgehoben, Punkt = (NSA, CI) amber — alles
+  wie CpakMatrix.
+- **Grenzzonen 0,58–0,62 und 0,48–0,52 als schmale amber Bänder**
+  (geringe Deckkraft) quer über den Plot: die eigene Konvention wird
+  sichtbar gemacht statt versteckt; ein Punkt im Band IST die
+  Grenzbereichs-Anzeige — keine zweite Markierung nötig.
+- **Dorr-C-Zeile mit dezentem rotem Grundton** (Fixationswarnung der
+  Typen 7–9 ist damit räumlich verortet).
+- **H/N als FOR-Leiste unter dem Plot:** horizontale Mini-Skala
+  [1,0..2,2] mit Schwellen-Marke bei 1,60, Zonen-Beschriftung N | H und
+  Punkt beim gemessenen FOR. Die dritte Dimension gehört sichtbar
+  gemacht, nicht nur als Buchstabe im Code.
+- Footer mit Rohwerten (CI, NSA, FOR, FO) in `tabular-nums` wie beim
+  CPAK-Footer.
+- **Kein „geplant"-Punkt** — bewusster Unterschied zur CpakMatrix: CPAH
+  beschreibt die Anatomie und ändert sich durch das Implantat nicht.
+  Als Kommentar in die Komponente.
+- Schwellen und Bänder aus den benannten Konstanten in
+  `femurProfile.ts` ableiten (dieselbe Technik wie CpakMatrix mit
+  `CPAK_*_THRESHOLDS`) — Zellen, Bänder und Punkt bleiben garantiert
+  konsistent zur Rechenlogik.
+- Bei nicht bestandenem Gate wird die Matrix NICHT gerendert (nur
+  Rohwerte) — analog `nicht zuverlässig bestimmbar`.
+
+Reihenfolge im Task: FemurProfileCard mit Textcode zuerst, CpahMatrix
+als eigener Folgecommit im selben Task.
 
 **Verifikation:**
 
@@ -500,14 +606,15 @@ npm test
 npm run build
 ```
 
-**Commit:**
+**Commits (zwei, entsprechend der Reihenfolge oben):**
 
 ```bash
-git add src/components/FemurProfileCard.tsx src/components/MeasurementPanel.tsx src/components/CpahMatrix.tsx
-git commit -m "feat(hip): Femurmorphologie und CPAH anzeigen"
-```
+git add src/components/FemurProfileCard.tsx src/components/MeasurementPanel.tsx
+git commit -m "Femurmorphologie und CPAH anzeigen"
 
-Nur tatsächlich vorhandene Dateien stagen.
+git add src/components/CpahMatrix.tsx src/components/FemurProfileCard.tsx
+git commit -m "CPAH-Matrix als 2D-Plot ergänzen"
+```
 
 ---
 
@@ -519,7 +626,7 @@ Nur tatsächlich vorhandene Dateien stagen.
 
 - Modify: `src/state/hipStore.ts`
 - Modify: `src/components/FemurProfileCard.tsx`
-- Create/Modify Test: `src/state/hipStore.test.ts`
+- Modify Test: `src/state/hipStore.test.ts` (in Task 5a angelegt)
 
 **Datenmodell:**
 
@@ -552,6 +659,11 @@ setFemurProfileReview(id, review)
 
 **Regeln:**
 
+- `overrideReason: 'sonstiges'` bleibt im MVP OHNE Freitextfeld — sonst
+  müsste `planGrenzen.ts` den neuen Freitext deckeln (DoS-Schutz), und
+  ein Grund-Enum reicht für die Dokumentation.
+- `setFemurProfileReview` muss einen History-Snapshot auslösen wie die
+  übrigen Mutationen — sonst macht Undo die Bestätigung nicht rückgängig.
 - ohne Bestätigung bleibt Anzeige `Dorr-Vorschlag`,
 - bei identischer Bestätigung `Dorr bestätigt`,
 - bei abweichender Klasse ist ein Grund Pflicht,
@@ -561,6 +673,7 @@ setFemurProfileReview(id, review)
 **Tests:**
 
 - Bestätigung wird am richtigen Measurement gespeichert,
+- Undo nach `setFemurProfileReview` stellt den unbestätigten Zustand wieder her,
 - Override ohne Grund wird abgelehnt,
 - Nicht-Femurprofil-Messung wird nicht verändert,
 - Reset/Remove verhält sich wie bisher.
@@ -569,7 +682,7 @@ setFemurProfileReview(id, review)
 
 ```bash
 git add src/state/hipStore.ts src/state/hipStore.test.ts src/components/FemurProfileCard.tsx
-git commit -m "feat(hip): Dorr-Vorschlag ärztlich bestätigbar machen"
+git commit -m "Dorr-Vorschlag ärztlich bestätigbar machen"
 ```
 
 ---
@@ -595,6 +708,12 @@ git commit -m "feat(hip): Dorr-Vorschlag ärztlich bestätigbar machen"
 ```
 
 5. Da `HipMeasurement` bereits komplett persistiert wird, keine parallele zweite Datenstruktur einführen.
+   (Streng genommen bräuchte ein optionales Feld am ohnehin vollständig
+   persistierten Measurement KEINEN Versionssprung — v10 wird trotzdem
+   gesetzt, weil im Projekt jede strukturelle Erweiterung eine Version
+   bekommt und die Historie im Kommentar dokumentiert wird.
+   `planGrenzen.ts` braucht KEINE Änderung, solange der Override-Grund
+   ein Enum ohne Freitext bleibt.)
 6. IDs nach Laden weiterhin über `ensureIdsAbove` absichern.
 
 **Verifikation:**
@@ -607,7 +726,7 @@ npm test -- src/lib/plan/serializeFemurProfile.test.ts src/lib/plan/serializeFra
 
 ```bash
 git add src/lib/plan/serialize.ts src/lib/plan/serializeFemurProfile.test.ts
-git commit -m "feat(plan): Femurprofil in Planformat v10 speichern"
+git commit -m "Femurprofil in Planformat v10 speichern"
 ```
 
 ---
@@ -649,7 +768,7 @@ Wenn ein PDF-Testskript ergänzt wird, dessen Artefakte nur unter `.test-artifac
 
 ```bash
 git add src/lib/plan/pdfExport.ts
-git commit -m "feat(pdf): Femurprofil in Zusammenfassung aufnehmen"
+git commit -m "Femurprofil in Zusammenfassung aufnehmen"
 ```
 
 ---
@@ -684,7 +803,7 @@ git commit -m "feat(pdf): Femurprofil in Zusammenfassung aufnehmen"
 
 ```bash
 git add src/state/hipStore.ts src/state/hipStore.test.ts src/lib/hip/recipes.ts src/lib/hip/recipes.test.ts
-git commit -m "feat(hip): CCD-Landmarken im Femurprofil wiederverwenden"
+git commit -m "CCD-Landmarken im Femurprofil wiederverwenden"
 ```
 
 ---
@@ -716,7 +835,7 @@ git commit -m "feat(hip): CCD-Landmarken im Femurprofil wiederverwenden"
 
 ```bash
 git add docs/test-runbook.md docs/HANDOFF_femurprofil-cpah.md
-git commit -m "docs: Testfahrplan für das Femurprofil ergänzen"
+git commit -m "Testfahrplan für das Femurprofil ergänzen"
 ```
 
 ---
@@ -864,7 +983,7 @@ interface PlanningHint {
 - Create: `src/lib/hip/stemComparison.ts`
 - Create: `src/lib/hip/stemComparison.test.ts`
 - Modify: `src/components/FemurProfileCard.tsx`
-- Modify: `src/components/SelectedTemplatePanel.tsx` oder tatsächlichen bestehenden Variantenselektor nach Codeprüfung.
+- Modify: den bestehenden Varianten-Selektor — `SelectedTemplatePanel`/`SelectedStemPanel` sind KEINE eigenen Dateien, sie leben in `src/components/Toolbar.tsx`.
 
 **Parameter:**
 
@@ -894,13 +1013,47 @@ Keine statische Zuordnung `CPAH 5H -> Quadra-P LAT`. Stattdessen relevante Varia
 
 ---
 
-# Reviewfragen an Claude vor Implementierungsbeginn
+# Review-Ergebnis (08.08.2026) — Fragen beantwortet, Plan angepasst
 
-1. Ist ein 13-Punkt-Recipe mit bestehender Overlay-Architektur ausreichend, oder braucht die 10-cm-Linie eine kleine generische Draft-Geometrie-Erweiterung?
-2. Kann das CCD-Prefill ohne Duplikation der Store-Logik sauber in `hipStore.toggleTool` erfolgen?
-3. Sollte `femurProfileReview` am `HipMeasurement` hängen oder als separates Store-Objekt geführt werden? Bevorzugt ist das optionale Feld am Measurement, sofern Undo/Redo und Persistenz sauber bleiben.
-4. Welche bestehenden Characterization-Tests müssen vor einer Änderung an Toolbar, Overlay oder Planformat ergänzt werden?
-5. Gibt es eine einfachere, DRY-konforme Möglichkeit, die CPAH-Matrix analog zur bestehenden `CpakMatrix` zu implementieren?
-6. Welche Teile dieses Plans sind unnötig komplex und können ohne Verlust der klinischen Nachvollziehbarkeit entfallen?
+Geprüft gegen den Code auf `main` (`dcb96d1`); alle Korrekturen stehen
+direkt in den Tasks. Kurzfassung der Antworten:
 
-Claude soll unsupported assumptions, Sicherheitsrisiken oder eine kleinere robustere Architektur vor dem ersten Code-Commit ausdrücklich benennen.
+1. **Draft-Geometrie:** Ja, die kleine Erweiterung ist nötig.
+   `computeDraft` existiert nirgends; der geteilte Kern zeichnet zwar
+   schon Draft-Punkte UND Draft-Verbindungslinien (`draftLineGroups`),
+   aber nur zwischen gesetzten Punkten — eine BERECHNETE Geometrie wie
+   die 10-cm-Senkrechte kann er nicht darstellen. Gerendert wird sie im
+   Kern, berechnet in `HipOverlay` (dem Muster von `draftLineGroups`
+   folgend); Knie und Schulter bleiben unberührt (in Task 4 eingearbeitet).
+2. **CCD-Prefill:** Ja — `toggleTool` hat mit `prefillFromGlobalRefLine`
+   bereits exakt dieses Muster; das CCD-Prefill wird die zweite Quelle.
+   Punktreihenfolge verifiziert: `ccd` = 6 Punkte in identischer
+   Reihenfolge zu `femurProfile` 0–5.
+3. **Review am Measurement:** Optionales Feld ist richtig; Persistenz
+   kommt gratis. Prüfpunkt eingearbeitet: `setFemurProfileReview` muss
+   einen History-Snapshot auslösen (Task 7).
+4. **Charakterisierungs-Tests vorab:** `AVAILABLE_RECIPES` ohne
+   `femurProfile` (Task 3); v9-Plan lädt unverändert (Muster
+   `serializeFragmente.test.ts`, existiert); Sektion zeigt
+   `statusDot: undefined` solange nicht begonnen.
+   **Nicht testbar und bewusst ungetestet:** der `hasHipMeasurement`-Filter
+   ist ein Inline-Selektor in `Toolbar.tsx` (nicht im Store) — für ihn
+   existiert kein Unit-Test-Muster; Absicherung laut Task 5 über Typecheck
+   plus dokumentierten manuellen Smoke-Test.
+5. **CpahMatrix:** Eigene kleine Komponente nach dem Muster, keine
+   Verallgemeinerung der CpakMatrix — Design in Task 6 festgeschrieben,
+   Mockup unter `docs/screenshots/cpah-matrix-mockup.png`.
+6. **Vereinfachungen:** `confidence`-Feld gestrichen (ableitbar aus
+   `borderline`); Gate als ConfirmDialog-Variante; v10 beibehalten,
+   aber begründet (Task 8).
+
+**Quellen via PubMed verifiziert** (alle real, Inhalt passt):
+CPAH-Paper Stauss et al. 2026
+([DOI 10.1016/j.arth.2026.05.011](https://doi.org/10.1016/j.arth.2026.05.011));
+Morphologie↔PPF ([DOI 10.1016/j.arth.2020.02.048](https://doi.org/10.1016/j.arth.2020.02.048));
+dänische PPF-Kohorte ([DOI 10.1080/17453674.2017.1302908](https://doi.org/10.1080/17453674.2017.1302908));
+NARA ([DOI 10.2106/JBJS.M.00643](https://doi.org/10.2106/JBJS.M.00643));
+Morita ([DOI 10.1302/2046-3758.134.BJR-2023-0188.R1](https://doi.org/10.1302/2046-3758.134.BJR-2023-0188.R1));
+Mess-Automatisierung ([DOI 10.1016/j.arth.2023.11.021](https://doi.org/10.1016/j.arth.2023.11.021)).
+Die konkreten Grenzwerte stehen NICHT in den Abstracts — Volltext-Prüfung
+ist Teil von Task 1.
