@@ -165,8 +165,17 @@ Quellenpflicht (Projekt-Leitplanke, Muster DSA/LSA):
 - CI-Grenzen 0,50/0,60, NSA-Grenzen 120°/140° und FOR 1,60 stammen laut
   Handoff aus dem CPAH-Paper (Stauss et al., J Arthroplasty 2026,
   [DOI 10.1016/j.arth.2026.05.011](https://doi.org/10.1016/j.arth.2026.05.011)).
-  **Das Abstract enthält die Zahlen nicht** — vor dem Festschreiben gegen
-  den Volltext prüfen und die Fundstelle im Code-Kommentar nennen.
+  **Prüfung durchgeführt am 08.08.2026, Ergebnis: offen.** Am Abstract
+  verifiziert ist nur die STRUKTUR — neun Morphotypen aus Dorr-Typ und
+  NSA, je eine Normal- und eine High-Offset-Untergruppe; die dort
+  genannten Typen („2N, 5N, 5H, 6N, 8N") bestätigen die Schreibweise
+  Zahl+N/H. Die ZAHLEN stehen nicht im Abstract, und der Volltext ist
+  nicht frei zugänglich (kein PMC-Eintrag, `convert_article_ids` liefert
+  keine PMCID; der Dorr-Übersichtsartikel PMC7371079 gibt leeren
+  Volltext). Die Werte sind daher aus dem Handoff übernommen und im
+  Modulkopf von `femurProfile.ts` ausdrücklich als **nicht am Volltext
+  geprüft** markiert. Nicht erneut über PubMed suchen — das ist erledigt;
+  offen ist nur der Zugriff auf den Volltext (Philipp hat ihn).
 - Die Grenz**zonen** 0,58–0,62 und 0,48–0,52 sind eine **eigene
   Konvention** dieses Projekts (im Handoff „vorgeschlagen"), keine
   Paper-Angabe — im Kommentar ausdrücklich so kennzeichnen.
