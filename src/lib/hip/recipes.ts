@@ -1,4 +1,5 @@
 import type { Types } from '@cornerstonejs/core'
+import { computeFemurProfileRaw } from './femurProfile'
 import {
   add,
   angleBetweenLines,
@@ -34,6 +35,7 @@ export type HipKind =
   | 'lld'
   | 'globalOffset'
   | 'osteotomy'
+  | 'femurProfile'
 
 /** Renderdaten einer Messung in Weltkoordinaten. */
 export interface RenderGeometry {
@@ -390,6 +392,128 @@ const osteotomy: Recipe = {
   },
 }
 
+// ----------------------------------------------------------------------
+// Femurprofil: geführte 13-Punkt-Vollvermessung des proximalen Femurs.
+// Die gesamte Rechenlogik liegt in femurProfile.ts (computeFemurProfileRaw)
+// — das Rezept ist nur die dünne Brücke: Steps, Formatierung, Geometrie.
+//
+// PREFILL-VERTRAG (Task 10): Die Steps 0–5 sind wortgleich mit dem
+// CCD-Rezept, damit dessen Punkte übernommen werden können. Wer hier die
+// Reihenfolge ändert, bricht das Prefill — der Test nagelt es fest.
+// ----------------------------------------------------------------------
+
+/** Ratio mit deutschem Komma, zwei Nachkommastellen (wie die Anzeige
+ *  „CI 0,54 · CCR 0,60" der Ergebnis-Karte). */
+function ratio2(v: number): string {
+  return v.toFixed(2).replace('.', ',')
+}
+
+const NICHT_BESTIMMBAR = 'nicht zuverlässig bestimmbar'
+
+const femurProfile: Recipe = {
+  kind: 'femurProfile',
+  label: 'Femurprofil',
+  needsCalibration: true,
+  steps: [
+    ...HEAD_CONTOUR,
+    'Schenkelhals — Mitte',
+    'Femurschaftachse — proximaler Punkt',
+    'Femurschaftachse — distaler Punkt',
+    'Mitte Trochanter minor',
+    'Äußere Kortikalis medial — auf der 10-cm-Linie',
+    'Innere Kortikalis medial — auf der 10-cm-Linie',
+    'Innere Kortikalis lateral — auf der 10-cm-Linie',
+    'Äußere Kortikalis lateral — auf der 10-cm-Linie',
+    'Innerer Kanalrand medial — Höhe Trochanter minor',
+    'Innerer Kanalrand lateral — Höhe Trochanter minor',
+  ],
+  lineGroups: [[4, 5]],
+  compute: (points, factor) => {
+    const raw = computeFemurProfileRaw(points, factor)
+    if (!raw) {
+      // Defensiv: compute wird regulär erst mit allen 13 Punkten gerufen.
+      return {
+        values: [{ label: '⚠ Femurprofil', value: 'Messung unvollständig — Punkte fehlen.' }],
+        geometry: { lines: [], circles: [], labels: [] },
+      }
+    }
+
+    const values: HipResultValue[] = [
+      ...raw.warnings.map((w) => ({ label: '⚠ Femurprofil', value: w })),
+      {
+        label: 'Dorr-Vorschlag',
+        value: raw.dorr
+          ? raw.dorr.borderline
+            ? `${raw.dorr.suggested} (Grenzbereich ${raw.dorr.borderline})`
+            : raw.dorr.suggested
+          : NICHT_BESTIMMBAR,
+      },
+      {
+        label: 'Cortical Index',
+        value: raw.corticalIndex != null ? ratio2(raw.corticalIndex) : NICHT_BESTIMMBAR,
+      },
+      {
+        label: 'Canal-Calcar Ratio',
+        value: raw.canalCalcarRatio != null ? ratio2(raw.canalCalcarRatio) : NICHT_BESTIMMBAR,
+      },
+      {
+        label: 'NSA (CCD)',
+        value: raw.nsaDeg != null ? deg(raw.nsaDeg) : NICHT_BESTIMMBAR,
+      },
+      { label: 'Femorales Offset', value: mm(raw.femoralOffsetMm) },
+      {
+        label: 'Femoral Offset Ratio',
+        value: raw.femoralOffsetRatio != null ? ratio2(raw.femoralOffsetRatio) : NICHT_BESTIMMBAR,
+      },
+      { label: 'CPAH', value: raw.cpah ? raw.cpah.code : NICHT_BESTIMMBAR },
+    ]
+
+    const [, , , neckPt, s1, s2, tmPt, om, im, il, ol, calM, calL] = points
+    const { headCenter: center, headRadiusWorld: radius } = raw
+
+    // Halsachse wie im CCD-Rezept über den gesetzten Punkt verlängern.
+    const neckEnd = add(center, scale(sub(neckPt, center), 1.6))
+
+    // 10-cm-Referenzlinie: senkrecht zur Schaftachse, 10 cm distal des
+    // Trochanter-minor-Fußpunkts, quer über die gemessene Außenbreite.
+    const dir = sub(s2, s1)
+    const dl = len(dir)
+    const u = dl > 0 ? scale(dir, 1 / dl) : ([0, 1, 0] as P)
+    const n: P = [-u[1], u[0], 0]
+    const fuss = closestPointOnLine(tmPt, s1, s2)
+    // factor ist nach dem null-Guard von computeFemurProfileRaw endlich;
+    // 100 mm in Weltkoordinaten (Division, weil mm = WU · factor).
+    const zehnCmMitte = add(fuss, scale(u, factor > 0 ? 100 / factor : 100))
+    const halbeBreite = Math.max((raw.outerDiameter10cmMm / (factor > 0 ? factor : 1)) * 0.75, 15)
+
+    return {
+      values,
+      geometry: {
+        lines: [
+          { from: center, to: neckEnd },
+          { from: s1, to: s2 },
+          {
+            from: add(zehnCmMitte, scale(n, -halbeBreite)),
+            to: add(zehnCmMitte, scale(n, halbeBreite)),
+            dashed: true,
+            color: '#94a3b8',
+          },
+          // Gemessene Breiten: außen kräftig, innen (Kanal) gestrichelt.
+          { from: om, to: ol },
+          { from: im, to: il, dashed: true },
+          { from: calM, to: calL, dashed: true, color: '#fbbf24' },
+        ],
+        circles: [{ center, radius }],
+        // GENAU EIN Label (Vertrag des geteilten Renderers: OverlayLabels
+        // zeigt nur labels[0]). Mehrere Einträge wären tote Artefakte —
+        // und bei nicht messbarem NSA wechselte das sichtbare Label still
+        // seine Bedeutung. CI steht ohnehin in der Werteliste.
+        labels: raw.nsaDeg != null ? [{ at: neckPt, text: `NSA ${deg(raw.nsaDeg)}` }] : [],
+      },
+    }
+  },
+}
+
 /** Alle implementierten Rezepte in Anzeigereihenfolge. */
 export const RECIPES: Record<HipKind, Recipe> = {
   fourPointAngle,
@@ -398,6 +522,7 @@ export const RECIPES: Record<HipKind, Recipe> = {
   lld,
   globalOffset,
   osteotomy,
+  femurProfile,
 }
 
 /** Liste der Mess-Rezepte für die Werkzeugleiste (Sektion „Hüft-

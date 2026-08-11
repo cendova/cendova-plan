@@ -3,7 +3,7 @@
 // Distanz der GESTRICHELTEN Strecke; er wurde als Länge der roten
 // Osteotomie-Linie fehlgelesen. Kalibrierung war korrekt.)
 import { describe, expect, it } from 'vitest'
-import { getRecipe } from './recipes'
+import { AVAILABLE_RECIPES, getRecipe } from './recipes'
 import type { Types } from '@cornerstonejs/core'
 
 const p = (x: number, y: number, z = 0): Types.Point3 => [x, y, z]
@@ -30,5 +30,129 @@ describe('osteotomy (Resektionshöhe → Trochanter minor)', () => {
     // dist(calcar (3,−4) → TM (0,0)) = 5 WU · factor 2 = 10 mm = 1,00 cm.
     const r = recipe.compute([p(0, 0), p(-5, -4), p(3, -4)], 2)
     expect(r.values[0].value).toBe('1,00 cm')
+  })
+})
+
+// ----------------------------------------------------------------------
+// Femurprofil: geführte 13-Punkt-Messung über die Geometrie-Engine.
+// Referenz-Anatomie identisch zu femurProfile.test.ts (CI 0,50, CCR 0,50,
+// FOR 1,60, NSA 135° → CPAH 5H; Kortikalis medial 12 / lateral 8 mm).
+// ----------------------------------------------------------------------
+
+/** Punkte 0–12 der Referenz-Anatomie (Kopie aus femurProfile.test.ts). */
+function femurProfilPunkte(): Types.Point3[] {
+  return [
+    p(-40, -40),
+    p(-64, -64),
+    p(-88, -40),
+    p(-64 + 10 * Math.SQRT1_2, -40 - 10 * Math.SQRT1_2),
+    p(0, 0),
+    p(0, 100),
+    p(0, 40),
+    p(-22, 140),
+    p(-10, 140),
+    p(10, 140),
+    p(18, 140),
+    p(-20, 40),
+    p(20, 40),
+  ]
+}
+
+describe('femurProfile (geführte 13-Punkt-Messung)', () => {
+  const recipe = getRecipe('femurProfile')!
+
+  it('ist registriert, kalibrierpflichtig und heißt Femurprofil', () => {
+    expect(recipe).toBeDefined()
+    expect(recipe.label).toBe('Femurprofil')
+    expect(recipe.needsCalibration).toBe(true)
+  })
+
+  it('steht NICHT in AVAILABLE_RECIPES (eigene Sektion statt ToolButton)', () => {
+    // Wie osteotomy: in der Registry, aber nicht in der Angebotsliste der
+    // Mess-Sektion — sonst erschiene das Werkzeug doppelt.
+    expect(AVAILABLE_RECIPES.some((r) => r.kind === 'femurProfile')).toBe(false)
+    expect(AVAILABLE_RECIPES.some((r) => r.kind === 'osteotomy')).toBe(false)
+    expect(AVAILABLE_RECIPES).toHaveLength(5)
+  })
+
+  it('hat exakt 13 Steps in der dokumentierten Reihenfolge', () => {
+    expect(recipe.steps).toHaveLength(13)
+    // Reihenfolge-Anker: Kopfkontur → Hals → Schaftachse → Troch. minor →
+    // 4× Kortikalis bei 10 cm → 2× Kanalrand auf Calcar-Höhe.
+    expect(recipe.steps[0]).toContain('Hüftkopfkontur')
+    expect(recipe.steps[6]).toContain('Trochanter minor')
+    expect(recipe.steps[7]).toContain('medial')
+    expect(recipe.steps[10]).toContain('lateral')
+    expect(recipe.steps[12]).toContain('lateral')
+  })
+
+  it('beginnt mit EXAKT den sechs CCD-Steps (Prefill-Vertrag für Task 10)', () => {
+    // Das CCD-Prefill übernimmt Punkte 0–5 einer CCD-Messung. Das ist nur
+    // korrekt, solange beide Rezepte dieselben ersten sechs Punktrollen in
+    // derselben Reihenfolge haben — hier festgenagelt.
+    const ccd = getRecipe('ccd')!
+    expect(recipe.steps.slice(0, 6)).toEqual(ccd.steps)
+  })
+
+  it('liefert bei gültigen Punkten Dorr, CI, CCR, FO, FOR, NSA und CPAH', () => {
+    const r = recipe.compute(femurProfilPunkte(), 1)
+    const wert = (label: string) => r.values.find((v) => v.label === label)?.value
+    expect(wert('Dorr-Vorschlag')).toBe('B (Grenzbereich B/C)')
+    expect(wert('Cortical Index')).toBe('0,50')
+    expect(wert('Canal-Calcar Ratio')).toBe('0,50')
+    expect(wert('NSA (CCD)')).toBe('135.0°')
+    expect(wert('Femorales Offset')).toBe('64.0 mm')
+    expect(wert('Femoral Offset Ratio')).toBe('1,60')
+    expect(wert('CPAH')).toBe('5H')
+  })
+
+  it('zeichnet Kopfkreis, Achsen, 10-cm-Linie, Breiten und Calcar-Linie', () => {
+    const r = recipe.compute(femurProfilPunkte(), 1)
+    expect(r.geometry.circles).toHaveLength(1)
+    expect(r.geometry.circles[0].radius).toBeCloseTo(24, 6)
+    // Halsachse, Schaftachse, 10-cm-Referenzlinie, äußere + innere
+    // Femurbreite, Calcar-Breite → mindestens 6 Linien.
+    expect(r.geometry.lines.length).toBeGreaterThanOrEqual(6)
+    // GENAU EIN Label: der geteilte Renderer zeigt nur labels[0] — mehr
+    // als eines wäre totes Artefakt (Vertrag aller Bestandsrezepte).
+    expect(r.geometry.labels).toHaveLength(1)
+    expect(r.geometry.labels[0].text).toContain('NSA')
+  })
+
+  it('lässt das Label weg, wenn der NSA nicht messbar ist', () => {
+    // Sonst rückte ein anderes Label auf Position 0 nach und das
+    // sichtbare Mess-Label wechselte still seine Bedeutung.
+    const pts = femurProfilPunkte()
+    pts[3] = p(-64, -40) // Halsmitte exakt im Kopfzentrum
+    const r = recipe.compute(pts, 1)
+    expect(r.geometry.labels).toEqual([])
+    expect(r.values.some((v) => v.label.startsWith('⚠'))).toBe(true)
+  })
+
+  it('skaliert die 10-cm-Referenzlinie mit dem Kalibrierfaktor', () => {
+    // Bei factor 2 (1 WU = 2 mm) liegen 10 cm nur 50 WU distal des
+    // Trochanter minor (Fußpunkt y = 40) → Linie bei y = 90, nicht 140.
+    const r = recipe.compute(femurProfilPunkte(), 2)
+    const zehnCm = r.geometry.lines.find((l) => l.dashed && Math.abs(l.from[1] - 90) < 1e-6)
+    expect(zehnCm).toBeDefined()
+  })
+
+  it('zeigt bei ungültiger Geometrie Warnzeilen statt zu werfen', () => {
+    const pts = femurProfilPunkte()
+    pts[8] = p(-30, 140) // Kanal breiter als außen (X > Z)
+    pts[9] = p(30, 140)
+    expect(() => recipe.compute(pts, 1)).not.toThrow()
+    const r = recipe.compute(pts, 1)
+    expect(r.values.some((v) => v.label.startsWith('⚠'))).toBe(true)
+    const wert = (label: string) => r.values.find((v) => v.label === label)?.value
+    expect(wert('Dorr-Vorschlag')).toBe('nicht zuverlässig bestimmbar')
+    expect(wert('CPAH')).toBe('nicht zuverlässig bestimmbar')
+  })
+
+  it('wirft auch bei unvollständigen Punkten nicht', () => {
+    expect(() => recipe.compute(femurProfilPunkte().slice(0, 7), 1)).not.toThrow()
+    const r = recipe.compute(femurProfilPunkte().slice(0, 7), 1)
+    expect(r.values.length).toBeGreaterThan(0)
+    expect(r.geometry.lines).toEqual([])
   })
 })
