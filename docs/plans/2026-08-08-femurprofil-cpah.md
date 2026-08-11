@@ -260,31 +260,38 @@ npm test -- src/lib/hip/femurProfile.test.ts
 
 **Schritt 3: `computeFemurProfileRaw` implementieren**
 
-Ergebnisinterface mindestens:
+Ergebnisinterface (Stand der Umsetzung — die Null-Semantik ist eine
+bewusste Präzisierung: die Klassifizierer werfen bei NaN, also darf
+unbrauchbare Geometrie sie gar nicht erst erreichen; `warnings` sagt
+warum ein Wert fehlt):
 
 ```ts
 export interface FemurProfileRaw {
   headCenter: Types.Point3
   headRadiusWorld: number
   shaftAxis: [Types.Point3, Types.Point3]
-  nsaDeg: number
+  nsaDeg: number | null // null, wenn die Halsmitte (fast) im Kopfzentrum liegt (Nullvektor-Falle)
   femoralOffsetMm: number
   outerDiameter10cmMm: number
   canalDiameter10cmMm: number
   medialCortexMm: number
   lateralCortexMm: number
-  corticalIndex: number
+  corticalIndex: number | null // null bei Z = 0; bleibt als Rohwert stehen, wenn implausibel (dann dorr = null)
   canalCalcarMm: number // Kanalbreite auf Calcar-Höhe (Mitte Troch. minor)
-  canalCalcarRatio: number
-  femoralOffsetRatio: number
-  dorr: DorrSuggestion
-  nsaClass: NsaClass
-  cpah: CpahResult
+  canalCalcarRatio: number | null // null bei Y = 0; reine Anzeigegröße, kein CPAH-Input
+  femoralOffsetRatio: number | null // null bei Z = 0
+  dorr: DorrSuggestion | null // null bei Z = 0, X = 0 oder wenn die vier Kortikalis-Ablagen nicht streng außen–innen–innen–außen geordnet sind (fängt auch einseitig vertauschte Punkte, die X < Z lassen)
+  nsaClass: NsaClass | null // null, wenn nsaDeg null ist
+  cpah: CpahResult | null // null, sobald Dorr, NSA oder FOR fehlt
   warnings: string[]
 }
 ```
 
-`mmPerWorldUnit` explizit übergeben. Keine Rundung im Rechenkern; Rundung nur in der Anzeige.
+`mmPerWorldUnit` explizit übergeben. Keine Rundung im Rechenkern; Rundung
+nur in der Anzeige. Rückgabe `null` bei unvollständigen Punkten und bei
+Schaftachse ohne Länge (ohne Achse gibt es keine Senkrechte, also keinen
+einzigen Breitenwert). Punkt 6 (Trochanter minor) verankert nur die
+10-cm-Hilfslinie und geht in keinen Messwert ein — per Test festgenagelt.
 
 **Schritt 4: Tests grün machen**
 

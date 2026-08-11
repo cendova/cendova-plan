@@ -36,6 +36,16 @@
  * Zementier-Indikation. Beide Regeln bleiben technisch getrennt; dieses
  * Modul kennt den ISCD-Wert bewusst nicht.
  */
+import type { Types } from '@cornerstonejs/core'
+import {
+  angleBetweenVectors,
+  circleFrom3Points,
+  dot,
+  len,
+  perpendicularDistance,
+  sub,
+  unit,
+} from './geometry'
 
 /** Dorr-Grenzen auf dem Cortical Index CI = (Z − X) / Z.
  *  Lesart: A ist CI > 0,60; C ist CI < 0,50; dazwischen B — die
@@ -152,4 +162,213 @@ export function computeCpah(
 ): CpahResult {
   const type = CPAH_MATRIX[dorr][nsa]
   return { type, offsetSubtype, code: `${type}${offsetSubtype}` }
+}
+
+// ======================================================================
+// Geometrie-Engine: Rohwerte aus den 13 Landmarken.
+// ======================================================================
+
+type P = Types.Point3
+
+/**
+ * Die definierte Punktreihenfolge des Femurprofil-Rezepts:
+ *
+ *   0–2   Hüftkopfkontur
+ *   3     Schenkelhals-Mittelpunkt
+ *   4–5   Femurschaftachse proximal/distal
+ *   6     Mitte Trochanter minor (verankert NUR die 10-cm-Hilfslinie im
+ *         UI — geht bewusst in KEINEN Messwert ein, die Breiten kommen
+ *         aus den tatsächlich geklickten Punkten 7–12)
+ *   7     äußere Kortikalis medial bei 10 cm
+ *   8     innere Kortikalis medial bei 10 cm
+ *   9     innere Kortikalis lateral bei 10 cm
+ *   10    äußere Kortikalis lateral bei 10 cm
+ *   11    innerer Kanalrand medial auf Calcar-Höhe (Mitte Troch. minor)
+ *   12    innerer Kanalrand lateral auf Calcar-Höhe
+ */
+export const FEMUR_PROFILE_POINT_COUNT = 13
+
+/**
+ * Rohwerte des Femurprofils. Keine Rundung — die passiert erst in der
+ * Anzeige.
+ *
+ * Zur Null-Semantik (bewusste Präzisierung gegenüber der Plan-Skizze,
+ * Folge der NaN-Wache in den Klassifizierern): Werte, deren Geometrie
+ * unbrauchbar ist, sind `null` statt NaN oder scheinpräziser Zahl, und
+ * `warnings` sagt warum. Eine Dorr-Klasse aus einem Klickfehler wäre
+ * schlimmer als keine — insbesondere ein stilles „C" (Zementier-Warnung)
+ * oder „A" (CI = 1 bei unsichtbarem Kanal).
+ */
+export interface FemurProfileRaw {
+  headCenter: P
+  headRadiusWorld: number
+  shaftAxis: [P, P]
+  /** null, wenn die Halsmitte (fast) im Kopfzentrum liegt — dann wäre die
+   *  Halsrichtung reines Klickrauschen und der Winkel Scheinpräzision. */
+  nsaDeg: number | null
+  femoralOffsetMm: number
+  outerDiameter10cmMm: number
+  canalDiameter10cmMm: number
+  medialCortexMm: number
+  lateralCortexMm: number
+  /** CI = (Z − X) / Z; null bei Z = 0. Bleibt als Rohwert auch dann
+   *  erhalten, wenn er implausibel ist (z. B. negativ bei X > Z) — dann
+   *  ist aber `dorr` null. */
+  corticalIndex: number | null
+  canalCalcarMm: number
+  /** CCR = X / Y; null bei Y = 0. Reine Anzeigegröße — geht NICHT in
+   *  CPAH ein (das braucht CI, NSA, FOR). */
+  canalCalcarRatio: number | null
+  /** FOR = FO / Z; null bei Z = 0. */
+  femoralOffsetRatio: number | null
+  /** null, wenn die Geometrie keine vertretbare Klassifikation hergibt. */
+  dorr: DorrSuggestion | null
+  /** null, wenn nsaDeg null ist (Halsmitte im Kopfzentrum). */
+  nsaClass: NsaClass | null
+  /** null, sobald ein Baustein (Dorr, NSA, FOR) fehlt. */
+  cpah: CpahResult | null
+  warnings: string[]
+}
+
+/**
+ * Mindestlänge des Halsvektors (Kopfzentrum → Halsmitte) in mm, unterhalb
+ * derer kein NSA berechnet wird. TECHNISCHE Plausibilitätsgrenze (eigene
+ * Festlegung, kein klinischer Grenzwert): deutlich über dem Klickrauschen
+ * von 1–2 mm, deutlich unter jeder realen Schenkelhalslänge (~40–60 mm).
+ * Ohne sie macht der Nullvektor-Sentinel von `angleBetweenVectors` (0°)
+ * aus einem Fehlklick still NSA 180° → „valga" → falscher CPAH-Code.
+ */
+export const NECK_MIN_LEN_MM = 5
+
+/** Signierte Quer-Ablage eines Punktes senkrecht zur Schaftachse.
+ *  Breiten entstehen aus der DIFFERENZ zweier Ablagen — dadurch ist ein
+ *  entlang der Achse versetzter Klick (daneben auf der 10-cm-Linie)
+ *  folgenlos, statt jede Breite systematisch zu überschätzen. */
+function querAblage(pt: P, s1: P, achse: P): number {
+  const n: P = [-achse[1], achse[0], 0]
+  return dot(sub(pt, s1), n)
+}
+
+/**
+ * Berechnet alle Rohwerte des Femurprofils aus der Punktreihenfolge oben.
+ *
+ * `mmPerWorldUnit` wird explizit übergeben (Weltkoordinaten → mm).
+ * Rückgabe null bei unvollständigen Punkten oder ohne Messrahmen
+ * (Schaftachse ohne Länge — senkrecht dazu lässt sich nichts messen).
+ */
+export function computeFemurProfileRaw(
+  points: P[],
+  mmPerWorldUnit: number,
+): FemurProfileRaw | null {
+  if (points.length < FEMUR_PROFILE_POINT_COUNT) return null
+
+  // Ohne endlichen Maßstab gibt es keinen Messrahmen — wie bei der
+  // längenlosen Schaftachse: sonst passiert z. B. CI = (Inf − Inf)/Inf
+  // = NaN den Plausibilitäts-Guard und die NaN-Wache wirft.
+  if (!Number.isFinite(mmPerWorldUnit)) return null
+
+  const [c1, c2, c3, neckPt, s1, s2, , om, im, il, ol, calM, calL] = points
+
+  // Ohne Achsrichtung gibt es keine Senkrechte und damit keinen einzigen
+  // Breitenwert — das ist so unfertig wie fehlende Punkte, daher null.
+  const shaftDir = unit(sub(s2, s1))
+  if (len(shaftDir) === 0) return null
+
+  const warnings: string[] = []
+
+  // Hüftkopf: warnen, nicht blockieren (Doktrin aus Audit-Befund D15 —
+  // dieselbe Behandlung wie im CCD-Rezept).
+  const { center, radius, degenerate } = circleFrom3Points(c1, c2, c3)
+  if (degenerate) {
+    warnings.push('Hüftkopf-Punkte fast kollinear — Zentrum unzuverlässig, Punkte neu setzen.')
+  }
+
+  // NSA wie im CCD-Rezept: stets die stumpfe Winkelvariante. Aber nur,
+  // wenn der Halsvektor lang genug ist: liegt die Halsmitte (fast) im
+  // Kopfzentrum, liefert der Nullvektor-Sentinel 0° → still 180° →
+  // „valga" — anders als im CCD-Rezept, wo der Arzt die absurde Zahl
+  // SIEHT, flösse sie hier unsichtbar in den CPAH-Code.
+  const neckVec = sub(neckPt, center)
+  const nsaMessbar = len(neckVec) * mmPerWorldUnit >= NECK_MIN_LEN_MM
+  if (!nsaMessbar) {
+    warnings.push('Halsmitte liegt (fast) im Kopfzentrum — NSA nicht messbar, Punkt neu setzen.')
+  }
+  const rawAngle = angleBetweenVectors(neckVec, sub(s2, s1))
+  const nsaDeg = nsaMessbar ? (rawAngle >= 90 ? rawAngle : 180 - rawAngle) : null
+  const nsaClass = nsaDeg != null ? classifyNsa(nsaDeg) : null
+
+  const femoralOffsetMm = perpendicularDistance(center, s1, s2) * mmPerWorldUnit
+
+  // Breiten als Projektions-Differenzen senkrecht zur Schaftachse.
+  const qOm = querAblage(om, s1, shaftDir)
+  const qIm = querAblage(im, s1, shaftDir)
+  const qIl = querAblage(il, s1, shaftDir)
+  const qOl = querAblage(ol, s1, shaftDir)
+  const z = Math.abs(qOm - qOl) * mmPerWorldUnit
+  const x = Math.abs(qIm - qIl) * mmPerWorldUnit
+  const medialCortexMm = Math.abs(qOm - qIm) * mmPerWorldUnit
+  const lateralCortexMm = Math.abs(qIl - qOl) * mmPerWorldUnit
+  const y =
+    Math.abs(querAblage(calM, s1, shaftDir) - querAblage(calL, s1, shaftDir)) * mmPerWorldUnit
+
+  // Plausibilität der Klassifikations-Eingaben. Rohwerte bleiben stehen
+  // (der Nutzer soll SEHEN, was gemessen wurde) — aber keine Klasse aus
+  // unmöglicher Anatomie.
+  //
+  // Die vier Kortikalis-Ablagen müssen STRENG außen–innen–innen–außen
+  // geordnet sein (beide Klickrichtungen erlaubt). Das fängt auch Fehler,
+  // die der bloße x<=z-Vergleich übersieht: ein einzelnes vertauschtes
+  // Seitenpaar oder ein innerer Punkt außerhalb der Kortikalis kann X < Z
+  // lassen und lieferte sonst still eine falsche Dorr-Klasse. Die strenge
+  // Ordnung impliziert zugleich X < Z (Kortikalisdicke > 0 beidseits).
+  const kortikalisGeordnet =
+    (qOm < qIm && qIm < qIl && qIl < qOl) || (qOm > qIm && qIm > qIl && qIl > qOl)
+  if (z <= 0) {
+    warnings.push('Äußerer Durchmesser bei 10 cm ist null — äußere Kortikalis-Punkte prüfen.')
+  }
+  if (x <= 0) {
+    warnings.push('Kanalbreite bei 10 cm ist null — innere Kortikalis-Punkte prüfen.')
+  }
+  if (x > z && z > 0) {
+    warnings.push('Kanal breiter als der äußere Durchmesser — Kortikalis-Punkte vertauscht?')
+  }
+  if (!kortikalisGeordnet && z > 0 && x > 0 && x <= z) {
+    warnings.push(
+      'Kortikalis-Punkte nicht außen–innen–innen–außen geordnet — einzelner Punkt vertauscht oder außerhalb gesetzt?',
+    )
+  }
+  if (y <= 0) {
+    warnings.push('Kanalbreite auf Calcar-Höhe ist null — Calcar-Punkte prüfen.')
+  }
+
+  const corticalIndex = z > 0 ? (z - x) / z : null
+  const canalCalcarRatio = y > 0 ? x / y : null
+  const femoralOffsetRatio = z > 0 ? femoralOffsetMm / z : null
+
+  const klassifizierbar = z > 0 && x > 0 && kortikalisGeordnet
+  const dorr = klassifizierbar && corticalIndex != null ? classifyDorr(corticalIndex) : null
+  const cpah =
+    dorr != null && nsaClass != null && femoralOffsetRatio != null
+      ? computeCpah(dorr.suggested, nsaClass, classifyOffsetSubtype(femoralOffsetRatio))
+      : null
+
+  return {
+    headCenter: center,
+    headRadiusWorld: radius,
+    shaftAxis: [s1, s2],
+    nsaDeg,
+    femoralOffsetMm,
+    outerDiameter10cmMm: z,
+    canalDiameter10cmMm: x,
+    medialCortexMm,
+    lateralCortexMm,
+    corticalIndex,
+    canalCalcarMm: y,
+    canalCalcarRatio,
+    femoralOffsetRatio,
+    dorr,
+    nsaClass,
+    cpah,
+    warnings,
+  }
 }
