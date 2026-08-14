@@ -479,7 +479,18 @@ git commit -m "10-cm-Hilfslinie im Femurprofil anzeigen"
 - grüner Punkt nach abgeschlossener `femurProfile`-Messung,
 - Button `Femurprofil starten` im Hero-Stil der Knie-Vollvermessung
   (violett), damit „geführter Workflow" wiedererkennbar ist,
-- deaktiviert ohne Bild oder ohne Kalibrierung (`calibration != null`),
+- deaktiviert ohne Bild oder ohne Kalibrierung (`calibration != null`).
+  **Diese Sperre ist tragend, nicht kosmetisch** (Befund aus dem Review zu
+  Task 4): `needsCalibration` ist im Bestand NUR ein Anzeige-Hinweis
+  („· unkalibriert" in `MeasurementPanel`), kein Gate. Unkalibriert
+  bekommt `compute` über `computeVisible` immer den Ersatzfaktor 1 —
+  die Führungslinie bleibt dann zwar korrekt aus (`computeDraft` erhält
+  `null`), die FERTIGE Messung zeichnet aber weiterhin eine „10-cm"-Linie
+  bei 100 Welteinheiten und die Werteliste zeigt mm-Zahlen, die keine
+  sind. Ohne die Sperre liefen die Schritt-Texte „auf der 10-cm-Linie"
+  also ins Leere. Der Einstiegspunkt ist die einzige Stelle, die das
+  verhindern kann: im Rezept sind unkalibriert und echte
+  DICOM-Kalibrierung mit Faktor 1 prinzipiell ununterscheidbar.
 - Hilfetext: `Optional: Dorr, CPAH und Femurmorphologie quantitativ bestimmen.`
 - **Doktrin-Ausnahme dokumentieren:** Die HipSection-Regel „optionale
   Schritte hinten" wird hier bewusst durchbrochen — das Femurprofil ist
