@@ -203,11 +203,18 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
   // Schritt bearbeitet ist, klappt seine Sektion standardmäßig zu — bleibt
   // aber per Klick erreichbar. Eine EXPLIZITE Nutzer-Wahl (uiStore)
   // überstimmt den Default dauerhaft.
+  // Osteotomie UND Femurprofil haben eigene Sektionen — sie dürfen den
+  // Fortschritt der allgemeinen Mess-Sektion nicht miterledigen.
   const hasHipMeasurement = useHipStore((s) =>
-    s.measurements.some((m) => m.kind !== 'osteotomy'),
+    s.measurements.some(
+      (m) => m.kind !== 'osteotomy' && m.kind !== 'femurProfile',
+    ),
   )
   const hasOsteotomy = useHipStore((s) =>
     s.measurements.some((m) => m.kind === 'osteotomy'),
+  )
+  const hasFemurProfile = useHipStore((s) =>
+    s.measurements.some((m) => m.kind === 'femurProfile'),
   )
   // Pfanne UND Schaft platziert = Schablonen-Schritt erledigt.
   // Vorher stand hier `templates.length + stems.length >= 2` — zwei Pfannen
@@ -233,10 +240,18 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
   const keinHipKatalog = !pkgInfo && hipKatalogLeer
   return (
     <>
-      {/* Ablauf: 1 Kalibrierung → 2 Messungen → 3 Schablonen, danach die
-          beiden optionalen Zusatzschritte 4 Osteotomie und 5 Osteophyten.
-          Optional heisst hier: emerald wenn getan, sonst gar kein Punkt —
-          amber wäre die Behauptung, es stünde noch etwas aus. */}
+      {/* Ablauf: 1 Kalibrierung → 2 Messungen → 3 Femurprofil →
+          4 Schablonen, danach die optionalen Zusatzschritte 5 Osteotomie
+          und 6 Osteophyten. Optional heisst hier: emerald wenn getan,
+          sonst gar kein Punkt — amber wäre die Behauptung, es stünde noch
+          etwas aus.
+
+          ABSICHTLICHE AUSNAHME von „optionale Schritte nach hinten": Das
+          Femurprofil ist optional, steht aber VOR den Schablonen. Es ist
+          eine Messung, und sein Ergebnis (Dorr/CPAH) informiert die
+          Schaftwahl — hinter den Schablonen käme es zu spät. Wer hier
+          aufräumt und es nach unten schiebt, dreht die klinische
+          Reihenfolge um. */}
       <CollapsibleSection
         id="hip-cal"
         title="1 · Kalibrierung"
@@ -267,9 +282,35 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
 
       <Divider />
 
+      {/* Section-id bewusst NEU und stabil: ids sind die localStorage-
+          Schlüssel der gemerkten Einklapp-Zustände, nur die Titel-Nummer
+          ist ein wechselnder String. */}
+      <CollapsibleSection
+        id="hip-femurprofil"
+        title="3 · Femurprofil"
+        // IMMER standardmäßig zu (nicht erst nach Abschluss): Das
+        // Femurprofil ist ein Sonderfall, den die meisten Planungen nicht
+        // brauchen — aufgeklappt bliebe es dauerhaft im Weg. Eine
+        // manuelle Wahl überstimmt das wie überall.
+        defaultCollapsed
+        // KEIN amber, solange nichts begonnen ist — amber hieße „hier
+        // steht etwas aus". Nach Abschluss emerald; dieser Übergang
+        // verwirft dann auch eine manuelle Aufklapp-Wahl (Flanke in
+        // CollapsibleSection), die Sektion räumt sich also selbst auf.
+        statusDot={hasFemurProfile ? 'bg-emerald-500' : undefined}
+      >
+        <FemurProfileButton
+          hasImage={hasImage}
+          calibrated={calibrated}
+          active={activeKind === 'femurProfile'}
+        />
+      </CollapsibleSection>
+
+      <Divider />
+
       <CollapsibleSection
         id="hip-templates"
-        title="3 · Schablonen"
+        title="4 · Schablonen"
         defaultCollapsed={templatesFertig}
         // Ohne Katalog KEIN amber: die Hinzufügen-Buttons sind dann
         // deaktiviert — ein „hier steht etwas aus"-Punkt fordert zu einer
@@ -304,7 +345,7 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="hip-osteotomy"
-        title="4 · Osteotomie"
+        title="5 · Osteotomie"
         defaultCollapsed={hasOsteotomy}
         statusDot={hasOsteotomy ? 'bg-emerald-500' : undefined}
       >
@@ -326,13 +367,77 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="hip-osteophytes"
-        title="5 · Osteophyten"
+        title="6 · Osteophyten"
         defaultCollapsed={hasOsteophytes}
         statusDot={hasOsteophytes ? 'bg-emerald-500' : undefined}
       >
         <OsteophyteToolButton hasImage={hasImage} />
         <OsteophyteList />
       </CollapsibleSection>
+    </>
+  )
+}
+
+/**
+ * Einstieg in die geführte 13-Punkt-Messung. Hero-Stil wie die
+ * Knie-Vollvermessung — beide sind geführte Workflows, nicht einzelne
+ * Werkzeuge, und sollen als solche wiedererkennbar sein.
+ *
+ * Die Kalibrier-Sperre ist HIER tragend und nicht bloß Komfort: Im
+ * Rezept sind „unkalibriert" und „echte DICOM-Kalibrierung mit Faktor 1"
+ * prinzipiell ununterscheidbar (Cornerstone-Welt = mm). Unkalibriert
+ * bekäme `compute` den Ersatzfaktor 1 und zeichnete eine „10-cm"-Linie
+ * bei 100 Welteinheiten, während die Werteliste mm-Zahlen zeigte, die
+ * keine sind — und die Schritt-Texte „auf der 10-cm-Linie" liefen ins
+ * Leere, weil die Führungslinie ohne Kalibrierung bewusst ausbleibt.
+ * Dieser Einstiegspunkt ist die einzige Stelle, die das verhindern kann.
+ */
+function FemurProfileButton({
+  hasImage,
+  calibrated,
+  active,
+}: {
+  hasImage: boolean
+  calibrated: boolean
+  active: boolean
+}) {
+  const gesperrt = !hasImage || !calibrated
+  return (
+    <>
+      <button
+        onClick={() => pickHipTool('femurProfile')}
+        disabled={gesperrt}
+        title={
+          !hasImage
+            ? 'Erst ein Bild laden.'
+            : !calibrated
+              ? 'Erst kalibrieren — das Femurprofil misst in Millimetern.'
+              : undefined
+        }
+        className={[
+          'rounded border px-3 py-2 text-left text-sm transition',
+          active
+            ? 'border-violet-500 bg-violet-700/30 text-violet-100 ring-1 ring-violet-500'
+            : 'border-violet-900/60 bg-violet-950/30 text-violet-200 hover:bg-violet-900/40',
+          gesperrt ? 'cursor-not-allowed opacity-50' : '',
+        ].join(' ')}
+      >
+        <div className="font-medium">Femurprofil starten</div>
+        <div className="text-[10px] text-violet-300/70">
+          13 Punkte · Dorr · CI · CCR · NSA · Offset · CPAH
+        </div>
+      </button>
+      <Hint>
+        <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
+          Optional: Dorr, CPAH und Femurmorphologie quantitativ bestimmen.
+          {hasImage && !calibrated && (
+            <span className="text-amber-500">
+              {' '}
+              Erst kalibrieren — die Messung braucht echte Millimeter.
+            </span>
+          )}
+        </p>
+      </Hint>
     </>
   )
 }
