@@ -82,7 +82,21 @@ export interface Recipe {
    */
   pelvicRefIndices?: [number, number]
   compute: (points: P[], mmPerWorldUnit: number) => HipComputed
+  /**
+   * Optionale Hilfsgeometrie WÄHREND der Platzierung (z. B. die
+   * 10-cm-Linie des Femurprofils). Rezepte ohne dieses Feld verhalten
+   * sich unverändert; das Overlay rendert nur, was da ist.
+   *
+   * `mmPerWorldUnit` ist hier bewusst `number | null`: `null` heißt
+   * NICHT KALIBRIERT. Der Kalibrierfaktor allein kann das nicht
+   * ausdrücken — bei Kalibrierung aus dem DICOM-Pixelabstand ist er
+   * exakt 1 als ECHTER Wert, `=== 1` wäre also die falsche Prüfung.
+   * Ohne Kalibrierung darf keine scheinbar metrische Linie entstehen.
+   */
+  computeDraft?: (points: P[], mmPerWorldUnit: number | null) => RenderGeometry
 }
+
+const LEERE_GEOMETRIE: RenderGeometry = { lines: [], circles: [], labels: [] }
 
 const HEAD_CONTOUR = [
   'Hüftkopfkontur — Punkt 1',
@@ -410,6 +424,49 @@ function ratio2(v: number): string {
 
 const NICHT_BESTIMMBAR = 'nicht zuverlässig bestimmbar'
 
+/** Farbe der 10-cm-Referenzlinie — identisch in Führung und Ergebnis. */
+const ZEHN_CM_FARBE = '#94a3b8'
+
+/** Halbe Länge der gezeichneten 10-cm-Linie in mm. Rein optisch: breit
+ *  genug, um jeden Femurschaft zu überspannen, ohne das Bild zuzumalen. */
+const ZEHN_CM_HALBBREITE_MM = 45
+
+/**
+ * DIE eine Quelle der 10-cm-Querlinie: senkrecht zur Schaftachse, 10 cm
+ * distal des Trochanter-minor-Fußpunkts auf der Achse.
+ *
+ * Bewusst von Führung UND fertiger Messung benutzt: Der Nutzer setzt die
+ * vier Kortikalis-Punkte AUF diese Linie. Läge die Linie der fertigen
+ * Messung auch nur leicht woanders, wäre die Führung eine Lüge gewesen —
+ * zwei Implementierungen würden früher oder später genau das tun.
+ *
+ * `null`, wenn die Linie nicht ehrlich gezeichnet werden kann: ohne
+ * Kalibrierung (mmPerWorldUnit === null) gäbe es keine echten 10 cm,
+ * ohne Achsrichtung keine Senkrechte.
+ */
+function zehnCmQuerlinie(
+  s1: P,
+  s2: P,
+  tmPt: P,
+  mmPerWorldUnit: number | null,
+  halbeBreiteMm: number,
+): { from: P; to: P } | null {
+  if (mmPerWorldUnit == null || !Number.isFinite(mmPerWorldUnit) || mmPerWorldUnit <= 0) {
+    return null
+  }
+  const dir = sub(s2, s1)
+  const dl = len(dir)
+  if (dl === 0) return null
+
+  const u = scale(dir, 1 / dl) // zeigt nach distal (s1 = proximal)
+  const n: P = [-u[1], u[0], 0]
+  // Weltkoordinaten: mm = WU · factor, also WU = mm / factor.
+  const fuss = closestPointOnLine(tmPt, s1, s2)
+  const mitte = add(fuss, scale(u, 100 / mmPerWorldUnit))
+  const halb = halbeBreiteMm / mmPerWorldUnit
+  return { from: add(mitte, scale(n, -halb)), to: add(mitte, scale(n, halb)) }
+}
+
 const femurProfile: Recipe = {
   kind: 'femurProfile',
   label: 'Femurprofil',
@@ -428,6 +485,20 @@ const femurProfile: Recipe = {
     'Innerer Kanalrand lateral — Höhe Trochanter minor',
   ],
   lineGroups: [[4, 5]],
+  // Führung während der Platzierung: sobald Schaftachse (4/5) und
+  // Trochanter minor (6) stehen, zeigt die Linie, WO die vier
+  // Kortikalis-Punkte hingehören.
+  computeDraft: (points, mmPerWorldUnit) => {
+    if (points.length < 7) return LEERE_GEOMETRIE
+    const [, , , , s1, s2, tmPt] = points
+    const linie = zehnCmQuerlinie(s1, s2, tmPt, mmPerWorldUnit, ZEHN_CM_HALBBREITE_MM)
+    if (!linie) return LEERE_GEOMETRIE
+    return {
+      lines: [{ ...linie, dashed: true, color: ZEHN_CM_FARBE }],
+      circles: [],
+      labels: [],
+    }
+  },
   compute: (points, factor) => {
     const raw = computeFemurProfileRaw(points, factor)
     if (!raw) {
@@ -474,17 +545,9 @@ const femurProfile: Recipe = {
     // Halsachse wie im CCD-Rezept über den gesetzten Punkt verlängern.
     const neckEnd = add(center, scale(sub(neckPt, center), 1.6))
 
-    // 10-cm-Referenzlinie: senkrecht zur Schaftachse, 10 cm distal des
-    // Trochanter-minor-Fußpunkts, quer über die gemessene Außenbreite.
-    const dir = sub(s2, s1)
-    const dl = len(dir)
-    const u = dl > 0 ? scale(dir, 1 / dl) : ([0, 1, 0] as P)
-    const n: P = [-u[1], u[0], 0]
-    const fuss = closestPointOnLine(tmPt, s1, s2)
-    // factor ist nach dem null-Guard von computeFemurProfileRaw endlich;
-    // 100 mm in Weltkoordinaten (Division, weil mm = WU · factor).
-    const zehnCmMitte = add(fuss, scale(u, factor > 0 ? 100 / factor : 100))
-    const halbeBreite = Math.max((raw.outerDiameter10cmMm / (factor > 0 ? factor : 1)) * 0.75, 15)
+    // Dieselbe Funktion wie die Führung — die Linie darf nach dem
+    // Abschluss der Messung nicht woanders liegen als vorher.
+    const zehnCm = zehnCmQuerlinie(s1, s2, tmPt, factor, ZEHN_CM_HALBBREITE_MM)
 
     return {
       values,
@@ -492,12 +555,7 @@ const femurProfile: Recipe = {
         lines: [
           { from: center, to: neckEnd },
           { from: s1, to: s2 },
-          {
-            from: add(zehnCmMitte, scale(n, -halbeBreite)),
-            to: add(zehnCmMitte, scale(n, halbeBreite)),
-            dashed: true,
-            color: '#94a3b8',
-          },
+          ...(zehnCm ? [{ ...zehnCm, dashed: true, color: ZEHN_CM_FARBE }] : []),
           // Gemessene Breiten: außen kräftig, innen (Kanal) gestrichelt.
           { from: om, to: ol },
           { from: im, to: il, dashed: true },

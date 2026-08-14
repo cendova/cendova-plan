@@ -108,6 +108,13 @@ export function HipOverlay() {
       ? recipe.steps[draftPoints.length]
       : undefined
 
+  // Hilfsgeometrie der laufenden Platzierung (Femurprofil: 10-cm-Linie).
+  // Berechnet wird sie hier, weil nur die Hülle Rezept UND Kalibrierung
+  // kennt; gezeichnet im geteilten Kern. `calibration ? factor : null`
+  // statt `factor`: unkalibriert ist der Faktor ebenfalls 1, und eine
+  // scheinbar metrische Linie ohne Kalibrierung wäre eine Lüge.
+  const draftGeometry = recipe?.computeDraft?.(draftPoints, calibration ? factor : null)
+
   return (
     <>
       <MeasurementSvg
@@ -116,6 +123,7 @@ export function HipOverlay() {
         draftPoints={draftPoints}
         vp={vp}
         draftLineGroups={recipe?.lineGroups}
+        draftGeometry={draftGeometry}
       />
 
       <OverlayLabels computed={computed} vp={vp} adapter={labelAdapter} />

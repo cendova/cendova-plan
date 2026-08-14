@@ -156,3 +156,111 @@ describe('femurProfile (geführte 13-Punkt-Messung)', () => {
     expect(r.geometry.lines).toEqual([])
   })
 })
+
+// ----------------------------------------------------------------------
+// 10-cm-Hilfslinie WÄHREND der Platzierung (computeDraft).
+// ----------------------------------------------------------------------
+
+describe('femurProfile — 10-cm-Hilfslinie während der Platzierung', () => {
+  const recipe = getRecipe('femurProfile')!
+  /** Die erste gestrichelte Linie ist die Hilfslinie. */
+  const hilfslinie = (g: { lines: { from: Types.Point3; to: Types.Point3; dashed?: boolean }[] }) =>
+    g.lines.find((l) => l.dashed)
+
+  it('ist als optionale Rezept-Fähigkeit definiert', () => {
+    expect(typeof recipe.computeDraft).toBe('function')
+  })
+
+  it('lassen andere Rezepte unberührt — sie haben kein computeDraft', () => {
+    // Rezepte ohne computeDraft rendern exakt wie bisher; Knie und
+    // Schulter setzen den neuen Prop gar nicht erst.
+    expect(getRecipe('ccd')!.computeDraft).toBeUndefined()
+    expect(getRecipe('lld')!.computeDraft).toBeUndefined()
+    expect(getRecipe('osteotomy')!.computeDraft).toBeUndefined()
+  })
+
+  it('zeigt vor dem Trochanter-minor-Punkt noch nichts', () => {
+    // Erst mit Punkt 7 (Index 6) steht der Bezugspunkt fest.
+    const g = recipe.computeDraft!(femurProfilPunkte().slice(0, 6), 1)
+    expect(g.lines).toEqual([])
+    expect(g.circles).toEqual([])
+  })
+
+  it('zeichnet ab Punkt 7 eine Linie 10 cm distal, senkrecht zur Achse', () => {
+    const g = recipe.computeDraft!(femurProfilPunkte().slice(0, 7), 1)
+    const l = hilfslinie(g)!
+    expect(l).toBeDefined()
+    // Achse vertikal, TM-Fußpunkt bei y = 40 → Linie bei y = 140.
+    expect(l.from[1]).toBeCloseTo(140, 6)
+    expect(l.to[1]).toBeCloseTo(140, 6)
+    // Senkrecht zur Achse heißt hier: rein horizontal, symmetrisch um
+    // die Achse. Welcher Endpunkt links liegt, ist bedeutungslos.
+    expect(Math.min(l.from[0], l.to[0])).toBeCloseTo(-45, 6)
+    expect(Math.max(l.from[0], l.to[0])).toBeCloseTo(45, 6)
+  })
+
+  it('skaliert den 10-cm-Abstand mit dem Kalibrierfaktor', () => {
+    // factor 2 (1 WU = 2 mm) → 10 cm sind 50 WU → Linie bei y = 90.
+    const g = recipe.computeDraft!(femurProfilPunkte().slice(0, 7), 2)
+    expect(hilfslinie(g)!.from[1]).toBeCloseTo(90, 6)
+  })
+
+  it('steht auch auf einer SCHRÄGEN Schaftachse senkrecht', () => {
+    const pts = femurProfilPunkte().slice(0, 7)
+    // Achse 3-4-5-schräg: Richtung (0.6, 0.8); TM auf der Achse bei t=50.
+    pts[4] = p(0, 0)
+    pts[5] = p(60, 80)
+    pts[6] = p(30, 40)
+    const l = hilfslinie(recipe.computeDraft!(pts, 1))!
+    const mitte: Types.Point3 = [
+      (l.from[0] + l.to[0]) / 2,
+      (l.from[1] + l.to[1]) / 2,
+      0,
+    ]
+    // Mitte liegt 100 WU (= 10 cm) weiter distal als der TM-Fußpunkt (30,40).
+    expect(Math.hypot(mitte[0] - 30, mitte[1] - 40)).toBeCloseTo(100, 6)
+    // Skalarprodukt von Linienrichtung und Achsrichtung ist null.
+    const lr = [l.to[0] - l.from[0], l.to[1] - l.from[1]]
+    expect(lr[0] * 0.6 + lr[1] * 0.8).toBeCloseTo(0, 6)
+  })
+
+  it('zeigt OHNE Kalibrierung keine scheinbar metrische Linie', () => {
+    // Kriterium ist `calibration != null` (hier: null), NICHT
+    // `factor === 1` — bei DICOM-Pixelabstand ist 1 ein ECHTER Faktor.
+    const g = recipe.computeDraft!(femurProfilPunkte().slice(0, 7), null)
+    expect(g.lines).toEqual([])
+  })
+
+  it('zeichnet bei echtem Faktor 1 sehr wohl', () => {
+    const g = recipe.computeDraft!(femurProfilPunkte().slice(0, 7), 1)
+    expect(hilfslinie(g)).toBeDefined()
+  })
+
+  it('zeichnet nichts bei unbrauchbarem Faktor', () => {
+    for (const f of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(recipe.computeDraft!(femurProfilPunkte().slice(0, 7), f).lines).toEqual([])
+    }
+  })
+
+  it('zeichnet nichts ohne Achsrichtung', () => {
+    const pts = femurProfilPunkte().slice(0, 7)
+    pts[5] = pts[4]
+    expect(recipe.computeDraft!(pts, 1).lines).toEqual([])
+  })
+
+  it('liegt exakt dort, wo die fertige Messung ihre Linie zeichnet', () => {
+    // Der springende Punkt: Der Nutzer setzt die Kortikalis-Punkte AUF
+    // die Hilfslinie. Läge die fertige Linie woanders, wäre die Führung
+    // eine Lüge — beide kommen deshalb aus derselben Funktion.
+    const draft = hilfslinie(recipe.computeDraft!(femurProfilPunkte().slice(0, 7), 1))!
+    const fertig = recipe
+      .compute(femurProfilPunkte(), 1)
+      .geometry.lines.find((l) => l.dashed && l.color === '#94a3b8')!
+    const mitte = (l: { from: Types.Point3; to: Types.Point3 }) => [
+      (l.from[0] + l.to[0]) / 2,
+      (l.from[1] + l.to[1]) / 2,
+    ]
+    expect(mitte(draft)[0]).toBeCloseTo(mitte(fertig)[0], 6)
+    expect(mitte(draft)[1]).toBeCloseTo(mitte(fertig)[1], 6)
+  })
+})
