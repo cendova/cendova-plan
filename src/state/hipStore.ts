@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { nextId } from '../lib/ids'
 import type { Types } from '@cornerstonejs/core'
 import { type HipKind, getRecipe, type Recipe } from '../lib/hip/recipes'
-import type { FemurProfileImageQuality } from '../lib/hip/femurProfile'
+import type { DorrType, FemurProfileImageQuality } from '../lib/hip/femurProfile'
 import { useTemplateStore } from './templateStore'
 
 /**
@@ -68,19 +68,68 @@ const DEFAULT_LABEL_STYLE: LabelStyle = {
   underline: false,
 }
 
+/** Gründe für eine vom Vorschlag abweichende Dorr-Klasse. Enum ohne
+ *  Freitext: ein Freitextfeld müsste `planGrenzen.ts` deckeln, und für
+ *  die Dokumentation genügt die Kategorie. */
+export type FemurProfileOverrideReason =
+  | 'rotation'
+  | 'kortikalis_unscharf'
+  | 'deformitaet'
+  | 'laterale_aufnahme'
+  | 'gesamtmorphologie'
+  | 'sonstiges'
+
 /**
- * Ärztliche Beurteilung einer Femurprofil-Messung.
+ * Ärztliche Beurteilung einer Femurprofil-Messung: getrennt gespeichert
+ * vom automatischen Vorschlag, damit im Nachhinein sichtbar bleibt, was
+ * das Programm vorgeschlagen und was der Arzt entschieden hat.
  *
- * In diesem Schritt wird nur `imageQuality` gefüllt — die Karte muss
- * wissen, ob aus DIESER Messung eine Klasse abgeleitet werden darf, und
- * das kann sie nicht aus dem Sitzungs-Zustand ablesen (der gilt für den
- * laufenden Anlauf, nicht für eine zweite oder eine geladene Messung).
- * Die übrigen Felder füllt die Bestätigung/Übersteuerung im nächsten
- * Schritt; sie sind darum optional angelegt und brauchen später keine
- * Umbenennung.
+ * Enthält bewusst KEINEN Nutzernamen und keine Patientendaten — nur die
+ * Entscheidung, ihren Grund und den Zeitpunkt.
  */
 export interface FemurProfileReview {
   imageQuality: FemurProfileImageQuality
+  /**
+   * Der Vorschlag, GEGEN DEN bestätigt wurde.
+   *
+   * Nicht redundant, sondern der einzige Weg, eine veraltete Bestätigung
+   * zu erkennen: Wer nach der Bestätigung einen Punkt verschiebt, ändert
+   * womöglich den Vorschlag. Ohne diesen Festwert stünde „Dorr bestätigt
+   * B" über einer Rechnung, die inzwischen C ergibt — und niemand könnte
+   * das sehen.
+   */
+  dorrSuggested?: DorrType
+  /** Die ärztlich festgelegte Klasse. Fehlt sie, ist nichts bestätigt. */
+  dorrFinal?: DorrType
+  /** Pflicht, sobald `dorrFinal` vom Vorschlag abweicht. */
+  overrideReason?: FemurProfileOverrideReason
+  /** ISO-Zeitstempel — erst beim Speichern der Bestätigung gesetzt. */
+  confirmedAt?: string
+}
+
+/** Klartext der Override-Gründe für die Oberfläche. */
+export const FEMUR_PROFILE_OVERRIDE_REASONS: {
+  wert: FemurProfileOverrideReason
+  text: string
+}[] = [
+  { wert: 'rotation', text: 'Rotationsfehlstellung der Aufnahme' },
+  { wert: 'kortikalis_unscharf', text: 'Kortikalisgrenzen unscharf' },
+  { wert: 'deformitaet', text: 'Deformität verfälscht die Messung' },
+  { wert: 'laterale_aufnahme', text: 'Beurteilung anhand seitlicher Aufnahme' },
+  { wert: 'gesamtmorphologie', text: 'Gesamtmorphologie spricht dagegen' },
+  { wert: 'sonstiges', text: 'Sonstiges' },
+]
+
+/**
+ * Ist die Beurteilung in sich schlüssig? Eine vom Vorschlag abweichende
+ * Klasse ohne Grund wird abgelehnt — sonst entstünde eine
+ * undokumentierte Übersteuerung, und genau ihre Nachvollziehbarkeit ist
+ * der Zweck der Trennung von Vorschlag und Entscheidung.
+ */
+export function istGueltigeFemurProfileReview(r: FemurProfileReview): boolean {
+  if (r.dorrFinal == null) return true // nichts bestätigt, nichts zu prüfen
+  const abweichend = r.dorrSuggested != null && r.dorrFinal !== r.dorrSuggested
+  return !abweichend || r.overrideReason != null
 }
 
 export interface HipMeasurement {
@@ -123,6 +172,16 @@ interface HipState {
   cancelTool: () => void
   /** Hinterlegt die bestätigte Checkliste (vor dem Start der Messung). */
   setFemurProfileGate: (q: FemurProfileImageQuality | null) => void
+  /**
+   * Speichert die ärztliche Beurteilung an einer Femurprofil-Messung.
+   *
+   * Lehnt unschlüssige Beurteilungen ab (abweichende Klasse ohne Grund)
+   * und lässt andere Messarten unberührt. Weil das Feld AN der Messung
+   * hängt, entsteht dabei automatisch ein neues `measurements`-Array —
+   * die Undo-Historie erfasst die Bestätigung damit von selbst
+   * (historyStore vergleicht Referenzen).
+   */
+  setFemurProfileReview: (id: string, review: FemurProfileReview) => void
   /** Setzt den nächsten Punkt; bei Vollständigkeit wird die Messung fertig. */
   addDraftPoint: (p: Types.Point3) => void
   /** Entfernt den zuletzt gesetzten Punkt der laufenden Platzierung. */
@@ -180,6 +239,20 @@ export const useHipStore = create<HipState>((set) => ({
     set({ activeKind: null, draftPoints: [], femurProfileGate: null }),
 
   setFemurProfileGate: (q) => set({ femurProfileGate: q }),
+
+  setFemurProfileReview: (id, review) =>
+    set((s) => {
+      if (!istGueltigeFemurProfileReview(review)) return s
+      const ziel = s.measurements.find((m) => m.id === id)
+      // Andere Messarten haben keine Beurteilung — stillschweigend eine
+      // anzuhängen würde nur unauffindbaren Datenmüll erzeugen.
+      if (!ziel || ziel.kind !== 'femurProfile') return s
+      return {
+        measurements: s.measurements.map((m) =>
+          m.id === id ? { ...m, femurProfileReview: review } : m,
+        ),
+      }
+    }),
 
   addDraftPoint: (p) =>
     set((s) => {

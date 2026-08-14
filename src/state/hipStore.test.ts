@@ -4,7 +4,7 @@
 // Aufnahme.
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Types } from '@cornerstonejs/core'
-import { useHipStore } from './hipStore'
+import { istGueltigeFemurProfileReview, useHipStore } from './hipStore'
 import {
   type FemurProfileImageQuality,
   isFemurProfileClassifiable,
@@ -132,6 +132,154 @@ describe('Bildqualitäts-Gate im Store', () => {
     useHipStore.getState().setFemurProfileGate(bestandenesGate())
     useHipStore.getState().reset()
     expect(useHipStore.getState().femurProfileGate).toBeNull()
+  })
+})
+
+describe('Ärztliche Bestätigung und Override', () => {
+  /** Legt eine fertige Femurprofil-Messung an und gibt ihre id zurück. */
+  function messungAnlegen(): string {
+    useHipStore.getState().setFemurProfileGate(bestandenesGate())
+    useHipStore.getState().toggleTool('femurProfile')
+    for (let i = 0; i < 13; i++) useHipStore.getState().addDraftPoint(p(i, i))
+    return useHipStore.getState().measurements[0].id
+  }
+
+  it('speichert die Bestätigung an der richtigen Messung', () => {
+    const id = messungAnlegen()
+    // Zweite Messung, damit ein Verwechseln auffiele.
+    useHipStore.getState().setFemurProfileGate(bestandenesGate())
+    useHipStore.getState().toggleTool('femurProfile')
+    for (let i = 0; i < 13; i++) useHipStore.getState().addDraftPoint(p(i + 50, i))
+    const zweite = useHipStore.getState().measurements[1].id
+
+    useHipStore.getState().setFemurProfileReview(id, {
+      imageQuality: bestandenesGate(),
+      dorrSuggested: 'B',
+      dorrFinal: 'B',
+      confirmedAt: '2026-08-11T13:00:00.000Z',
+    })
+    const ms = useHipStore.getState().measurements
+    expect(ms.find((m) => m.id === id)?.femurProfileReview?.dorrFinal).toBe('B')
+    expect(ms.find((m) => m.id === zweite)?.femurProfileReview?.dorrFinal).toBeUndefined()
+  })
+
+  it('lehnt eine abweichende Klasse OHNE Grund ab', () => {
+    const id = messungAnlegen()
+    useHipStore.getState().setFemurProfileReview(id, {
+      imageQuality: bestandenesGate(),
+      dorrSuggested: 'B',
+      dorrFinal: 'C', // abweichend, aber kein Grund
+    })
+    // Unverändert: die ursprüngliche Beurteilung trägt kein dorrFinal.
+    expect(
+      useHipStore.getState().measurements[0].femurProfileReview?.dorrFinal,
+    ).toBeUndefined()
+  })
+
+  it('nimmt eine abweichende Klasse MIT Grund an', () => {
+    const id = messungAnlegen()
+    useHipStore.getState().setFemurProfileReview(id, {
+      imageQuality: bestandenesGate(),
+      dorrSuggested: 'B',
+      dorrFinal: 'C',
+      overrideReason: 'gesamtmorphologie',
+      confirmedAt: '2026-08-11T13:00:00.000Z',
+    })
+    const r = useHipStore.getState().measurements[0].femurProfileReview
+    expect(r?.dorrFinal).toBe('C')
+    expect(r?.overrideReason).toBe('gesamtmorphologie')
+  })
+
+  it('nimmt eine identische Bestätigung ohne Grund an', () => {
+    const id = messungAnlegen()
+    useHipStore.getState().setFemurProfileReview(id, {
+      imageQuality: bestandenesGate(),
+      dorrSuggested: 'B',
+      dorrFinal: 'B',
+    })
+    expect(useHipStore.getState().measurements[0].femurProfileReview?.dorrFinal).toBe('B')
+  })
+
+  it('prüft die Schlüssigkeit auch als reine Funktion', () => {
+    const basis = { imageQuality: bestandenesGate() }
+    expect(istGueltigeFemurProfileReview(basis)).toBe(true)
+    expect(
+      istGueltigeFemurProfileReview({ ...basis, dorrSuggested: 'B', dorrFinal: 'B' }),
+    ).toBe(true)
+    expect(
+      istGueltigeFemurProfileReview({ ...basis, dorrSuggested: 'B', dorrFinal: 'C' }),
+    ).toBe(false)
+    expect(
+      istGueltigeFemurProfileReview({
+        ...basis,
+        dorrSuggested: 'B',
+        dorrFinal: 'C',
+        overrideReason: 'rotation',
+      }),
+    ).toBe(true)
+  })
+
+  it('lässt Nicht-Femurprofil-Messungen unberührt', () => {
+    useHipStore.getState().toggleTool('ccd')
+    for (let i = 0; i < 6; i++) useHipStore.getState().addDraftPoint(p(i, i))
+    const id = useHipStore.getState().measurements[0].id
+    useHipStore.getState().setFemurProfileReview(id, {
+      imageQuality: bestandenesGate(),
+      dorrFinal: 'A',
+    })
+    expect(useHipStore.getState().measurements[0].femurProfileReview).toBeUndefined()
+  })
+
+  it('erzeugt ein NEUES measurements-Array — Voraussetzung für Undo', () => {
+    // Die Undo-Historie erkennt Änderungen per Referenzvergleich auf
+    // `measurements` (historyStore.snapsEqual). Bliebe die Referenz
+    // gleich, wäre die Bestätigung nicht rückgängig zu machen.
+    const id = messungAnlegen()
+    const vorher = useHipStore.getState().measurements
+    useHipStore.getState().setFemurProfileReview(id, {
+      imageQuality: bestandenesGate(),
+      dorrSuggested: 'B',
+      dorrFinal: 'B',
+    })
+    const nachher = useHipStore.getState().measurements
+    expect(nachher).not.toBe(vorher)
+    // Und die abgelehnte Variante darf KEINEN Undo-Schritt erzeugen.
+    const ohneGrund = useHipStore.getState().measurements
+    useHipStore.getState().setFemurProfileReview(id, {
+      imageQuality: bestandenesGate(),
+      dorrSuggested: 'B',
+      dorrFinal: 'C',
+    })
+    expect(useHipStore.getState().measurements).toBe(ohneGrund)
+  })
+
+  it('überlebt das Löschen anderer Messungen', () => {
+    const id = messungAnlegen()
+    useHipStore.getState().setFemurProfileReview(id, {
+      imageQuality: bestandenesGate(),
+      dorrSuggested: 'B',
+      dorrFinal: 'B',
+    })
+    useHipStore.getState().toggleTool('ccd')
+    for (let i = 0; i < 6; i++) useHipStore.getState().addDraftPoint(p(i, i))
+    const ccdId = useHipStore.getState().measurements[1].id
+    useHipStore.getState().removeMeasurement(ccdId)
+    expect(useHipStore.getState().measurements).toHaveLength(1)
+    expect(useHipStore.getState().measurements[0].femurProfileReview?.dorrFinal).toBe('B')
+  })
+
+  it('verschwindet mit der Messung und mit reset', () => {
+    const id = messungAnlegen()
+    useHipStore.getState().setFemurProfileReview(id, {
+      imageQuality: bestandenesGate(),
+      dorrSuggested: 'B',
+      dorrFinal: 'B',
+    })
+    useHipStore.getState().removeMeasurement(id)
+    expect(useHipStore.getState().measurements).toHaveLength(0)
+    messungAnlegen()
+    useHipStore.getState().reset()
+    expect(useHipStore.getState().measurements).toHaveLength(0)
   })
 })
 

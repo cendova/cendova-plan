@@ -495,6 +495,7 @@ export function MeasurementPanel() {
           .map((m) => (
             <div key={`fp-${m.id}`} className="mt-2">
               <FemurProfileCard
+                id={m.id}
                 points={m.points}
                 mmPerWorldUnit={factor}
                 review={m.femurProfileReview}
