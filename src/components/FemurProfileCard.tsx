@@ -5,6 +5,7 @@ import {
   isFemurProfileClassifiable,
 } from '../lib/hip/femurProfile'
 import type { FemurProfileReview } from '../state/hipStore'
+import { CpahMatrix } from './CpahMatrix'
 
 /**
  * Ergebnis-Karte „Morphologie & Fixation" zu einer Femurprofil-Messung.
@@ -116,6 +117,24 @@ export function FemurProfileCard({
           )}
         </div>
       )}
+
+      {/* Das Schaubild NUR bei bestätigter Bildqualität — es zeigt eine
+          Klasse, und genau die darf ohne Bestätigung nicht entstehen.
+          Ohne die Werte wäre der Punkt ohnehin nicht platzierbar. */}
+      {cpah &&
+        raw.corticalIndex != null &&
+        raw.nsaDeg != null &&
+        raw.femoralOffsetRatio != null && (
+          <div className="mt-2">
+            <CpahMatrix
+              cpah={cpah}
+              corticalIndex={raw.corticalIndex}
+              nsaDeg={raw.nsaDeg}
+              femoralOffsetRatio={raw.femoralOffsetRatio}
+              femoralOffsetMm={raw.femoralOffsetMm}
+            />
+          </div>
+        )}
 
       {/* Mess-Warnungen der Geometrie (vertauschte Punkte o. Ä.). */}
       {raw.warnings.length > 0 && (

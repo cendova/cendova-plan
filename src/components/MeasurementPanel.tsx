@@ -341,7 +341,19 @@ export function MeasurementPanel() {
             {hipMeasurements.map((m) => {
               const recipe = getRecipe(m.kind)
               if (!recipe) return null
-              const { values } = recipe.compute(m.points, factor)
+              // Das Femurprofil zeigt seine Werte AUSSCHLIESSLICH in der
+              // eigenen Karte. Die Zeile bleibt als Griff (Sichtbarkeit,
+              // Löschen), trägt aber keine Werte mehr.
+              //
+              // Sonst stünde die Klassifikation zweimal da — und zwar
+              // ungleich: `compute` ist rein und kennt das Bildqualitäts-
+              // Gate nicht, hätte hier also „Dorr-Vorschlag B" gezeigt,
+              // während die Karte direkt darunter „nicht zuverlässig
+              // bestimmbar" meldet. Das Gate wäre damit ausgehebelt.
+              const istFemurprofil = m.kind === 'femurProfile'
+              const { values } = istFemurprofil
+                ? { values: [] }
+                : recipe.compute(m.points, factor)
               return (
                 <Row
                   key={m.id}
@@ -360,6 +372,11 @@ export function MeasurementPanel() {
                           </span>
                         )}
                       </span>
+                      {istFemurprofil && (
+                        <span className="text-[10px] text-neutral-500">
+                          Ergebnisse siehe „Morphologie &amp; Fixation"
+                        </span>
+                      )}
                       {values.map((v, i) => (
                         <span key={i} className="tabular-nums">
                           {values.length > 1 && (
