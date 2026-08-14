@@ -4,13 +4,18 @@ import {
   DORR_BORDERLINE_ZONES,
   DORR_CI_THRESHOLDS,
   FEMUR_PROFILE_POINT_COUNT,
+  FEMUR_PROFILE_QUALITAETS_KRITERIEN,
   FOR_HIGH_AT,
   NSA_THRESHOLDS,
+  type FemurProfileImageQuality,
   classifyDorr,
   classifyNsa,
   classifyOffsetSubtype,
   computeCpah,
   computeFemurProfileRaw,
+  femurProfileAusschlussgruende,
+  isFemurProfileClassifiable,
+  leereBildqualitaet,
 } from './femurProfile'
 
 const p = (x: number, y: number, z = 0): Types.Point3 => [x, y, z]
@@ -177,6 +182,87 @@ describe('Schwellen-Konstanten', () => {
 
   it('lässt die beiden Grenzzonen einander nicht überlappen', () => {
     expect(DORR_BORDERLINE_ZONES.bc[1]).toBeLessThan(DORR_BORDERLINE_ZONES.ab[0])
+  })
+})
+
+describe('Bildqualitäts-Gate', () => {
+  /** Vollständig bestandene Checkliste. */
+  const bestanden = (): FemurProfileImageQuality => ({
+    ...leereBildqualitaet(true),
+    apProjectionAcceptable: true,
+    rotationAcceptable: true,
+    lesserTrochanterVisible: true,
+    cortexVisible: true,
+    femurCoverage10cm: true,
+    deformityAffectsGeometry: false,
+  })
+
+  it('lässt nur eine vollständig bestandene Checkliste klassifizieren', () => {
+    expect(isFemurProfileClassifiable(bestanden())).toBe(true)
+    expect(femurProfileAusschlussgruende(bestanden())).toEqual([])
+  })
+
+  it('ist ohne Checkliste nicht klassifizierbar', () => {
+    expect(isFemurProfileClassifiable(null)).toBe(false)
+    expect(isFemurProfileClassifiable(undefined)).toBe(false)
+  })
+
+  it('sperrt bei fehlender Kalibrierung', () => {
+    const q = { ...bestanden(), calibrated: false }
+    expect(isFemurProfileClassifiable(q)).toBe(false)
+    expect(femurProfileAusschlussgruende(q)).toContain('Keine gültige Kalibrierung')
+  })
+
+  // ⚠ Die Polaritäts-Falle: true heißt hier PROBLEM, nicht „in Ordnung".
+  // Ein naives `every(Boolean)` würde genau umgekehrt urteilen.
+  it('wertet deformityAffectsGeometry umgekehrt (true = Problem)', () => {
+    expect(isFemurProfileClassifiable(bestanden())).toBe(true)
+    const mitDeformitaet = { ...bestanden(), deformityAffectsGeometry: true }
+    expect(isFemurProfileClassifiable(mitDeformitaet)).toBe(false)
+    expect(femurProfileAusschlussgruende(mitDeformitaet)).toEqual([
+      'Deformität verfälscht die Geometrie',
+    ])
+  })
+
+  it('sperrt bei jedem einzelnen offenen Kriterium', () => {
+    const felder = [
+      'apProjectionAcceptable',
+      'rotationAcceptable',
+      'lesserTrochanterVisible',
+      'cortexVisible',
+      'femurCoverage10cm',
+    ] as const
+    for (const f of felder) {
+      const q = { ...bestanden(), [f]: false }
+      expect(isFemurProfileClassifiable(q), `${f} offen`).toBe(false)
+      expect(femurProfileAusschlussgruende(q)).toHaveLength(1)
+    }
+  })
+
+  it('sammelt mehrere Gründe in Listenreihenfolge', () => {
+    const q = { ...bestanden(), calibrated: false, cortexVisible: false }
+    expect(femurProfileAusschlussgruende(q)).toEqual([
+      'Keine gültige Kalibrierung',
+      'Kortikalisgrenzen nicht sicher erkennbar',
+    ])
+  })
+
+  it('startet leer und damit gesperrt', () => {
+    const q = leereBildqualitaet(true)
+    expect(isFemurProfileClassifiable(q)).toBe(false)
+    // Nur die Kalibrierung ist vorbefüllt, alles andere ist offen.
+    expect(femurProfileAusschlussgruende(q)).toHaveLength(5)
+    expect(femurProfileAusschlussgruende(q)).not.toContain('Keine gültige Kalibrierung')
+  })
+
+  it('hat für jedes Kriterium eine Frage und einen Grund', () => {
+    // Checkliste und Ausschlussgründe kommen aus DERSELBEN Liste — sonst
+    // fragt die UI nach etwas anderem, als sie dokumentiert.
+    for (const k of FEMUR_PROFILE_QUALITAETS_KRITERIEN) {
+      expect(k.frage.length).toBeGreaterThan(0)
+      expect(k.grund.length).toBeGreaterThan(0)
+    }
+    expect(FEMUR_PROFILE_QUALITAETS_KRITERIEN).toHaveLength(7)
   })
 })
 

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { nextId } from '../lib/ids'
 import type { Types } from '@cornerstonejs/core'
 import { type HipKind, getRecipe, type Recipe } from '../lib/hip/recipes'
+import type { FemurProfileImageQuality } from '../lib/hip/femurProfile'
 import { useTemplateStore } from './templateStore'
 
 /**
@@ -89,10 +90,22 @@ interface HipState {
   draftPoints: Types.Point3[]
   /** Aktuell ausgewählte Mess-Beschriftung (für die Stil-Leiste). */
   selectedLabelId: string | null
+  /**
+   * Bildqualitäts-Checkliste der GERADE laufenden Femurprofil-Messung.
+   * Wird vor dem Start bestätigt und in Task 7 an die fertige Messung
+   * geheftet; bis dahin lebt sie nur hier.
+   *
+   * Sie wird beim Abbruch verworfen (siehe `cancelTool`): eine
+   * Bestätigung gehört zu GENAU der Aufnahme, für die sie abgegeben
+   * wurde — sonst klebte sie am nächsten Bild weiter.
+   */
+  femurProfileGate: FemurProfileImageQuality | null
 
   /** Aktiviert ein Werkzeug; erneuter Aufruf desselben schaltet es ab. */
   toggleTool: (kind: HipKind) => void
   cancelTool: () => void
+  /** Hinterlegt die bestätigte Checkliste (vor dem Start der Messung). */
+  setFemurProfileGate: (q: FemurProfileImageQuality | null) => void
   /** Setzt den nächsten Punkt; bei Vollständigkeit wird die Messung fertig. */
   addDraftPoint: (p: Types.Point3) => void
   /** Entfernt den zuletzt gesetzten Punkt der laufenden Platzierung. */
@@ -118,20 +131,38 @@ export const useHipStore = create<HipState>((set) => ({
   activeKind: null,
   draftPoints: [],
   selectedLabelId: null,
+  femurProfileGate: null,
 
   toggleTool: (kind) =>
     set((s) => {
+      // Die Qualitäts-Bestätigung gehört zur LAUFENDEN Femurprofil-
+      // Sitzung. Sie überlebt nur den einen Fall, für den sie gedacht
+      // ist: das Einschalten des Femurprofils, unmittelbar nachdem der
+      // Dialog sie gesetzt hat. Abschalten oder Wechsel auf ein anderes
+      // Werkzeug bricht die Messung ab — dann muss auch die Bestätigung
+      // weg, sonst gälte sie stillschweigend für den nächsten Anlauf.
+      const gateBehalten = kind === 'femurProfile' && s.activeKind !== kind
+      const femurProfileGate = gateBehalten ? s.femurProfileGate : null
       // Tool ausschalten, wenn dasselbe nochmal geklickt wird.
-      if (s.activeKind === kind) return { activeKind: null, draftPoints: [] }
+      if (s.activeKind === kind) {
+        return { activeKind: null, draftPoints: [], femurProfileGate }
+      }
       // Beim Einschalten: wenn das Rezept eine Becken-Referenzlinie
       // verlangt UND global schon eine definiert ist, die ersten beiden
       // Punkte vorbefüllen — der Nutzer klickt nur die restlichen.
       const recipe = getRecipe(kind)
       const prefilled = prefillFromGlobalRefLine(recipe)
-      return { activeKind: kind, draftPoints: prefilled }
+      return { activeKind: kind, draftPoints: prefilled, femurProfileGate }
     }),
 
-  cancelTool: () => set({ activeKind: null, draftPoints: [] }),
+  // Abbruch verwirft AUCH die Qualitäts-Bestätigung: Sie gilt für die
+  // Aufnahme, für die sie abgegeben wurde. Bliebe sie liegen, startete
+  // der nächste Versuch — womöglich an einem anderen Bild — stillschweigend
+  // mit einer fremden Bestätigung.
+  cancelTool: () =>
+    set({ activeKind: null, draftPoints: [], femurProfileGate: null }),
+
+  setFemurProfileGate: (q) => set({ femurProfileGate: q }),
 
   addDraftPoint: (p) =>
     set((s) => {
@@ -232,6 +263,7 @@ export const useHipStore = create<HipState>((set) => ({
       draftPoints: [],
       activeKind: null,
       selectedLabelId: null,
+      femurProfileGate: null,
     }),
 }))
 

@@ -23,6 +23,7 @@ import { recipesForProsthesis } from '../lib/shoulder/recipes'
 import { useUiStore } from '../state/uiStore'
 import { Hint } from './Hint'
 import { KeinPaketHinweis } from './KeinPaketHinweis'
+import { FemurProfileQualityGate } from './FemurProfileQualityGate'
 import {
   applyNavToolsPane2,
   startSlopeToolPane2,
@@ -402,10 +403,17 @@ function FemurProfileButton({
   active: boolean
 }) {
   const gesperrt = !hasImage || !calibrated
+  const [gateOffen, setGateOffen] = useState(false)
   return (
     <>
       <button
-        onClick={() => pickHipTool('femurProfile')}
+        // Erst die Bildqualitäts-Checkliste, dann die Messung. Ist das
+        // Werkzeug bereits aktiv, bricht der Klick es ab (wie bei den
+        // übrigen Werkzeugen) — dabei verwirft der Store auch die
+        // Bestätigung, sie gehört zu genau diesem Anlauf.
+        onClick={() =>
+          active ? useHipStore.getState().cancelTool() : setGateOffen(true)
+        }
         disabled={gesperrt}
         title={
           !hasImage
@@ -422,11 +430,26 @@ function FemurProfileButton({
           gesperrt ? 'cursor-not-allowed opacity-50' : '',
         ].join(' ')}
       >
-        <div className="font-medium">Femurprofil starten</div>
+        <div className="font-medium">
+          {active ? 'Femurprofil abbrechen' : 'Femurprofil starten'}
+        </div>
         <div className="text-[10px] text-violet-300/70">
           13 Punkte · Dorr · CI · CCR · NSA · Offset · CPAH
         </div>
       </button>
+      <FemurProfileQualityGate
+        open={gateOffen}
+        calibrated={calibrated}
+        onStart={(quality) => {
+          setGateOffen(false)
+          // Reihenfolge zählt: erst die Bestätigung hinterlegen, dann das
+          // Werkzeug einschalten — `toggleTool` behält sie genau in
+          // diesem Übergang und räumt sie in jedem anderen ab.
+          useHipStore.getState().setFemurProfileGate(quality)
+          pickHipTool('femurProfile')
+        }}
+        onCancel={() => setGateOffen(false)}
+      />
       <Hint>
         <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
           Optional: Dorr, CPAH und Femurmorphologie quantitativ bestimmen.

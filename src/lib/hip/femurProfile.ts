@@ -165,6 +165,129 @@ export function computeCpah(
 }
 
 // ======================================================================
+// Bildqualitaets-Gate: Darf aus DIESER Aufnahme ueberhaupt eine Klasse
+// abgeleitet werden?
+// ======================================================================
+
+/**
+ * Aerztlich bestaetigte Checkliste vor der Klassifikation.
+ *
+ * Bewusst KEINE automatische Bildanalyse: Rotation, Projektion und
+ * Kortikalis-Schaerfe sind Beurteilungen, keine Messungen. Das MVP
+ * behauptet nicht, sie erkennen zu koennen — es fragt.
+ *
+ * ⚠ ACHTUNG, UNGLEICHE POLARITAET: Sechs Felder bedeuten „true = in
+ * Ordnung", `deformityAffectsGeometry` aber „true = PROBLEM" (die
+ * Deformitaet verfaelscht die Geometrie). Ein naives
+ * `Object.values(q).every(Boolean)` liefert deshalb exakt die falsche
+ * Antwort. Die Auswertung steht darum genau einmal, in
+ * `isFemurProfileClassifiable`, und ein Test faengt die Verwechslung.
+ */
+export interface FemurProfileImageQuality {
+  /** Technisch aus dem Viewer vorbefuellt, aber sichtbar bestaetigt. */
+  calibrated: boolean
+  apProjectionAcceptable: boolean
+  rotationAcceptable: boolean
+  lesserTrochanterVisible: boolean
+  cortexVisible: boolean
+  femurCoverage10cm: boolean
+  /** true = Deformitaet VERFAELSCHT die Geometrie (umgekehrte Polaritaet). */
+  deformityAffectsGeometry: boolean
+  /** Strukturierte Gruende, warum das Gate nicht bestanden ist —
+   *  abgeleitet, kein Freitext (nichts zu deckeln, nichts zu missbrauchen). */
+  exclusionReasons: string[]
+  /** ISO-Zeitstempel der Bestaetigung; kein Nutzername, keine Patientendaten. */
+  confirmedAt?: string
+}
+
+/** Klartext je Kriterium — dient der Checkliste UND den Ausschlussgruenden,
+ *  damit beide nicht auseinanderlaufen. */
+export const FEMUR_PROFILE_QUALITAETS_KRITERIEN: {
+  feld: keyof FemurProfileImageQuality
+  frage: string
+  /** Grund, der bei NICHT erfuellter Bedingung dokumentiert wird. */
+  grund: string
+  /** true, wenn das Feld invertiert ist (erfuellt = false). */
+  invertiert?: true
+}[] = [
+  {
+    feld: 'calibrated',
+    frage: 'Kalibrierung bzw. Pixelabstand gültig',
+    grund: 'Keine gültige Kalibrierung',
+  },
+  {
+    feld: 'apProjectionAcceptable',
+    frage: 'Standardisierte, tief zentrierte AP-Aufnahme',
+    grund: 'Projektion nicht AP-standardisiert',
+  },
+  {
+    feld: 'rotationAcceptable',
+    frage: 'Rotation vertretbar (Becken neutral, Femur ~15° innenrotiert)',
+    grund: 'Rotation nicht vertretbar',
+  },
+  {
+    feld: 'lesserTrochanterVisible',
+    frage: 'Trochanter minor sicher erkennbar',
+    grund: 'Trochanter minor nicht sicher erkennbar',
+  },
+  {
+    feld: 'cortexVisible',
+    frage: 'Mediale und laterale Kortikalisgrenzen sicher erkennbar',
+    grund: 'Kortikalisgrenzen nicht sicher erkennbar',
+  },
+  {
+    feld: 'femurCoverage10cm',
+    frage: 'Femur mindestens 10 cm distal des Trochanter minor abgebildet',
+    grund: 'Femur unterhalb 10 cm nicht vollständig abgebildet',
+  },
+  {
+    feld: 'deformityAffectsGeometry',
+    frage: 'Ausgeprägte Deformität verfälscht die Geometrie',
+    grund: 'Deformität verfälscht die Geometrie',
+    invertiert: true,
+  },
+]
+
+/** Frische, unbeantwortete Checkliste. `calibrated` kommt aus dem Viewer. */
+export function leereBildqualitaet(calibrated: boolean): FemurProfileImageQuality {
+  return {
+    calibrated,
+    apProjectionAcceptable: false,
+    rotationAcceptable: false,
+    lesserTrochanterVisible: false,
+    cortexVisible: false,
+    femurCoverage10cm: false,
+    deformityAffectsGeometry: false,
+    exclusionReasons: [],
+  }
+}
+
+/** Welche Kriterien sind NICHT erfuellt? Strukturiert, in Listenreihenfolge. */
+export function femurProfileAusschlussgruende(
+  q: FemurProfileImageQuality,
+): string[] {
+  return FEMUR_PROFILE_QUALITAETS_KRITERIEN.filter((k) =>
+    k.invertiert ? q[k.feld] === true : q[k.feld] !== true,
+  ).map((k) => k.grund)
+}
+
+/**
+ * DIE eine Stelle, an der ueber „Klasse ja/nein" entschieden wird.
+ *
+ * Nicht bestanden heisst NICHT „Messung verboten": Rohwerte duerfen zu
+ * Dokumentationszwecken entstehen. Unterdrueckt wird nur die abgeleitete
+ * Dorr-/CPAH-KLASSE — eine Klassifikation aus einer ungeeigneten
+ * Aufnahme waere Scheinpraezision, und zwar eine, die Therapie
+ * beeinflusst.
+ */
+export function isFemurProfileClassifiable(
+  q: FemurProfileImageQuality | null | undefined,
+): boolean {
+  if (!q) return false
+  return femurProfileAusschlussgruende(q).length === 0
+}
+
+// ======================================================================
 // Geometrie-Engine: Rohwerte aus den 13 Landmarken.
 // ======================================================================
 
