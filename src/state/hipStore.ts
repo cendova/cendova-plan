@@ -68,6 +68,21 @@ const DEFAULT_LABEL_STYLE: LabelStyle = {
   underline: false,
 }
 
+/**
+ * Ärztliche Beurteilung einer Femurprofil-Messung.
+ *
+ * In diesem Schritt wird nur `imageQuality` gefüllt — die Karte muss
+ * wissen, ob aus DIESER Messung eine Klasse abgeleitet werden darf, und
+ * das kann sie nicht aus dem Sitzungs-Zustand ablesen (der gilt für den
+ * laufenden Anlauf, nicht für eine zweite oder eine geladene Messung).
+ * Die übrigen Felder füllt die Bestätigung/Übersteuerung im nächsten
+ * Schritt; sie sind darum optional angelegt und brauchen später keine
+ * Umbenennung.
+ */
+export interface FemurProfileReview {
+  imageQuality: FemurProfileImageQuality
+}
+
 export interface HipMeasurement {
   id: string
   kind: HipKind
@@ -79,6 +94,8 @@ export interface HipMeasurement {
   labelOffset: LabelOffset
   /** Stil der Beschriftung. */
   labelStyle: LabelStyle
+  /** Nur beim Femurprofil: die vor der Messung bestätigte Bildqualität. */
+  femurProfileReview?: FemurProfileReview
 }
 
 interface HipState {
@@ -178,6 +195,14 @@ export const useHipStore = create<HipState>((set) => ({
           visible: true,
           labelOffset: { x: 16, y: -14 },
           labelStyle: { ...DEFAULT_LABEL_STYLE },
+          // Die Qualitäts-Bestätigung wandert aus der Sitzung an die
+          // fertige Messung — ab hier gehört sie zu ihr und nicht mehr
+          // zum laufenden Anlauf. Ohne diese Bindung könnte die
+          // Ergebnis-Karte einer zweiten oder geladenen Messung nicht
+          // sagen, ob sie klassifizieren darf.
+          ...(s.activeKind === 'femurProfile' && s.femurProfileGate
+            ? { femurProfileReview: { imageQuality: s.femurProfileGate } }
+            : {}),
         }
         // Wenn diese Messung die Becken-Referenzlinie definiert (LLD, CE),
         // global propagieren, damit Pfannen-Tools sie nutzen.

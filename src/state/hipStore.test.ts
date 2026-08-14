@@ -92,13 +92,40 @@ describe('Bildqualitäts-Gate im Store', () => {
     expect(useHipStore.getState().femurProfileGate).toBeNull()
   })
 
-  it('überlebt den Abschluss der Messung (Task 7 heftet sie an)', () => {
+  it('wandert beim Abschluss an die fertige Messung', () => {
     useHipStore.getState().setFemurProfileGate(bestandenesGate())
     useHipStore.getState().toggleTool('femurProfile')
     for (let i = 0; i < 13; i++) useHipStore.getState().addDraftPoint(p(i, i))
-    expect(useHipStore.getState().measurements).toHaveLength(1)
+    const m = useHipStore.getState().measurements[0]
+    expect(m.femurProfileReview?.imageQuality.confirmedAt).toBe(
+      '2026-08-11T12:00:00.000Z',
+    )
+    expect(isFemurProfileClassifiable(m.femurProfileReview?.imageQuality)).toBe(true)
     expect(useHipStore.getState().activeKind).toBeNull()
-    expect(useHipStore.getState().femurProfileGate).not.toBeNull()
+  })
+
+  it('heftet auch eine NICHT bestandene Bestätigung an', () => {
+    // Gerade der Fall muss dokumentiert werden — sonst wüsste die Karte
+    // später nicht, warum sie keine Klasse zeigt.
+    const gate: FemurProfileImageQuality = {
+      ...leereBildqualitaet(true),
+      exclusionReasons: ['Rotation nicht vertretbar'],
+    }
+    useHipStore.getState().setFemurProfileGate(gate)
+    useHipStore.getState().toggleTool('femurProfile')
+    for (let i = 0; i < 13; i++) useHipStore.getState().addDraftPoint(p(i, i))
+    const m = useHipStore.getState().measurements[0]
+    expect(m.femurProfileReview?.imageQuality.exclusionReasons).toEqual([
+      'Rotation nicht vertretbar',
+    ])
+    expect(isFemurProfileClassifiable(m.femurProfileReview?.imageQuality)).toBe(false)
+  })
+
+  it('heftet an andere Messarten nichts an', () => {
+    useHipStore.getState().setFemurProfileGate(bestandenesGate())
+    useHipStore.getState().toggleTool('ccd') // verwirft das Gate
+    for (let i = 0; i < 6; i++) useHipStore.getState().addDraftPoint(p(i, i))
+    expect(useHipStore.getState().measurements[0].femurProfileReview).toBeUndefined()
   })
 
   it('wird von reset verworfen (neues Bild)', () => {

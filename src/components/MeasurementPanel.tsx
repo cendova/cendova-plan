@@ -33,6 +33,7 @@ import {
   setMeasurementVisible,
 } from '../lib/cornerstone/viewer'
 import { CpakMatrix } from './CpakMatrix'
+import { FemurProfileCard } from './FemurProfileCard'
 import { useKneePanesStore } from '../state/kneePanesStore'
 import {
   removeRightMeasurement,
@@ -467,6 +468,22 @@ export function MeasurementPanel() {
             })}
           </ul>
         )}
+
+        {/* Ergebnis-Karte pro Femurprofil-Messung — wie das CPAK-Schaubild
+            unter der Liste, weil sie sich vollständig aus den Punkten
+            ableitet. Die Klasse hängt an der bestätigten Bildqualität, die
+            an der Messung selbst hängt. */}
+        {hipMeasurements
+          .filter((m) => m.kind === 'femurProfile' && m.visible)
+          .map((m) => (
+            <div key={`fp-${m.id}`} className="mt-2">
+              <FemurProfileCard
+                points={m.points}
+                mmPerWorldUnit={factor}
+                review={m.femurProfileReview}
+              />
+            </div>
+          ))}
 
         {/* CPAK-Schaubild pro Workflow-Messung — leitet sich direkt aus den
             17 Punkten ab und braucht keine eigene Mess-Aktion. */}
