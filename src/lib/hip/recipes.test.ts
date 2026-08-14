@@ -149,6 +149,18 @@ describe('femurProfile (geführte 13-Punkt-Messung)', () => {
     expect(wert('CPAH')).toBe('nicht zuverlässig bestimmbar')
   })
 
+  it('misst identisch, wenn die Schaftachse verkehrt herum gesetzt wird', () => {
+    // Die Achsrichtung darf KEINEN Messwert kippen: das Offset ist ein
+    // Lot auf die unendliche Gerade, die Breiten sind Beträge, und der
+    // NSA nimmt ohnehin die stumpfe Variante. Nur die gezeichnete
+    // 10-cm-Linie dreht mit — und das sieht man sofort.
+    const normal = recipe.compute(femurProfilPunkte(), 1)
+    const pts = femurProfilPunkte()
+    ;[pts[4], pts[5]] = [pts[5], pts[4]]
+    const gedreht = recipe.compute(pts, 1)
+    expect(gedreht.values).toEqual(normal.values)
+  })
+
   it('wirft auch bei unvollständigen Punkten nicht', () => {
     expect(() => recipe.compute(femurProfilPunkte().slice(0, 7), 1)).not.toThrow()
     const r = recipe.compute(femurProfilPunkte().slice(0, 7), 1)
@@ -246,6 +258,29 @@ describe('femurProfile — 10-cm-Hilfslinie während der Platzierung', () => {
     const pts = femurProfilPunkte().slice(0, 7)
     pts[5] = pts[4]
     expect(recipe.computeDraft!(pts, 1).lines).toEqual([])
+  })
+
+  it('ist unabhängig davon, WO auf dem Trochanter minor geklickt wurde', () => {
+    // Der Punkt liegt medial neben der Schaftachse; entscheidend ist nur
+    // seine HÖHE. Deshalb wird auf die Achse gelotet — sonst wanderte die
+    // Linie mit dem seitlichen Klick-Versatz.
+    const pts = femurProfilPunkte().slice(0, 7)
+    const a = recipe.computeDraft!(pts, 1)
+    pts[6] = p(15, 40) // 15 mm weiter lateral, gleiche Höhe
+    const b = recipe.computeDraft!(pts, 1)
+    expect(b).toEqual(a)
+  })
+
+  it('kehrt sich um, wenn die Schaftachse verkehrt herum gesetzt wird', () => {
+    // Dokumentiert eine bewusst NICHT abgefangene Fehlbedienung: proximal
+    // und distal vertauscht schickt die Linie 10 cm nach kranial, also
+    // sichtbar ins Becken. Das ist selbsterklärend falsch — anders als ein
+    // stiller Zahlenfehler braucht es dafür keine Warnung.
+    const pts = femurProfilPunkte().slice(0, 7)
+    pts[4] = p(0, 100)
+    pts[5] = p(0, 0)
+    const l = hilfslinie(recipe.computeDraft!(pts, 1))!
+    expect(l.from[1]).toBeCloseTo(-60, 6)
   })
 
   it('liegt exakt dort, wo die fertige Messung ihre Linie zeichnet', () => {
