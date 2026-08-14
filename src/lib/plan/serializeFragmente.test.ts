@@ -28,8 +28,12 @@ const DREIECK = [p(0, 0), p(10, 0), p(5, 10)]
 beforeEach(() => useShaftFragmentStore.getState().reset())
 
 describe('Plan-Speicherung der Schaft-Fragmente', () => {
-  it('schreibt Format-Version 9', () => {
-    expect(buildPlan().version).toBe(9)
+  // Fragmente kamen mit v9 dazu — mehr sagt diese Datei über die Version
+  // nicht aus. Die EXAKTE aktuelle Nummer prüft der jeweils jüngste
+  // Format-Test (derzeit serializeFemurProfile.test.ts, v10); stünde sie
+  // auch hier, müsste jede Format-Erweiterung beide Dateien anfassen.
+  it('schreibt eine Format-Version ab 9', () => {
+    expect(buildPlan().version).toBeGreaterThanOrEqual(9)
   })
 
   it('nimmt Fragmente samt Versatz und Drehung auf', () => {

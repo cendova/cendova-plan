@@ -4,6 +4,12 @@
  * ohne die Cornerstone-Importkette unit-testbar bleibt.
  */
 import type { PlanFile } from './serialize'
+
+/** Obergrenze der Ausschlussgründe je Messung. Die Kriterienliste des
+ *  Bildqualitäts-Gates hat sieben Einträge — großzügig gerundet, damit
+ *  eine spätere Erweiterung nicht sofort an die Wand läuft. */
+const MAX_AUSSCHLUSSGRUENDE = 32
+
 import {
   endlichIn,
   MAX_EMBEDDED_BASE64,
@@ -73,6 +79,29 @@ export function pruefePlanGrenzen(plan: PlanFile): string | null {
   for (const [name, wert] of texte) {
     if (typeof wert === 'string' && wert.length > MAX_PLAN_STRING)
       return `Feld „${name}" ist zu lang (> ${MAX_PLAN_STRING} Zeichen)`
+  }
+
+  // Ausschlussgründe der Femurprofil-Beurteilung: Sie stammen zwar aus
+  // einer festen Kriterienliste, kommen hier aber aus einer FREMDEN
+  // Datei. Ohne Deckel könnte ein präparierter Plan pro Messung eine
+  // beliebig lange Liste beliebig langer Texte mitbringen — die Karte
+  // rendert jeden Eintrag, das legt den Browser lahm. Die echte Liste hat
+  // sieben Einträge; alles darüber ist offensichtlich manipuliert.
+  const hipMs = (plan.hipMeasurements ?? []) as Array<{
+    femurProfileReview?: { imageQuality?: { exclusionReasons?: unknown } }
+  }>
+  for (let i = 0; i < hipMs.length; i++) {
+    const gruende = hipMs[i]?.femurProfileReview?.imageQuality?.exclusionReasons
+    if (gruende === undefined || gruende === null) continue
+    const feld = `hipMeasurements[${i}].femurProfileReview.imageQuality.exclusionReasons`
+    if (!Array.isArray(gruende)) return `Feld „${feld}" ist kein Array`
+    if (gruende.length > MAX_AUSSCHLUSSGRUENDE)
+      return `Feld „${feld}" hat zu viele Einträge (${gruende.length} > ${MAX_AUSSCHLUSSGRUENDE})`
+    for (const g of gruende) {
+      if (typeof g !== 'string') return `Feld „${feld}" enthält einen Nicht-Text`
+      if (g.length > MAX_PLAN_STRING)
+        return `Feld „${feld}" enthält einen zu langen Text (> ${MAX_PLAN_STRING} Zeichen)`
+    }
   }
 
   // Eingebettete Bilder: Base64-Länge deckeln, bevor atob den RAM flutet.
