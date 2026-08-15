@@ -181,6 +181,70 @@ CendovaPlan-Ordner, sagt das Skript das beim Start.
    „Schulter-Schablonen" und ggf. „Schaft-Crop" vorhanden;
    Schablonen und verschobenes Fragment im Ausdruck sichtbar.
 
+### Fahrplan Femurprofil (Hüfte, Dorr/CPAH)
+Der Workflow ist **optional** und steht als Sektion **„3 · Femurprofil"**
+zwischen Messungen und Schablonen. Patienten-DICOMs bleiben lokal.
+
+1. Hüft-AP-DICOM laden (oder `?beispiel=huefte` für die Lehraufnahme).
+2. **Kalibrieren.** Ohne Kalibrierung ist der Start gesperrt und sagt auch,
+   warum — das ist Absicht: unkalibriert wären die mm-Zahlen keine mm, und
+   die 10-cm-Hilfslinie läge willkürlich. Das Beispielbild kalibriert sich
+   **nicht** von selbst, obwohl es einen Pixelabstand mitbringt.
+3. **Toolbar-Smoke** (es gibt kein UI-Testmuster, deshalb hier von Hand):
+   Sektion ist eingeklappt, trägt vor dem Start **keinen** amberfarbenen
+   Punkt, steht **vor** den Schablonen; das Femurprofil taucht **nicht**
+   als Werkzeug in „2 · Messungen" auf. Die übrigen Sektionen behalten
+   ihre gemerkten Einklapp-Zustände.
+4. **„Femurprofil starten"** → zuerst erscheint die **Bildqualitäts-
+   Checkliste**. Sie misst nichts, sie fragt; nur die Kalibrier-Zeile kommt
+   aus dem Viewer und ist nicht abwählbar.
+5. **Gate bewusst NICHT bestehen** (eine Zeile offen lassen): Der Knopf
+   heißt dann ehrlich „Ohne Klassifikation messen". Messen bleibt möglich,
+   aber Dorr/CPAH stehen als `nicht zuverlässig bestimmbar` da — samt
+   Grund —, und die CPAH-Matrix wird **nicht** gezeichnet. Die Rohwerte
+   erscheinen trotzdem.
+   ⚠ Achtung auf die Zeile **„Ausgeprägte Deformität verfälscht die
+   Geometrie"**: Sie ist die einzige mit umgekehrter Bedeutung —
+   *anhaken = Ausschlussgrund*.
+6. Messung abbrechen (Esc) und neu starten: Die Checkliste erscheint
+   **wieder leer**. Eine Bestätigung gilt nur für den Anlauf, für den sie
+   abgegeben wurde.
+7. Gate bestehen, dann die **13 Punkte** setzen. Ab Punkt 7 (Trochanter
+   minor) erscheint die gestrichelte **10-cm-Linie** — die vier
+   Kortikalis-Punkte gehören genau darauf.
+8. Ergebnisse in der Karte **„Morphologie & Fixation"** plausibilisieren
+   (CI, CCR, NSA, FO, FOR, CPAH). Die Messzeile darüber trägt bewusst
+   keine Werte mehr, nur den Verweis auf die Karte.
+9. **CPAH-Matrix sichtprüfen:** aktive Zelle passt zu Dorr-Typ und
+   NSA-Klasse, der Punkt sitzt an der erwarteten Stelle, die FOR-Leiste
+   zeigt N bzw. H.
+10. **Messpunkte verschieben** → Werte, Matrix und Warnungen aktualisieren
+    live.
+11. **Dorr bestätigen**; danach abweichend überschreiben — ohne Grund
+    bleibt „Speichern" gesperrt. **Undo** muss die Bestätigung zurücknehmen.
+12. Nach der Bestätigung einen Punkt so verschieben, dass sich der
+    Vorschlag ändert → die Karte muss die Bestätigung als **veraltet**
+    melden.
+13. **Plan speichern** → erneut laden: Punkte, Bildqualität, Vorschlag,
+    ärztliche Entscheidung und Grund sind wieder da (Format v10), keine
+    ID-Kollision.
+14. **PDF-Export** → Abschnitt **„Femurprofil"** vorhanden, mit
+    Planungshinweis; bei ungeeigneter Aufnahme ohne Klasse.
+15. **Zweiter Durchlauf mit vorhandener CCD-Messung:** Der Dialog kündigt
+    an, dass sechs Punkte übernommen werden, die Messung startet bei
+    Schritt 7/13. ⚠ Prüfen, ob die übernommenen Punkte am **gewünschten
+    Femur** liegen — Hüft-Messungen tragen keine Seiten-Information, eine
+    CCD-Messung der Gegenseite ist für das Programm nicht erkennbar.
+16. **Grenzfälle** A/B und B/C mit synthetischer Geometrie oder
+    nichtpatientenbezogenen Testbildern: Der Punkt muss sichtbar im amber
+    **Grenzband** liegen, und die Karte nennt den Grenzbereich.
+
+> **Vorab automatisiert prüfbar:** Die Schritte 3–15 sind als
+> Playwright-Skripte hinterlegt (`scripts/abnahme-femurprofil/`, 117
+> Prüfungen gegen einen laufenden `npm run dev`). Sie ersetzen den Test
+> mit echtem DICOM nicht — sie fahren nur synthetische Geometrie —,
+> nehmen ihm aber die stumpfe Arbeit ab. Details im README dort.
+
 ---
 
 ## Gotchas / FAQ
