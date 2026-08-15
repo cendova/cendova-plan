@@ -21,6 +21,31 @@ function prefillFromGlobalRefLine(recipe: Recipe | undefined): Types.Point3[] {
 }
 
 /**
+ * Findet die jüngste VOLLSTÄNDIGE CCD-Messung.
+ *
+ * Grundlage des Prefills: Die ersten sechs Schritte des Femurprofils sind
+ * wortgleich mit denen des CCD-Rezepts (per Test in `recipes.test.ts`
+ * festgenagelt) — Hüftkopfkontur, Halsmitte, Schaftachse. Wer schon einen
+ * CCD-Winkel gemessen hat, soll diese sechs Punkte nicht erneut klicken.
+ *
+ * „Vollständig" heißt: exakt so viele Punkte, wie das Rezept Schritte hat.
+ * Eine abgebrochene Messung existiert im Store gar nicht (Punkte werden
+ * erst beim letzten Klick zur Messung), der Check ist also
+ * Gürtel-und-Hosenträger gegen geladene oder fremde Pläne.
+ */
+export function findeCcdFuerPrefill(
+  measurements: HipMeasurement[],
+): HipMeasurement | null {
+  const ccd = getRecipe('ccd')
+  if (!ccd) return null
+  for (let i = measurements.length - 1; i >= 0; i--) {
+    const m = measurements[i]
+    if (m.kind === 'ccd' && m.points.length === ccd.steps.length) return m
+  }
+  return null
+}
+
+/**
  * Synchronisiert die Becken-Referenz-Punkte einer Hüft-Messung in den
  * globalen `templateStore.referenceLine`. Damit teilen sich LLD/CE und
  * die Pfannen-Schablone EINE gemeinsame Beckenebene.
@@ -227,7 +252,21 @@ export const useHipStore = create<HipState>((set) => ({
       // verlangt UND global schon eine definiert ist, die ersten beiden
       // Punkte vorbefüllen — der Nutzer klickt nur die restlichen.
       const recipe = getRecipe(kind)
-      const prefilled = prefillFromGlobalRefLine(recipe)
+      let prefilled = prefillFromGlobalRefLine(recipe)
+      // Zweite Prefill-Quelle: Das Femurprofil übernimmt die sechs
+      // gemeinsamen Punkte einer vorhandenen CCD-Messung und startet
+      // damit bei Schritt 7 von 13.
+      //
+      // Punkte werden KOPIERT, nicht geteilt: Ein gezogener Draft-Punkt
+      // darf die CCD-Messung nicht mitverändern. (Heute ersetzt
+      // `updateDraftPoint` das Element ohnehin, aber darauf soll sich
+      // niemand verlassen müssen.)
+      if (kind === 'femurProfile') {
+        const ccd = findeCcdFuerPrefill(s.measurements)
+        if (ccd) {
+          prefilled = ccd.points.slice(0, 6).map((p) => [...p] as Types.Point3)
+        }
+      }
       return { activeKind: kind, draftPoints: prefilled, femurProfileGate }
     }),
 

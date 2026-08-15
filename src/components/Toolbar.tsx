@@ -16,7 +16,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { useViewerStore } from '../state/viewerStore'
-import { useHipStore } from '../state/hipStore'
+import { findeCcdFuerPrefill, useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
 import { useShoulderStore } from '../state/shoulderStore'
 import { recipesForProsthesis } from '../lib/shoulder/recipes'
@@ -404,6 +404,11 @@ function FemurProfileButton({
 }) {
   const gesperrt = !hasImage || !calibrated
   const [gateOffen, setGateOffen] = useState(false)
+  // Ob beim Start sechs Punkte aus einer CCD-Messung uebernommen werden —
+  // der Dialog sagt es an, damit niemand vor fremden Punkten steht.
+  const ccdPrefill = useHipStore(
+    (s) => findeCcdFuerPrefill(s.measurements) != null,
+  )
   return (
     <>
       <button
@@ -440,6 +445,7 @@ function FemurProfileButton({
       <FemurProfileQualityGate
         open={gateOffen}
         calibrated={calibrated}
+        ccdPrefill={ccdPrefill}
         onStart={(quality) => {
           setGateOffen(false)
           // Reihenfolge zählt: erst die Bestätigung hinterlegen, dann das

@@ -30,12 +30,15 @@ import {
 export function FemurProfileQualityGate({
   open,
   calibrated,
+  ccdPrefill,
   onStart,
   onCancel,
 }: {
   open: boolean
   /** Aus dem Viewer vorbefüllt — der Nutzer kann es nicht „wegklicken". */
   calibrated: boolean
+  /** Ob beim Start sechs Punkte aus einer CCD-Messung übernommen werden. */
+  ccdPrefill: boolean
   onStart(quality: FemurProfileImageQuality): void
   onCancel(): void
 }) {
@@ -128,6 +131,24 @@ export function FemurProfileQualityGate({
             )
           })}
         </div>
+
+        {/* Der Prefill spart sechs Klicks, kann aber am FALSCHEN Femur
+            landen: Hüft-Messungen tragen keine Seiten-Information, das
+            Programm kann eine CCD-Messung der Gegenseite nicht von einer
+            der geplanten Seite unterscheiden. Deshalb wird hier gesagt,
+            was gleich passiert — statt den Nutzer vor sechs Punkten
+            stehen zu lassen, die er nicht gesetzt hat. */}
+        {ccdPrefill && (
+          <div className="mb-3 rounded border border-neutral-700 bg-neutral-900/60 p-2 text-[11px] leading-relaxed text-neutral-300">
+            <span className="font-semibold">Sechs Punkte werden übernommen</span>{' '}
+            aus der vorhandenen CCD-Messung (Hüftkopf, Halsmitte,
+            Schaftachse) — die Messung startet bei Schritt 7 von 13.
+            <div className="mt-0.5 text-neutral-400">
+              Bitte prüfen, ob sie am gewünschten Femur liegen; sie sind
+              frei verschiebbar.
+            </div>
+          </div>
+        )}
 
         {!bestanden && (
           <div className="mb-3 rounded border border-amber-900/60 bg-amber-950/30 p-2 text-[11px] leading-relaxed text-amber-200">

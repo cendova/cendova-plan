@@ -4,7 +4,11 @@
 // Aufnahme.
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Types } from '@cornerstonejs/core'
-import { istGueltigeFemurProfileReview, useHipStore } from './hipStore'
+import {
+  findeCcdFuerPrefill,
+  istGueltigeFemurProfileReview,
+  useHipStore,
+} from './hipStore'
 import {
   type FemurProfileImageQuality,
   isFemurProfileClassifiable,
@@ -280,6 +284,114 @@ describe('Ärztliche Bestätigung und Override', () => {
     messungAnlegen()
     useHipStore.getState().reset()
     expect(useHipStore.getState().measurements).toHaveLength(0)
+  })
+})
+
+describe('CCD-Prefill des Femurprofils', () => {
+  /** Legt eine vollständige CCD-Messung an und gibt ihre Punkte zurück. */
+  function ccdMessung(versatz = 0): Types.Point3[] {
+    useHipStore.getState().toggleTool('ccd')
+    const pts = [
+      p(versatz - 40, -40),
+      p(versatz - 64, -64),
+      p(versatz - 88, -40),
+      p(versatz - 57, -47),
+      p(versatz, 0),
+      p(versatz, 100),
+    ]
+    pts.forEach((q) => useHipStore.getState().addDraftPoint(q))
+    return pts
+  }
+
+  it('übernimmt die sechs Punkte einer vollständigen CCD-Messung', () => {
+    const pts = ccdMessung()
+    useHipStore.getState().toggleTool('femurProfile')
+    const draft = useHipStore.getState().draftPoints
+    expect(draft).toHaveLength(6)
+    expect(draft).toEqual(pts)
+  })
+
+  it('kopiert die Punkte, statt sie mit der CCD-Messung zu teilen', () => {
+    // Ein gezogener Draft-Punkt darf die CCD-Messung NICHT mitverändern.
+    ccdMessung()
+    useHipStore.getState().toggleTool('femurProfile')
+    useHipStore.getState().updateDraftPoint(0, p(999, 999))
+    const ccd = useHipStore.getState().measurements.find((m) => m.kind === 'ccd')!
+    expect(ccd.points[0]).not.toEqual([999, 999, 0])
+  })
+
+  it('nimmt die JÜNGSTE CCD-Messung', () => {
+    ccdMessung(0)
+    const zweite = ccdMessung(500)
+    useHipStore.getState().toggleTool('femurProfile')
+    expect(useHipStore.getState().draftPoints).toEqual(zweite)
+  })
+
+  it('ignoriert eine unvollständige CCD-Messung', () => {
+    // Direkt in den Store gelegt, wie sie aus einem fremden Plan käme.
+    useHipStore.setState({
+      measurements: [
+        {
+          id: 'hip-x',
+          kind: 'ccd',
+          points: [p(0, 0), p(1, 1), p(2, 2)], // nur 3 statt 6
+          visible: true,
+          labelOffset: { x: 0, y: 0 },
+          labelStyle: { fontSize: 13, color: '#fff', bold: false, underline: false },
+        },
+      ],
+    })
+    useHipStore.getState().toggleTool('femurProfile')
+    expect(useHipStore.getState().draftPoints).toEqual([])
+  })
+
+  it('übernimmt nichts aus anderen Messarten', () => {
+    useHipStore.getState().toggleTool('osteotomy')
+    for (let i = 0; i < 3; i++) useHipStore.getState().addDraftPoint(p(i, i))
+    useHipStore.getState().toggleTool('femurProfile')
+    expect(useHipStore.getState().draftPoints).toEqual([])
+  })
+
+  it('startet ohne CCD-Messung ganz normal bei Schritt 1', () => {
+    useHipStore.getState().toggleTool('femurProfile')
+    expect(useHipStore.getState().draftPoints).toEqual([])
+  })
+
+  it('füllt andere Werkzeuge NICHT aus der CCD-Messung vor', () => {
+    ccdMessung()
+    useHipStore.getState().toggleTool('globalOffset')
+    expect(useHipStore.getState().draftPoints).toEqual([])
+  })
+
+  it('braucht nach dem Prefill noch sieben Punkte bis zur Messung', () => {
+    ccdMessung()
+    useHipStore.getState().toggleTool('femurProfile')
+    const vorher = useHipStore.getState().measurements.length
+    for (let i = 0; i < 6; i++) useHipStore.getState().addDraftPoint(p(i, i))
+    // Nach 12 von 13 Punkten darf noch KEINE Messung entstanden sein.
+    expect(useHipStore.getState().measurements).toHaveLength(vorher)
+    useHipStore.getState().addDraftPoint(p(7, 7))
+    expect(useHipStore.getState().measurements).toHaveLength(vorher + 1)
+  })
+
+  it('erkennt die Prefill-Quelle auch als reine Funktion', () => {
+    expect(findeCcdFuerPrefill([])).toBeNull()
+    ccdMessung()
+    const gefunden = findeCcdFuerPrefill(useHipStore.getState().measurements)
+    expect(gefunden?.kind).toBe('ccd')
+  })
+
+  it('startet nach Abschluss einer Femurprofil-Messung frisch', () => {
+    ccdMessung()
+    useHipStore.getState().toggleTool('femurProfile')
+    for (let i = 0; i < 7; i++) useHipStore.getState().addDraftPoint(p(i, i))
+    expect(useHipStore.getState().activeKind).toBeNull()
+    const nachher = useHipStore.getState().measurements.length
+    // Erneutes Öffnen beginnt eine NEUE Messung mit Prefill — und legt
+    // keine zweite unbeabsichtigt an.
+    useHipStore.getState().toggleTool('femurProfile')
+    expect(useHipStore.getState().draftPoints).toHaveLength(6)
+    expect(useHipStore.getState().measurements).toHaveLength(nachher)
   })
 })
 
