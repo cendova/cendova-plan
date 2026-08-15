@@ -21,6 +21,7 @@ import html2canvas from 'html2canvas-pro'
 import { useViewerStore } from '../../state/viewerStore'
 import { useKneePanesStore } from '../../state/kneePanesStore'
 import { useHipStore } from '../../state/hipStore'
+import { femurProfilPdfZeilen } from './femurProfilText'
 import { useShoulderStore } from '../../state/shoulderStore'
 import { useShoulderTemplateStore } from '../../state/shoulderTemplateStore'
 import { useShaftFragmentStore } from '../../state/shaftFragmentStore'
@@ -671,6 +672,18 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
 
     // Hüft-Messungen bewusst NICHT mehr im PDF (auf Wunsch entfernt) — die
     // klinisch relevante Beinlängen-Bilanz steht weiter unten.
+    //
+    // AUSNAHME Femurprofil: Es ist keine Einzelmessung, sondern eine
+    // Beurteilung mit ärztlicher Bestätigung — genau die gehört
+    // dokumentiert. Die Zeilen baut ein reiner Formatter, damit sie
+    // testbar bleiben (dieser Export ist es nicht).
+    for (const m of hipMeasurements) {
+      if (m.kind !== 'femurProfile') continue
+      writeSection(
+        'Femurprofil',
+        femurProfilPdfZeilen(m.points, factor, m.femurProfileReview),
+      )
+    }
 
     // Knie-Messungen — mit berechneten Werten (Winkel/Längen) + CPAK-Typ.
     if (kneeMeasurements.length > 0) {
