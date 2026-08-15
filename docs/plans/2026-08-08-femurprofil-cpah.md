@@ -953,6 +953,27 @@ git diff --check
 
 5. Draft-PR gegen `main`, niemals gegen `stable`.
 
+**Ergebnis der Abnahme (11.08.2026): Phase A umgesetzt.**
+
+Tasks 0–11 sind implementiert und gepusht (`feat/hip-femurprofil-cpah`,
+bis `6721a55`). `npm run verify` grün (444 Unit-Tests, Typecheck, Build je
+Exit 0), dazu 117 Browser-Prüfungen in `scripts/abnahme-femurprofil/`.
+Der Diff gegen `main` umfasst 24 Dateien, keine DICOMs, keine
+Zugangsdaten, `git diff --check` sauber.
+
+**Ein Punkt bleibt offen und braucht Philipp:** Die Grenzwerte (CI
+0,50/0,60, NSA 120°/140°, FOR 1,60) sind am Abstract des CPAH-Papers
+NICHT belegbar — dort steht nur die Struktur. Der Volltext ist nicht frei
+zugänglich (kein PMC-Eintrag). Sie stammen aus dem Handoff und sind im
+Modulkopf von `femurProfile.ts` ausdrücklich als **nicht am Volltext
+geprüft** markiert. Jede Grenze steht genau einmal; eine Korrektur ist
+eine Zeile plus Test.
+
+**Was der lokale Test noch leisten muss** (die Skripte fahren nur
+synthetische Geometrie): Plausibilität der Werte an echter Anatomie,
+Punktsetzung am realen Röntgenbild, und die Frage, ob die
+10-cm-Hilfslinie in der Praxis dort liegt, wo man sie erwartet.
+
 **Abnahmekriterien Phase A:**
 
 - Femurprofil optional und standardmäßig eingeklappt.
