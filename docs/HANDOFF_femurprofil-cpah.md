@@ -254,6 +254,55 @@ Nicht im ersten Schritt:
 - Quadra-P-Systembeschreibung: https://www.medacta.com/en/quadra-p-system-global
 - Quadra-H-Stress-Shielding, Morita: https://pubmed.ncbi.nlm.nih.gov/38631686/
 
+## Radaelli-Zuordnung der Medacta-Schäfte — VORSCHLAG, unbestätigt
+
+*Recherchiert 11.08.2026 (Online-Quellen unten). Die CPAH-Ergebnisse
+hängen an der Radaelli-Geometrieklasse; diese Tabelle ist der Vorschlag
+zur Zuordnung des lokalen Portfolios. Erst nach Philipps Bestätigung
+(insbesondere der beiden ?-Zeilen) darf sie in Regeln einfließen.*
+
+Radaelli-Taxonomie (2023, [DOI 10.1016/j.arth.2022.09.014](https://doi.org/10.1016/j.arth.2022.09.014)):
+**A** flat taper (Flachkeil) · **B1** rechteckiger Taper, gestrahlt ·
+**B2** quadrangulärer Taper, HA-beschichtet · **B3** verkürzter
+quadrangulärer Taper · **C1** fit-and-fill · **C2** anatomisch
+fit-and-fill · **C3** kurzer fit-and-fill · **D** konisch (Spline) ·
+**E** zylindrisch · **F** kalkargeführter Kurzschaft.
+Die Klassifikation gilt NUR für zementfreie Schäfte.
+
+| Schaft | Belegte Geometrie | Vorschlag | Fixation |
+|---|---|---|---|
+| Quadra-H | gerade, Dreifach-Taper, trapezoider Querschnitt, voll HA-beschichtet | **B2** | zementfrei |
+| Quadra-S | identische Geometrie, nur sandgestrahlt (ohne HA) | **B1** — oder mit H zusammen als B2, wenn Geometrie vor Oberfläche geht (die Register-Analyse fasst HA-/Nicht-HA-Varianten einer Marke zusammen) | zementfrei |
+| Quadra-P collarless/collared | Dreifach-Taper trapezoid, MectaGrip proximal 50 % + HA über ganze Länge, „double tapered distal tip"; P-Familie wird als „distally reduced" beworben | **B3?** — WENN die distale Reduktion als „shortened" zählt, sonst B2. **Das ist die wichtigste offene Frage**, denn B3 ist eine der vier im CPAH-Paper simulierten Klassen | zementfrei |
+| Quadra-P Cemented | poliert, Edelstahl | keine Radaelli-Klasse | zementiert |
+| Quadra-C | poliert, zementiert | keine Radaelli-Klasse | zementiert |
+| Quadra-R | Revisionsschaft | außerhalb (Paper: primäre elektive THA) | — |
+| AMIStem-H *(falls im Paket)* | von der Register-Analyse ausdrücklich als **C3** geführt | C3 | zementfrei |
+
+**Folgen für die Regeln, wenn die Zuordnung so bestätigt wird:**
+
+- Das CPAH-Paper simulierte NUR A, B3, C2 und F. Quadra-H/S (B1/B2)
+  gehört zu KEINER dieser Klassen — für den Standard-Quadra gibt es also
+  keine direkte CPAH-Evidenz, nur die Nähe zur B3-Gruppe. Regeln dürfen
+  das nicht verwischen.
+- Ist Quadra-P B3, sind die B3-Ergebnisse des Papers (beste
+  LLD-Rekonstruktion; gute FO-Rekonstruktion in High-Offset-Typen) direkt
+  auf ihn anwendbar — als GEOMETRIE-Aussage, nicht als klinische.
+- Quadra-C/Quadra-P-Cemented laufen außerhalb der Klassifikation; ihre
+  Rolle kommt aus der Dorr-C-/Fixations-Logik, nicht aus CPAH.
+
+Quellen (via PubMed bzw. Hersteller):
+Radaelli et al. 2022 ([DOI 10.1016/j.arth.2022.09.014](https://doi.org/10.1016/j.arth.2022.09.014));
+Register-Konsolidierung Finger et al. ([DOI 10.1016/j.artd.2024.101582](https://doi.org/10.1016/j.artd.2024.101582), Volltext PMC11715119 — AMIStem-H = C3, B1 höchste Revisionsrate 8,09 %);
+Frakturrisiko-Kohorte Izquierdo et al. ([DOI 10.7759/cureus.106425](https://doi.org/10.7759/cureus.106425));
+Taxonomie-Übersicht [JOEI-Review](https://journaloei.scholasticahq.com/article/143525);
+Hersteller: [Quadra-System](https://www.medacta.com/en/quadra),
+[Quadra-P-System](https://www.medacta.com/en/quadra-p-system-global),
+[Quadra-P-US/Presse](https://www.medacta.us.com/US/quadra-p-system-us)
+(dort: „The P-Stem Family includes a distally reduced, collarless,
+collared or cemented stem option"; 135°/127°, vertikales Offset bleibt
+beim Wechsel auf lateralisiert gleich).
+
 ## Offene fachliche Entscheidungen
 
 1. Welche Schaftvarianten sind lokal tatsächlich verfügbar und sollen im MVP regelbasiert abgebildet werden?
