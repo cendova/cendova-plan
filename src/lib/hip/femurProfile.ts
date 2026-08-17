@@ -18,18 +18,31 @@
  * of the Hip Classification." J Arthroplasty 2026.
  * DOI 10.1016/j.arth.2026.05.011 (PMID 42134629).
  *
- * Verifiziert ist daraus bisher nur die STRUKTUR, und zwar am Abstract:
- * neun Morphotypen aus Dorr-Typ und NSA, jeder zusaetzlich in eine
- * Normal- und eine High-Offset-Untergruppe geteilt; die dort genannten
- * Typen („2N, 5N, 5H, 6N, 8N") bestaetigen die Schreibweise Zahl+N/H.
+ * AM VOLLTEXT VERIFIZIERT (11.08.2026, Philipp hat das Paper beigebracht).
+ * Woertlich aus dem Methodenteil, S. 2:
  *
- * Die ZAHLEN unten stehen NICHT im Abstract. Der Volltext ist nicht frei
- * zugaenglich (kein PMC-Eintrag), sie sind hier also aus dem fachlichen
- * Handoff uebernommen (`docs/HANDOFF_femurprofil-cpah.md`, Abschnitte
- * „Dorr-Klassifikation" und „CPAH") und noch NICHT am Volltext geprueft.
- * Wer den Volltext zur Hand hat: Werte gegenlesen und diesen Absatz durch
- * die konkrete Fundstelle ersetzen. Alle Grenzen stehen genau einmal —
- * eine Korrektur ist eine Ein-Zeilen-Aenderung plus Test.
+ *   „Dorr classification was assessed using the cortical index
+ *    (Dorr A: greater than 0.6, Dorr B: 0.5 to 0.6, and Dorr C: less
+ *    than 0.5)"
+ *   „The NSA was measured as the angle between the femoral neck axis and
+ *    femoral shaft axis (coxa vara less than 120°, coxa valga greater
+ *    than 140°)"
+ *
+ * und S. 3 zur Offset-Schwelle:
+ *
+ *   „The cutoff value for the FORH subtypes was defined using a
+ *    distribution-based approach and set at 1.60 (mean FOR plus 1 SD)."
+ *
+ * Zwei Dinge, die man daraus mitnehmen sollte:
+ *  - Die B-Grenzen sind EINSCHLIESSEND („0.5 to 0.6") — exakt so
+ *    umgesetzt, und genau das prueft ein eigener Test.
+ *  - Die FOR-Schwelle 1,60 ist VERTEILUNGSBASIERT (Mittelwert + 1 SD der
+ *    Kohorte), nicht klinisch hergeleitet. Sie trennt „auffaellig hohes
+ *    Offset in dieser Kohorte" ab, nicht „behandlungsbeduerftig".
+ *
+ * Ebenfalls am Volltext bestaetigt: FOR = FO geteilt durch die
+ * KORTIKALIS-Breite 10 cm distal des Trochanter minor (S. 2) — also der
+ * aeussere Durchmesser Z, nicht der Kanal. So ist es implementiert.
  *
  * NICHT verwechseln: Der ISCD-Schwellenwert CI < 0,40 ist ein Trigger fuer
  * eine praeoperative DXA (Bone Health), KEINE CPAH-Grenze und keine
@@ -68,7 +81,11 @@ export const DORR_BORDERLINE_ZONES = {
 export const NSA_THRESHOLDS = { varaBelow: 120, valgaAbove: 140 } as const
 
 /** Schwelle der Femoral Offset Ratio FOR = FO / Z fuer den High-Offset-
- *  Untertyp. Lesart: H ist FOR >= 1,60 — die Schwelle selbst ist H. */
+ *  Untertyp. Lesart: H ist FOR >= 1,60 — die Schwelle selbst ist H.
+ *
+ *  VERTEILUNGSBASIERT, nicht klinisch: Mittelwert + 1 SD der Kohorte
+ *  (Paper S. 3). Sie sagt „hohes Offset relativ zur Femurgroesse in
+ *  dieser Population", nicht „behandlungsbeduerftig". */
 export const FOR_HIGH_AT = 1.6
 
 export type DorrType = 'A' | 'B' | 'C'

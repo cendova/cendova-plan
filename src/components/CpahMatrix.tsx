@@ -37,13 +37,16 @@ const PLOT_W = W - PAD_LEFT - PAD_RIGHT
 const PLOT_H = 144
 const PLOT_BOT = PAD_TOP + PLOT_H
 
-// Skalen. Bewusst großzügig geclampt, damit auch extreme Anatomien am
-// Rand sichtbar bleiben statt aus dem Bild zu fallen.
+// Skalen. An der Kohorte des CPAH-Papers ausgerichtet (n = 2.345), damit
+// echte Anatomien im Plot liegen statt am Rand zu kleben:
+//   NSA  105–162° beobachtet (Paper S. 3) → Achse bis 165
+//   FOR  Mittel 1,40 bei SD 0,2 (S. 3)    → Leiste ab 0,8 (Mittel − 3 SD)
+// Geclampt wird trotzdem: ein Ausreißer soll den Plot nicht sprengen.
 const CI_MIN = 0.3
 const CI_MAX = 0.8
 const NSA_MIN = 105
-const NSA_MAX = 155
-const FOR_MIN = 1.0
+const NSA_MAX = 165
+const FOR_MIN = 0.8
 const FOR_MAX = 2.2
 
 function clamp(v: number, lo: number, hi: number): number {

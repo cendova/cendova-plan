@@ -961,13 +961,18 @@ Exit 0), dazu 117 Browser-Prüfungen in `scripts/abnahme-femurprofil/`.
 Der Diff gegen `main` umfasst 24 Dateien, keine DICOMs, keine
 Zugangsdaten, `git diff --check` sauber.
 
-**Ein Punkt bleibt offen und braucht Philipp:** Die Grenzwerte (CI
-0,50/0,60, NSA 120°/140°, FOR 1,60) sind am Abstract des CPAH-Papers
-NICHT belegbar — dort steht nur die Struktur. Der Volltext ist nicht frei
-zugänglich (kein PMC-Eintrag). Sie stammen aus dem Handoff und sind im
-Modulkopf von `femurProfile.ts` ausdrücklich als **nicht am Volltext
-geprüft** markiert. Jede Grenze steht genau einmal; eine Korrektur ist
-eine Zeile plus Test.
+**Grenzwerte am Volltext verifiziert (11.08.2026).** Philipp hat das
+Paper beigebracht; alle drei Schwellen sind wörtlich belegt (Methodenteil
+S. 2 für CI 0,5/0,6 und NSA 120°/140°, S. 3 für FOR 1,60) und stimmen
+mit der Umsetzung überein — einschließlich der EINSCHLIESSENDEN
+B-Grenzen („0.5 to 0.6"). Fundstellen stehen im Modulkopf von
+`femurProfile.ts`. Zwei Präzisierungen daraus:
+
+- Die FOR-Schwelle 1,60 ist **verteilungsbasiert** (Mittelwert + 1 SD der
+  Kohorte), nicht klinisch hergeleitet — sie trennt „auffällig hohes
+  Offset in dieser Kohorte" ab, nicht „behandlungsbedürftig".
+- FOR = FO / **Kortikalis**-Breite 10 cm distal des Trochanter minor
+  (also Z, nicht der Kanal) — so implementiert.
 
 **Was der lokale Test noch leisten muss** (die Skripte fahren nur
 synthetische Geometrie): Plausibilität der Werte an echter Anatomie,
@@ -1002,16 +1007,45 @@ Punktsetzung am realen Röntgenbild, und die Frage, ob die
 
 **Ziel:** Keine Hersteller- oder Variantenannahmen in Code gießen.
 
-**Kein Code vor Klärung.** Mit Philipp festlegen:
+**Neu gefasst am 11.08.2026, nachdem der Volltext vorlag.** Das Paper
+vergleicht nicht Marken, sondern **Schaft-GEOMETRIEN** nach der
+Klassifikation von Radaelli et al. (Methodenteil S. 3):
 
-- Quadra-H: Standard, lateralisiert, Short Neck?
-- Quadra-S noch klinisch verwendet?
-- Quadra-C vorhanden?
-- Quadra-P collarless, collared, cemented?
-- Welche Größen und CCD-Varianten enthält das importierte Paket?
-- Welche Varianten sollen nur vergleichbar, welche als verfügbare Alternative angezeigt werden?
+| Klasse | Beschreibung im Paper | dort geprüfte Designs |
+|---|---|---|
+| **A** | straight stem (Geradschaft) | 3 |
+| **B3** | shortened quadrangular taper (verkürzter Rechteck-Taper) | 1 |
+| **C2** | anatomic fit-and-fill | 1 |
+| **F** | short stem (Kurzschaft) | 2 |
 
-Ergebnis in `docs/HANDOFF_femurprofil-cpah.md` und einem fachlich bestätigten Tabellenabschnitt dokumentieren.
+Damit ändert sich, was zu bestätigen ist. Die alte Frageliste zielte auf
+Quadra-Varianten; die Ergebnisse des Papers hängen aber an der
+Geometrie-Klasse, nicht am Namen. Übertragbar sind sie nur, wenn jedem
+Schaft im Paket seine Klasse zugeordnet ist.
+
+**Was Philipp bestätigen muss — in dieser Reihenfolge:**
+
+1. **Geometrie-Klasse je Schaft im Paket.** Das Programm kennt aus dem
+   Paket `family`, `variant`, Größen und den CCD-Winkel
+   (`STEM_CCD_BY_FOLDER`) — die Klasse A/B3/C2/F steht dort nicht und
+   lässt sich auch nicht ableiten. Ohne sie ist keine Regel aus dem
+   Paper anwendbar. Das ist die eigentliche Sperre für Phase B.
+2. **Fixation je Schaft:** zementfrei oder zementiert. Trägt die
+   Dorr-C-Logik (die dominiert laut Handoff den geometrischen Fit) und
+   steht ebenfalls nicht im Paket.
+3. **Collar:** collarless / collared — nur dort, wo es die Variante
+   wirklich gibt.
+4. **Rolle:** Welche Varianten sind lokal **verfügbar** (dürfen als
+   Alternative vorgeschlagen werden) und welche nur **vergleichbar**
+   (erscheinen im Vergleich, aber nicht als Empfehlung)?
+
+**Wichtige Einschränkung, die in die Regeln gehört:** Das Paper plant
+digital an fünf Fällen je CPAH-Typ. Es gibt **keine implantierten
+Vergleichsgruppen und keine Endpunkte** (PPF, Lockerung, Revision, PROM).
+Aussagen bleiben deshalb „geometrisch passend", nie „klinisch überlegen".
+
+Ergebnis in `docs/HANDOFF_femurprofil-cpah.md` und einem fachlich
+bestätigten Tabellenabschnitt dokumentieren.
 
 ---
 
