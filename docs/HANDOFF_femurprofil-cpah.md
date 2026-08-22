@@ -257,11 +257,11 @@ Nicht im ersten Schritt:
 ## Radaelli-Zuordnung des lokalen Portfolios — BESTÄTIGT 22.08.2026
 
 *Von Philipp vollständig bestätigt: Quadra-P = B2 („nicht verkürzt"),
-SMS = F, MasterLoc = A; Quadra-H und Quadra-C sind — anders als zunächst
-angenommen — im Einsatz. **Alle Schäfte im Einsatz sind planbar** (dürfen
-von Regeln aktiv vorgeschlagen werden), keine Nur-Vergleichs-Rolle.
-Quadra-S und AMIStem werden lokal nicht verwendet. Damit ist die
-fachliche Sperre aus Task 13 aufgehoben.*
+SMS = F, MasterLoc = A; Quadra-H, Quadra-C und Quadra-P Cemented sind —
+anders als zunächst angenommen — im Einsatz. **Alle Schäfte im Einsatz
+sind planbar** (dürfen von Regeln aktiv vorgeschlagen werden), keine
+Nur-Vergleichs-Rolle. Quadra-S und AMIStem werden lokal nicht verwendet.
+Damit ist die fachliche Sperre aus Task 13 aufgehoben.*
 
 Radaelli-Taxonomie (2023, [DOI 10.1016/j.arth.2022.09.014](https://doi.org/10.1016/j.arth.2022.09.014)):
 **A** flat taper (Flachkeil) · **B1** rechteckiger Taper, gestrahlt ·
@@ -277,9 +277,10 @@ Die Klassifikation gilt NUR für zementfreie Schäfte.
 | Quadra-H | gerade, Dreifach-Taper, trapezoider Querschnitt, voll HA-beschichtet | **B2** ✅ | zementfrei | planbar |
 | SMS | Kurzschaft, „anatomic curvature along the calcar arch", metaphysärer Press-fit; Hersteller-Indikation u. a. Dorr A/enger Kanal | **F** ✅ | zementfrei | planbar |
 | MasterLoc | „cementless flat dual tapered design … designed for proximal fixation" (Medacta); RSA-Studie: „cementless flat dual-tapered wedge stem", dort direkt mit dem Typ-A-Archetyp Taperloc verglichen | **A** ✅ | zementfrei | planbar |
+| Quadra-P Cemented | poliert, Edelstahl | keine Radaelli-Klasse (gilt nur zementfrei) | zementiert | planbar |
 | Quadra-C | poliert, zementiert | keine Radaelli-Klasse (gilt nur zementfrei) | zementiert | planbar |
 | Quadra-R | Revisionsschaft | außerhalb (Paper: primäre elektive THA) | — | — |
-| Quadra-S / Quadra-P Cemented / AMIStem | — | — | — | ❌ lokal nicht verwendet bzw. nicht benannt |
+| Quadra-S / AMIStem | — | — | — | ❌ lokal nicht verwendet |
 
 **Folgen für die Regeln (mit den bestätigten Klassen):**
 
@@ -292,10 +293,10 @@ Die Klassifikation gilt NUR für zementfreie Schäfte.
 - Alle CPAH-Ableitungen bleiben GEOMETRIE-Aussagen (Paper ohne
   Outcome-Endpunkte, 5 Fälle/Typ) — nie als klinische Überlegenheit
   formulieren.
-- Quadra-C läuft außerhalb der Klassifikation; seine Rolle kommt aus der
-  Dorr-C-/Fixations-Logik, nicht aus CPAH. Als einziger zementierter
-  planbarer Schaft ist er das Ziel der Regel „Dorr C → zementierte
-  Alternative prüfen" (Task 15).
+- Quadra-C und Quadra-P Cemented laufen außerhalb der Klassifikation;
+  ihre Rolle kommt aus der Dorr-C-/Fixations-Logik, nicht aus CPAH. Als
+  die beiden zementierten planbaren Schäfte sind sie das Ziel der Regel
+  „Dorr C → zementierte Alternative prüfen" (Task 15).
 
 Quellen (via PubMed bzw. Hersteller):
 Radaelli et al. 2022 ([DOI 10.1016/j.arth.2022.09.014](https://doi.org/10.1016/j.arth.2022.09.014));
@@ -309,7 +310,7 @@ erreichbar).
 
 ## Offene fachliche Entscheidungen
 
-1. ~~Welche Schaftvarianten sind lokal tatsächlich verfügbar und sollen im MVP regelbasiert abgebildet werden?~~ **Beantwortet 22.08.2026** — siehe Radaelli-Tabelle oben: Quadra-P, Quadra-H, SMS, MasterLoc, Quadra-C; alle planbar.
+1. ~~Welche Schaftvarianten sind lokal tatsächlich verfügbar und sollen im MVP regelbasiert abgebildet werden?~~ **Beantwortet 22.08.2026** — siehe Radaelli-Tabelle oben: Quadra-P, Quadra-H, SMS, MasterLoc, Quadra-C, Quadra-P Cemented; alle planbar.
 2. Soll das manuelle Dorr-Override bereits im ersten PR persistiert werden oder in einem zweiten PR folgen?
 3. Soll „Bone Health/DXA empfohlen“ im ersten PR nur als Hinweis erscheinen oder als eigener strukturierter Datensatz?
 4. Welche Neutralitätszone gilt klinisch für Delta-FO und Delta-LLD bei einem späteren Schaftvergleich?
