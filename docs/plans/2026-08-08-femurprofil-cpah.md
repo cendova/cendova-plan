@@ -1047,6 +1047,24 @@ Aussagen bleiben deshalb „geometrisch passend", nie „klinisch überlegen".
 Ergebnis in `docs/HANDOFF_femurprofil-cpah.md` und einem fachlich
 bestätigten Tabellenabschnitt dokumentieren.
 
+**ERLEDIGT 22.08.2026 — von Philipp bestätigt:**
+
+| Schaft | Klasse | Fixation | Rolle |
+|---|---|---|---|
+| Quadra-P collarless/collared | B2 (nicht verkürzt) | zementfrei | planbar |
+| Quadra-H | B2 | zementfrei | planbar |
+| SMS | F | zementfrei | planbar |
+| MasterLoc | A | zementfrei | planbar |
+| Quadra-C | — (zementiert, außerhalb Radaelli) | zementiert | planbar |
+
+Quadra-S und AMIStem werden lokal nicht verwendet; Quadra-R (Revision)
+liegt außerhalb des Papers. Alle Schäfte im Einsatz sind **planbar** —
+es gibt keine Nur-Vergleichs-Rolle. Details und Quellen (u. a.
+MasterLoc-RSA-Studie DOI 10.1016/j.artd.2023.101157) im Handoff,
+Abschnitt „Radaelli-Zuordnung". Regel-Konsequenz für Phase B: A und F
+sind vom Paper direkt simuliert, **B2 nicht** (nur Analogie zu B3 —
+ausweisen!); Quadra-C trägt die „Dorr C → zementiert"-Regel.
+
 ---
 
 ## Task 14: Generisches Schaftprofil im Paketformat
