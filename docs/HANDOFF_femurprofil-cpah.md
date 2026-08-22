@@ -254,12 +254,11 @@ Nicht im ersten Schritt:
 - Quadra-P-Systembeschreibung: https://www.medacta.com/en/quadra-p-system-global
 - Quadra-H-Stress-Shielding, Morita: https://pubmed.ncbi.nlm.nih.gov/38631686/
 
-## Radaelli-Zuordnung der Medacta-Schäfte — VORSCHLAG, unbestätigt
+## Radaelli-Zuordnung des lokalen Portfolios — Stand 11.08.2026
 
-*Recherchiert 11.08.2026 (Online-Quellen unten). Die CPAH-Ergebnisse
-hängen an der Radaelli-Geometrieklasse; diese Tabelle ist der Vorschlag
-zur Zuordnung des lokalen Portfolios. Erst nach Philipps Bestätigung
-(insbesondere der beiden ?-Zeilen) darf sie in Regeln einfließen.*
+*Von Philipp bestätigt (11.08.2026): Quadra-P = B2 („nicht verkürzt"),
+SMS = F; Quadra-S/H und AMIStem werden lokal NICHT verwendet. Für den
+MasterLoc liegt der Vorschlag **Typ A** vor — noch unbestätigt.*
 
 Radaelli-Taxonomie (2023, [DOI 10.1016/j.arth.2022.09.014](https://doi.org/10.1016/j.arth.2022.09.014)):
 **A** flat taper (Flachkeil) · **B1** rechteckiger Taper, gestrahlt ·
@@ -269,39 +268,44 @@ fit-and-fill · **C3** kurzer fit-and-fill · **D** konisch (Spline) ·
 **E** zylindrisch · **F** kalkargeführter Kurzschaft.
 Die Klassifikation gilt NUR für zementfreie Schäfte.
 
-| Schaft | Belegte Geometrie | Vorschlag | Fixation |
+| Schaft | Belegte Geometrie | Klasse | Status |
 |---|---|---|---|
-| Quadra-H | gerade, Dreifach-Taper, trapezoider Querschnitt, voll HA-beschichtet | **B2** | zementfrei |
-| Quadra-S | identische Geometrie, nur sandgestrahlt (ohne HA) | **B1** — oder mit H zusammen als B2, wenn Geometrie vor Oberfläche geht (die Register-Analyse fasst HA-/Nicht-HA-Varianten einer Marke zusammen) | zementfrei |
-| Quadra-P collarless/collared | Dreifach-Taper trapezoid, MectaGrip proximal 50 % + HA über ganze Länge, „double tapered distal tip"; P-Familie wird als „distally reduced" beworben | **B3?** — WENN die distale Reduktion als „shortened" zählt, sonst B2. **Das ist die wichtigste offene Frage**, denn B3 ist eine der vier im CPAH-Paper simulierten Klassen | zementfrei |
+| Quadra-P collarless/collared | Dreifach-Taper trapezoid, MectaGrip proximal + HA, distal reduziert, aber NICHT verkürzt | **B2** | ✅ bestätigt |
+| SMS | Kurzschaft, „anatomic curvature along the calcar arch", metaphysärer Press-fit; Hersteller-Indikation u. a. Dorr A/enger Kanal | **F** | ✅ bestätigt |
+| MasterLoc | „cementless flat dual tapered design … designed for proximal fixation" (Medacta); RSA-Studie: „cementless flat dual-tapered wedge stem", dort direkt mit dem Typ-A-Archetyp Taperloc verglichen | **A** | 🟡 Vorschlag |
 | Quadra-P Cemented | poliert, Edelstahl | keine Radaelli-Klasse | zementiert |
-| Quadra-C | poliert, zementiert | keine Radaelli-Klasse | zementiert |
+| Quadra-C | poliert, zementiert | keine Radaelli-Klasse | zementiert — **offen: noch im Einsatz?** |
 | Quadra-R | Revisionsschaft | außerhalb (Paper: primäre elektive THA) | — |
-| AMIStem-H *(falls im Paket)* | von der Register-Analyse ausdrücklich als **C3** geführt | C3 | zementfrei |
+| Quadra-S / Quadra-H / AMIStem | — | — | ❌ lokal nicht verwendet |
 
-**Folgen für die Regeln, wenn die Zuordnung so bestätigt wird:**
+**Folgen für die Regeln (mit den bestätigten Klassen):**
 
-- Das CPAH-Paper simulierte NUR A, B3, C2 und F. Quadra-H/S (B1/B2)
-  gehört zu KEINER dieser Klassen — für den Standard-Quadra gibt es also
-  keine direkte CPAH-Evidenz, nur die Nähe zur B3-Gruppe. Regeln dürfen
-  das nicht verwischen.
-- Ist Quadra-P B3, sind die B3-Ergebnisse des Papers (beste
-  LLD-Rekonstruktion; gute FO-Rekonstruktion in High-Offset-Typen) direkt
-  auf ihn anwendbar — als GEOMETRIE-Aussage, nicht als klinische.
+- Das CPAH-Paper simulierte NUR A, B3, C2 und F. Damit sind SMS (F) und
+  — falls A bestätigt wird — MasterLoc DIREKT von den Simulationen
+  abgedeckt.
+- **Quadra-P (B2), das Arbeitspferd, ist es NICHT.** Der nächste
+  simulierte Verwandte ist B3 (verkürzte Variante derselben
+  Taper-Familie). Regeln müssen diese Lücke ausweisen („keine direkte
+  CPAH-Evidenz für B2, Analogie zu B3") statt sie zu verwischen.
+- Alle CPAH-Ableitungen bleiben GEOMETRIE-Aussagen (Paper ohne
+  Outcome-Endpunkte, 5 Fälle/Typ) — nie als klinische Überlegenheit
+  formulieren.
 - Quadra-C/Quadra-P-Cemented laufen außerhalb der Klassifikation; ihre
   Rolle kommt aus der Dorr-C-/Fixations-Logik, nicht aus CPAH.
 
+**Noch offen vor Task 13:** (a) MasterLoc = A bestätigen; (b) ist
+Quadra-C noch im Einsatz?; (c) je Variante klären, ob sie „verfügbar"
+(planbar) oder nur „vergleichbar" (Anzeige) sein soll.
+
 Quellen (via PubMed bzw. Hersteller):
 Radaelli et al. 2022 ([DOI 10.1016/j.arth.2022.09.014](https://doi.org/10.1016/j.arth.2022.09.014));
-Register-Konsolidierung Finger et al. ([DOI 10.1016/j.artd.2024.101582](https://doi.org/10.1016/j.artd.2024.101582), Volltext PMC11715119 — AMIStem-H = C3, B1 höchste Revisionsrate 8,09 %);
-Frakturrisiko-Kohorte Izquierdo et al. ([DOI 10.7759/cureus.106425](https://doi.org/10.7759/cureus.106425));
-Taxonomie-Übersicht [JOEI-Review](https://journaloei.scholasticahq.com/article/143525);
-Hersteller: [Quadra-System](https://www.medacta.com/en/quadra),
-[Quadra-P-System](https://www.medacta.com/en/quadra-p-system-global),
-[Quadra-P-US/Presse](https://www.medacta.us.com/US/quadra-p-system-us)
-(dort: „The P-Stem Family includes a distally reduced, collarless,
-collared or cemented stem option"; 135°/127°, vertikales Offset bleibt
-beim Wechsel auf lateralisiert gleich).
+MasterLoc-RSA-Studie Sluiter et al. ([DOI 10.1016/j.artd.2023.101157](https://doi.org/10.1016/j.artd.2023.101157), Volltext PMC10374859 — „This stem is a cementless flat dual-tapered wedge stem … shortened stem length … proximal coating of plasma-sprayed titanium");
+Register-Konsolidierung Finger et al. ([DOI 10.1016/j.artd.2024.101582](https://doi.org/10.1016/j.artd.2024.101582), Volltext PMC11715119 — B1 höchste Revisionsrate 8,09 %);
+Hersteller: [Quadra-P-System](https://www.medacta.com/en/quadra-p-system-global),
+[MasterLoc](https://www.medacta.com/en/masterloc),
+[SMS](https://www.medacta.com/en/sms) (Beschreibungen via
+Such-Snippets belegt; medacta.com ist aus dem Container nicht direkt
+erreichbar).
 
 ## Offene fachliche Entscheidungen
 
