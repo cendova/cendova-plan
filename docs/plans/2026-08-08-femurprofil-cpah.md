@@ -1097,6 +1097,25 @@ export interface StemPlanningProfile {
 
 Schema abwärtskompatibel optional halten. Paketvalidierung mit positiven und negativen Tests.
 
+**ERLEDIGT 22.08.2026 — mit zwei bewussten Abweichungen vom Entwurf
+oben** (der stammt von VOR der Task-13-Neufassung):
+
+- `geometry: 'rectangular-triple-taper' | 'other'` ersetzt durch
+  `radaelliClass?: RadaelliKlasse` (A/B1–B3/C1–C3/D/E/F, optional) — die
+  Regeln aus Task 13/15 hängen an der Radaelli-Klasse, ein
+  Freitext-Geometriefeld hätte keinen Konsumenten. Die Validierung
+  erzwingt: Klasse NUR bei `fixation: 'cementless'`; `primaryFixation:
+  'cement'` genau bei `fixation: 'cemented'`.
+- `ccdDeg` entfällt — der CCD-Winkel hat mit `stemCcdByFolder` bereits
+  eine Quelle im Paketformat; eine zweite würde still divergieren.
+
+Umsetzung: `StemPlanningProfile` + leeres `STEM_PROFILE_BY_FOLDER` in
+`medactaCatalog.ts` (öffentliches Repo bleibt ohne Herstellerdaten),
+Manifest-Feld `stemProfileByFolder` mit schlüsselweiser Vereinigung
+(Muster stemCcdByFolder) in `packageFormat.ts` + `registry.ts`,
+10 neue Tests (positive/negative inkl. Konsistenzregeln, Merge),
+Doku-Tabelle in `docs/schablonen-pakete.md` ergänzt.
+
 ---
 
 ## Task 15: Reine regelbasierte Schaft-Hinweise

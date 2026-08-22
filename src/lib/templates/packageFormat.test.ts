@@ -144,6 +144,121 @@ describe('stemCcdByFolder (Paket-CCD-Winkel)', () => {
   })
 })
 
+// --- Schaft-Planungsprofile (Phase B, Task 14) ----------------------------
+// Die Profile sind die EINZIGE fachliche Datenquelle der späteren
+// Planungshinweise — was hier durch die Validierung kommt, dürfen die
+// Regeln ungeprüft konsumieren. Deshalb negative Fälle besonders streng.
+
+const zementfreiesProfil = {
+  fixation: 'cementless',
+  radaelliClass: 'B2',
+  collar: 'collared',
+  primaryFixation: 'metadiaphyseal',
+  intendedUse: 'primary',
+}
+
+const zementiertesProfil = {
+  fixation: 'cemented',
+  collar: 'none',
+  primaryFixation: 'cement',
+  intendedUse: 'primary',
+}
+
+const mitProfil = (profil: unknown) => ({
+  ...minimal,
+  stemProfileByFolder: { 'Quadra-P STD': profil },
+})
+
+describe('stemProfileByFolder (Schaft-Planungsprofile)', () => {
+  it('akzeptiert ein vollständiges zementfreies Profil', () => {
+    expect(validateManifest(mitProfil(zementfreiesProfil)).ok).toBe(true)
+  })
+  it('akzeptiert ein zementiertes Profil ohne Radaelli-Klasse', () => {
+    expect(validateManifest(mitProfil(zementiertesProfil)).ok).toBe(true)
+  })
+  it('akzeptiert ein zementfreies Profil OHNE Radaelli-Klasse (unbekannt ist erlaubt)', () => {
+    const { radaelliClass: _weg, ...ohneKlasse } = zementfreiesProfil
+    expect(validateManifest(mitProfil(ohneKlasse)).ok).toBe(true)
+  })
+  it('akzeptiert die optionalen Varianten-Felder', () => {
+    const r = validateManifest(
+      mitProfil({ ...zementfreiesProfil, neckVariant: 'short', offsetVariant: 'lateralized' }),
+    )
+    expect(r.ok).toBe(true)
+  })
+  it('lehnt unbekannte Werte in jedem Feld einzeln ab', () => {
+    const kaputt: Record<string, unknown>[] = [
+      { ...zementfreiesProfil, fixation: 'hybrid' },
+      { ...zementfreiesProfil, collar: 'optional' },
+      { ...zementfreiesProfil, primaryFixation: 'press-fit' },
+      { ...zementfreiesProfil, intendedUse: 'training' },
+      { ...zementfreiesProfil, radaelliClass: 'G' },
+      { ...zementfreiesProfil, neckVariant: 'extra-long' },
+      { ...zementfreiesProfil, offsetVariant: 'high' },
+    ]
+    for (const p of kaputt) {
+      const r = validateManifest(mitProfil(p))
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.error).toMatch(/stemProfileByFolder\['Quadra-P STD'\]/)
+    }
+  })
+  it('lehnt fehlende Pflichtfelder ab', () => {
+    const { fixation: _f, ...ohneFixation } = zementfreiesProfil
+    const { collar: _c, ...ohneCollar } = zementfreiesProfil
+    const { intendedUse: _i, ...ohneUse } = zementfreiesProfil
+    for (const p of [ohneFixation, ohneCollar, ohneUse]) {
+      expect(validateManifest(mitProfil(p)).ok).toBe(false)
+    }
+  })
+  it('lehnt zementiert MIT Radaelli-Klasse ab (Klassifikation gilt nur zementfrei)', () => {
+    const r = validateManifest(mitProfil({ ...zementiertesProfil, radaelliClass: 'A' }))
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/zementfreie/)
+  })
+  it('lehnt widersprüchliche Fixation/Verankerung ab', () => {
+    // Zementiert muss in Zement verankern …
+    expect(
+      validateManifest(mitProfil({ ...zementiertesProfil, primaryFixation: 'diaphyseal' })).ok,
+    ).toBe(false)
+    // … und zementfrei darf es nicht.
+    const { radaelliClass: _weg, ...zementfreiOhneKlasse } = zementfreiesProfil
+    expect(
+      validateManifest(mitProfil({ ...zementfreiOhneKlasse, primaryFixation: 'cement' })).ok,
+    ).toBe(false)
+  })
+  it('lehnt Nicht-Objekte als Profil ab', () => {
+    expect(validateManifest(mitProfil(null)).ok).toBe(false)
+    expect(validateManifest(mitProfil('B2')).ok).toBe(false)
+  })
+})
+
+describe('mergeManifests — Schaft-Planungsprofile', () => {
+  it('vereinigt schlüsselweise wie stemCcdByFolder (Addon gewinnt)', () => {
+    const b: TemplatePackageManifest = {
+      ...basis,
+      stemProfileByFolder: {
+        'Quadra-P STD': { ...zementfreiesProfil, offsetVariant: 'standard' },
+        'Quadra-C STD': zementiertesProfil,
+      } as TemplatePackageManifest['stemProfileByFolder'],
+    }
+    const a: TemplatePackageManifest = {
+      ...addon,
+      stemProfileByFolder: {
+        'Quadra-P STD': { ...zementfreiesProfil, offsetVariant: 'lateralized' },
+        'MasterLoc STD': { ...zementfreiesProfil, radaelliClass: 'A', collar: 'none' },
+      } as TemplatePackageManifest['stemProfileByFolder'],
+    }
+    const out = mergeManifests(b, a)
+    expect(Object.keys(out.stemProfileByFolder ?? {}).sort()).toEqual([
+      'MasterLoc STD',
+      'Quadra-C STD',
+      'Quadra-P STD',
+    ])
+    expect(out.stemProfileByFolder?.['Quadra-P STD']?.offsetVariant).toBe('lateralized')
+    expect(out.stemProfileByFolder?.['MasterLoc STD']?.radaelliClass).toBe('A')
+  })
+})
+
 // --- Bildpfad-Regel (Security-Fix §9) -------------------------------------
 // Externe URLs bleiben verboten, aber gebündelte App-Pfade (kein images/-
 // Präfix) sind LEGITIM — reale Pakete referenzieren sie. Regression:

@@ -15,7 +15,11 @@
  */
 import type { KneeImage } from '../knee/kneeImages'
 import type { MedactaImageMeta } from '../hip/medactaImages'
-import type { MedactaEntry } from '../hip/medactaCatalog'
+import {
+  RADAELLI_KLASSEN,
+  type MedactaEntry,
+  type StemPlanningProfile,
+} from '../hip/medactaCatalog'
 import type {
   GenesisIIInsertType,
   GenesisIITibiaSize,
@@ -89,6 +93,11 @@ export interface TemplatePackageManifest {
   /** CCD-Winkel (Grad) je Schaft-Katalog-Ordnername — wird wie
    *  kneeContours schlüsselweise über die eingebauten Werte gelegt. */
   stemCcdByFolder?: Record<string, number>
+  /** Strukturiertes Planungsprofil je Schaft-Katalog-Ordnername
+   *  (Fixation, Radaelli-Klasse, Collar, primäre Verankerung) — Grundlage
+   *  der Schaft-Planungshinweise; schlüsselweise Vereinigung wie
+   *  stemCcdByFolder. */
+  stemProfileByFolder?: Record<string, StemPlanningProfile>
   kneeCatalog?: KneeCatalogData
   /** Schulter-Katalog (Familien + Größen-Labels). */
   shoulderCatalog?: ShoulderCatalogData
@@ -132,6 +141,51 @@ export function istSichererBildpfad(p: unknown): p is string {
   // Kein URL-Schema am Anfang (http:, https:, data:, javascript:, …).
   if (/^[a-z][a-z0-9+.-]*:/i.test(p)) return false
   return true
+}
+
+// Wertelisten des Schaft-Planungsprofils — Regeln (stemPlanningRules)
+// verlassen sich darauf, dass NUR diese Werte durch die Validierung kommen.
+const STEM_FIXATION = ['cementless', 'cemented'] as const
+const STEM_COLLAR = ['none', 'collared'] as const
+const STEM_PRIMARY_FIXATION = ['metaphyseal', 'metadiaphyseal', 'diaphyseal', 'cement'] as const
+const STEM_NECK_VARIANTS = ['regular', 'short'] as const
+const STEM_OFFSET_VARIANTS = ['standard', 'lateralized'] as const
+const STEM_INTENDED_USE = ['primary', 'revision'] as const
+
+const enthaelt = (liste: readonly string[], wert: unknown): boolean =>
+  typeof wert === 'string' && liste.includes(wert)
+
+/**
+ * Prüft EIN Schaft-Planungsprofil; gibt die Fehlbeschreibung zurück oder
+ * null, wenn es gültig ist. Neben den Wertelisten werden zwei fachliche
+ * Konsistenzen erzwungen: die Radaelli-Klassifikation gilt NUR zementfrei,
+ * und die primäre Verankerung 'cement' gehört genau zu fixation 'cemented'
+ * — ein Widerspruch hier würde später falsche Planungshinweise erzeugen.
+ */
+function stemProfilFehler(p: unknown): string | null {
+  if (typeof p !== 'object' || p === null) return 'ist kein Objekt'
+  const s = p as Partial<StemPlanningProfile>
+  if (!enthaelt(STEM_FIXATION, s.fixation)) return `fixation unbekannt (${String(s.fixation)})`
+  if (!enthaelt(STEM_COLLAR, s.collar)) return `collar unbekannt (${String(s.collar)})`
+  if (!enthaelt(STEM_PRIMARY_FIXATION, s.primaryFixation))
+    return `primaryFixation unbekannt (${String(s.primaryFixation)})`
+  if (!enthaelt(STEM_INTENDED_USE, s.intendedUse))
+    return `intendedUse unbekannt (${String(s.intendedUse)})`
+  if (s.radaelliClass !== undefined && !enthaelt(RADAELLI_KLASSEN, s.radaelliClass))
+    return `radaelliClass unbekannt (${String(s.radaelliClass)})`
+  if (s.neckVariant !== undefined && !enthaelt(STEM_NECK_VARIANTS, s.neckVariant))
+    return `neckVariant unbekannt (${String(s.neckVariant)})`
+  if (s.offsetVariant !== undefined && !enthaelt(STEM_OFFSET_VARIANTS, s.offsetVariant))
+    return `offsetVariant unbekannt (${String(s.offsetVariant)})`
+  if (s.fixation === 'cemented') {
+    if (s.radaelliClass !== undefined)
+      return 'hat eine radaelliClass — die Klassifikation gilt nur für zementfreie Schäfte'
+    if (s.primaryFixation !== 'cement')
+      return `ist zementiert, primaryFixation muss 'cement' sein (ist: ${String(s.primaryFixation)})`
+  } else if (s.primaryFixation === 'cement') {
+    return "ist zementfrei, primaryFixation darf nicht 'cement' sein"
+  }
+  return null
 }
 
 /** Minimal-robuste Validierung eines geparsten manifest.json. */
@@ -197,6 +251,14 @@ export function validateManifest(
       }
     }
   }
+  if (m.stemProfileByFolder !== undefined) {
+    for (const [folder, profil] of Object.entries(m.stemProfileByFolder)) {
+      const fehler = stemProfilFehler(profil)
+      if (fehler !== null) {
+        return { ok: false, error: `stemProfileByFolder['${folder}'] ${fehler}` }
+      }
+    }
+  }
   // Alle referenzierten Bildpfade müssen sichere, ZIP-interne images/-Pfade
   // sein — kein externer Beacon, kein Pfad-Ausbruch.
   const referenzen = referencedImagePaths(m as TemplatePackageManifest)
@@ -220,7 +282,8 @@ export function validateManifest(
     ) +
     Object.keys(m.kneeContours ?? {}).length +
     (m.shoulderCatalog?.families?.length ?? 0) +
-    Object.keys(m.shoulderContours ?? {}).length
+    Object.keys(m.shoulderContours ?? {}).length +
+    Object.keys(m.stemProfileByFolder ?? {}).length
   if (katalogGroesse > MAX_PAKET_KATALOG) {
     return { ok: false, error: `Katalog im Manifest ist zu groß (> ${MAX_PAKET_KATALOG} Einträge)` }
   }
@@ -245,6 +308,7 @@ export function mergeManifests(
         k === 'kneeContours' ||
         k === 'shoulderContours' ||
         k === 'stemCcdByFolder' ||
+        k === 'stemProfileByFolder' ||
         k === 'merge' ||
         k === 'name'
       )
@@ -264,6 +328,12 @@ export function mergeManifests(
   }
   if (addon.stemCcdByFolder) {
     out.stemCcdByFolder = { ...(base?.stemCcdByFolder ?? {}), ...addon.stemCcdByFolder }
+  }
+  if (addon.stemProfileByFolder) {
+    out.stemProfileByFolder = {
+      ...(base?.stemProfileByFolder ?? {}),
+      ...addon.stemProfileByFolder,
+    }
   }
   // Der gespeicherte Kombi-Stand ist ein normales Voll-Paket.
   delete out.merge
