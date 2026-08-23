@@ -34,7 +34,13 @@ import {
   SHOULDER_SIZE_LABELS,
 } from '../shoulder/shoulderCatalog'
 import { BACKGROUNDS } from '../knee/templateBackgroundsData'
-import { idbClearPackage, idbLoadPackage, idbStorePackage } from './idb'
+import {
+  idbClearPackage,
+  idbLadeSicherungsHash,
+  idbLoadPackage,
+  idbMerkeSicherungsHash,
+  idbStorePackage,
+} from './idb'
 import {
   mergeManifests,
   referencedImagePaths,
@@ -292,6 +298,12 @@ export async function initTemplateRegistry(): Promise<void> {
         imageBlobs = stored.images
         applyOverrides(manifest)
         publishState()
+        // Im Hintergrund mit der geteilten Datei-Sicherung abgleichen:
+        // CendovaPlan läuft unter MEHREREN Browser-Herkünften (allein auf
+        // :5173, eingebettet unter der CendovaView-Origin) mit je EIGENER
+        // IndexedDB — ohne Abgleich arbeitete die eine Herkunft nach einem
+        // Paket-Update der anderen still mit veralteten Schablonen weiter.
+        void gleicheMitDateiSicherungAb()
         return
       }
       logDiagnostic(`Schablonen-Paket in IndexedDB ungültig: ${v.error}`)
@@ -308,6 +320,7 @@ export async function initTemplateRegistry(): Promise<void> {
     if (backup) {
       const result = await importTemplatePackage(
         new File([new Uint8Array(backup)], 'lokale-sicherung.zip', { type: 'application/zip' }),
+        { hash: await sha256Hex(backup) },
       )
       if (result.ok) {
         logDiagnostic(
@@ -338,6 +351,11 @@ function unzipAsync(data: Uint8Array): Promise<Record<string, Uint8Array>> {
  */
 export async function importTemplatePackage(
   file: File,
+  // Gesetzt, wenn das ZIP aus der geteilten DATEI-Sicherung stammt: dann wird
+  // deren Stand (Hash) nur GEMERKT statt die Datei erneut zu schreiben —
+  // sonst schrieben sich mehrere Browser-Herkünfte die Datei bei jedem Start
+  // gegenseitig um (jedes ZIP fällt byteweise anders aus).
+  ausSicherung?: { hash: string | null },
 ): Promise<{ ok: true; name: string; imageCount: number } | { ok: false; error: string }> {
   try {
     const entries = await unzipAsync(new Uint8Array(await file.arrayBuffer()))
@@ -382,8 +400,13 @@ export async function importTemplatePackage(
     imageBlobs = storeImages
     applyOverrides(manifest)
     publishState()
-    // Zusätzlich als Datei sichern — übersteht Browser-Speicher-Löschungen.
-    void paketSichern()
+    if (ausSicherung) {
+      // Quelle ist die Datei selbst: nur den übernommenen Stand vermerken.
+      if (ausSicherung.hash) void idbMerkeSicherungsHash(ausSicherung.hash)
+    } else {
+      // Zusätzlich als Datei sichern — übersteht Browser-Speicher-Löschungen.
+      void paketSichern()
+    }
     logDiagnostic(
       `Schablonen-Paket importiert: ${manifest.name} (${storeImages.size} Bilder)`,
     )
@@ -422,10 +445,73 @@ async function buildPackageZipBytes(): Promise<Uint8Array | null> {
 async function paketSichern(): Promise<void> {
   try {
     const bytes = await buildPackageZipBytes()
-    if (bytes) sicherungSchreiben('paket', bytes)
+    if (!bytes) return
+    // Datei-Stand nur nach BESTÄTIGTEM Schreiben merken: sonst hielte die
+    // App einen Stand für „gesehen", der nie auf der Platte ankam — und der
+    // Abgleich drehte den Import beim nächsten Start auf die alte Datei
+    // zurück.
+    if (await sicherungSchreiben('paket', bytes)) {
+      const hash = await sha256Hex(bytes)
+      if (hash) await idbMerkeSicherungsHash(hash)
+    }
   } catch (err) {
     logDiagnostic(
       `Lokale Paket-Sicherung fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+}
+
+/** SHA-256 als Hex — null, wenn WebCrypto fehlt (dann kein Abgleich). */
+async function sha256Hex(bytes: Uint8Array): Promise<string | null> {
+  try {
+    if (!globalThis.crypto?.subtle) return null
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes as BufferSource)
+    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Beim Start: eigene IndexedDB gegen die geteilte Datei-Sicherung abgleichen.
+ *
+ * Regeln (bewusst konservativ):
+ *  - Keine Datei (oder bewusst entfernt) → IndexedDB-Stand behalten, die
+ *    Datei wird NICHT neu erzeugt (sonst käme ein auf anderer Herkunft
+ *    entferntes Paket „von selbst" wieder).
+ *  - Datei-Stand == gemerkter Stand → nichts zu tun.
+ *  - Noch kein gemerkter Stand (Erststart nach diesem Update oder
+ *    unbestätigtes Schreiben) → der Stand im Browser ist der, mit dem der
+ *    Nutzer zuletzt gearbeitet hat: Datei daran angleichen.
+ *  - Datei-Stand != gemerkter Stand → eine ANDERE Herkunft hat importiert:
+ *    Datei übernehmen (ohne sie zurückzuschreiben).
+ */
+async function gleicheMitDateiSicherungAb(): Promise<void> {
+  try {
+    const datei = await sicherungLaden('paket')
+    if (!datei) return
+    const dateiHash = await sha256Hex(datei)
+    if (!dateiHash) return
+    const bekannt = await idbLadeSicherungsHash()
+    if (bekannt === dateiHash) return
+    if (bekannt === null) {
+      await paketSichern()
+      return
+    }
+    const result = await importTemplatePackage(
+      new File([new Uint8Array(datei)], 'datei-sicherung.zip', { type: 'application/zip' }),
+      { hash: dateiHash },
+    )
+    if (result.ok) {
+      logDiagnostic(
+        `Schablonen-Paket aus geteilter Datei-Sicherung übernommen: ${result.name} (${result.imageCount} Bilder)`,
+      )
+    } else {
+      logDiagnostic(`Geteilte Datei-Sicherung nicht übernehmbar: ${result.error}`)
+    }
+  } catch (err) {
+    logDiagnostic(
+      `Abgleich mit Datei-Sicherung fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
     )
   }
 }

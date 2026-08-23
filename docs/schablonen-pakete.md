@@ -34,7 +34,22 @@ und stellt beides nach einem Browser-Speicher-Verlust selbst wieder her —
 z. B. wenn eine Klinik-Richtlinie „Websitedaten beim Schließen löschen"
 IndexedDB/localStorage leert. „Paket entfernen"/„Zurücksetzen (neutral)"
 löschen auch die Sicherung (bewusste Entscheidungen bleiben bewusst).
-Details: `vite-lokale-sicherung.ts` + `src/lib/lokaleSicherung.ts`;
+
+Dieselbe Datei ist zugleich der **Abgleich zwischen Browser-Herkünften**:
+CendovaPlan läuft allein auf `localhost:5173` UND eingebettet unter der
+CendovaView-Herkunft (`/plan`) — IndexedDB ist je Herkunft getrennt, das
+Paket wäre sonst nur dort vorhanden, wo es importiert wurde (Realtest
+23.08.2026: eingebettet keinerlei Knie-Templates). Der CendovaView-Server
+beantwortet dafür dieselben `/__cendova/sicherung/*`-Endpunkte aus
+derselben Ablage. Beim Start vergleicht die App den Datei-Stand (SHA-256,
+gemerkt in der IndexedDB) mit dem eigenen: Hat eine ANDERE Herkunft
+importiert, wird die Datei übernommen — ohne sie zurückzuschreiben, denn
+jedes neu gebaute ZIP fällt byteweise anders aus und die Herkünfte
+schaukelten sich sonst bei jedem Start gegenseitig zu Neu-Importen auf.
+Fehlt die Datei (oder wurde das Paket woanders bewusst entfernt), bleibt
+der eigene Stand unangetastet.
+Details: `vite-lokale-sicherung.ts` + `src/lib/lokaleSicherung.ts` +
+`gleicheMitDateiSicherungAb` in `src/lib/templates/registry.ts`;
 Test: `node scripts/test-lokale-sicherung.mjs`.
 
 ## ZIP-Aufbau

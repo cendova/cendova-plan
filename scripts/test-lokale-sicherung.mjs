@@ -17,7 +17,7 @@
 // Exit: 0 = alles korrekt, 1 = Fehler, 2 = kein Chromium.
 
 import { chromium } from 'playwright-core'
-import { existsSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
@@ -51,6 +51,18 @@ async function ensureServer() {
 }
 function stopServer() { if (devProc?.pid) { try { process.kill(-devProc.pid, 'SIGTERM') } catch {} } }
 
+/** Auf einen Datei-Zustand WARTEN statt fest zu schlafen: die Sicherungen
+ *  sind fire-and-forget — auf einem kalt startenden, ausgelasteten Rechner
+ *  (SwiftShader-Init!) reichte eine feste 1,2-s-Pause nicht immer (flakig). */
+async function warteBis(bedingung, ms = 15000) {
+  const start = Date.now()
+  while (Date.now() - start < ms) {
+    if (bedingung()) return true
+    await sleep(250)
+  }
+  return bedingung()
+}
+
 const results = []
 const check = (n, ok, d = '') => { results.push(ok); console.log(`${ok ? 'PASS' : 'FAIL'}  ${n}${d ? '  — ' + d : ''}`) }
 
@@ -70,6 +82,20 @@ const MANIFEST = {
 }
 const TEST_ZIP = zipSync({
   'manifest.json': strToU8(JSON.stringify(MANIFEST)),
+  'images/test.png': PNG_1x1,
+})
+// Zweiter, ANDERER Stand — steht fuer einen Import auf einer anderen
+// Browser-Herkunft (z. B. CendovaPlan eingebettet unter CendovaView).
+const MANIFEST_V2 = {
+  ...MANIFEST,
+  name: 'Sicherungs-Testpaket v2',
+  kneeContours: {
+    ...MANIFEST.kneeContours,
+    'legion-ps-tibia|AP|0': { wMm: 8, hMm: 8, points: [{ x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }] },
+  },
+}
+const TEST_ZIP_V2 = zipSync({
+  'manifest.json': strToU8(JSON.stringify(MANIFEST_V2)),
   'images/test.png': PNG_1x1,
 })
 
@@ -113,8 +139,8 @@ async function main() {
       const o = await import('/src/state/orgProfileStore.ts')
       o.useOrgProfileStore.getState().setProfile({ headerSubtitle: 'Wipe-Test-Zentrum' })
     }, Array.from(TEST_ZIP))
-    await pageA.waitForTimeout(1200) // fire-and-forget-Sicherungen landen lassen
-    check('Sicherungsdateien auf Platte', existsSync(join(DATEN_DIR, 'schablonen-paket.zip')) && existsSync(join(DATEN_DIR, 'profil.json')))
+    const beideDa = () => existsSync(join(DATEN_DIR, 'schablonen-paket.zip')) && existsSync(join(DATEN_DIR, 'profil.json'))
+    check('Sicherungsdateien auf Platte', await warteBis(beideDa))
     await ctxA.close()
 
     // --- Kontext B: frischer Browser-Speicher (= Richtlinien-Wipe) ---------
@@ -125,6 +151,27 @@ async function main() {
     check('Paket nach Wipe automatisch wiederhergestellt', b.contours === 1 && b.pkgName === 'Sicherungs-Testpaket', JSON.stringify(b))
     check('Profil nach Wipe automatisch wiederhergestellt', b.subtitle === 'Wipe-Test-Zentrum', JSON.stringify(b.subtitle))
 
+    // --- Fremder Stand in der Datei: beim Start übernehmen -----------------
+    // Eine ANDERE Herkunft (im Test: direkt auf die Platte geschrieben, wie
+    // es der CendovaView-Server für den eingebetteten CendovaPlan tut) hat
+    // ein neues Paket gesichert. Der nächste Start hier muss es übernehmen —
+    // sonst arbeitet diese Herkunft still mit veralteten Schablonen weiter.
+    const v2Datei = join(DATEN_DIR, 'schablonen-paket.zip')
+    writeFileSync(v2Datei, TEST_ZIP_V2)
+    await pageB.reload({ waitUntil: 'load', timeout: 60000 })
+    await pageB.waitForFunction(() => document.getElementById('root')?.children.length > 0, { timeout: 60000 })
+    let sync = null
+    for (let i = 0; i < 20 && sync?.pkgName !== 'Sicherungs-Testpaket v2'; i++) {
+      await pageB.waitForTimeout(500)
+      sync = await appState(pageB)
+    }
+    check('Neuer Datei-Stand wird beim Start übernommen', sync.contours === 2 && sync.pkgName === 'Sicherungs-Testpaket v2', JSON.stringify(sync))
+    // Die Übernahme darf die Datei NICHT zurückschreiben (jedes neu gebaute
+    // ZIP fällt byteweise anders aus — sonst schaukeln sich die Herkünfte
+    // bei jedem Start gegenseitig zu Neu-Importen auf).
+    await pageB.waitForTimeout(1200)
+    check('Übernahme schreibt die Datei nicht um', Buffer.compare(readFileSync(v2Datei), Buffer.from(TEST_ZIP_V2)) === 0)
+
     // --- Bewusstes Entfernen löscht auch die Sicherung ---------------------
     await pageB.evaluate(async () => {
       const r = await import('/src/lib/templates/registry.ts')
@@ -132,8 +179,8 @@ async function main() {
       const o = await import('/src/state/orgProfileStore.ts')
       o.useOrgProfileStore.getState().resetProfile()
     })
-    await pageB.waitForTimeout(1200)
-    check('Entfernen/Zurücksetzen löscht Sicherungsdateien', !existsSync(join(DATEN_DIR, 'schablonen-paket.zip')) && !existsSync(join(DATEN_DIR, 'profil.json')))
+    const beideWeg = () => !existsSync(join(DATEN_DIR, 'schablonen-paket.zip')) && !existsSync(join(DATEN_DIR, 'profil.json'))
+    check('Entfernen/Zurücksetzen löscht Sicherungsdateien', await warteBis(beideWeg))
     await ctxB.close()
 
     // --- Kontext C: nichts kommt „von selbst" wieder -----------------------

@@ -37,18 +37,30 @@ export async function sicherungLaden(name: SicherungsName): Promise<Uint8Array |
   }
 }
 
-/** Sicherung schreiben — fire-and-forget (Fehler nur ins Diagnose-Log). */
-export function sicherungSchreiben(name: SicherungsName, daten: Uint8Array | string): void {
-  if (!lokalerBetrieb()) return
+/**
+ * Sicherung schreiben. Meldet zurück, ob die Datei BESTÄTIGT geschrieben
+ * wurde — der Paket-Abgleich (registry.ts) merkt sich den Datei-Stand nur
+ * dann; ein unbestätigter Stand könnte sonst beim nächsten Start eine ALTE
+ * Datei als „neuer" erscheinen lassen und den Import stillschweigend
+ * zurückdrehen. Fehler landen weiterhin nur im Diagnose-Log.
+ */
+export function sicherungSchreiben(
+  name: SicherungsName,
+  daten: Uint8Array | string,
+): Promise<boolean> {
+  if (!lokalerBetrieb()) return Promise.resolve(false)
   const body = typeof daten === 'string' ? daten : new Blob([new Uint8Array(daten)])
-  void fetch(BASIS + name, { method: 'PUT', body })
+  return fetch(BASIS + name, { method: 'PUT', body })
     .then((res) => {
-      if (!res.ok && res.status !== 404) {
+      if (res.ok) return true
+      if (res.status !== 404) {
         logDiagnostic(`Lokale Sicherung (${name}): Schreiben fehlgeschlagen (${res.status})`)
       }
+      return false
     })
     .catch(() => {
       /* Endpunkt fehlt (statisches Hosting) — bewusst still. */
+      return false
     })
 }
 

@@ -89,7 +89,7 @@ function persist(p: OrgProfile): void {
   // Zusätzlich als Datei sichern (übersteht Browser-Speicher-Löschungen,
   // s. lib/lokaleSicherung). Neutral wird nicht gesichert — sonst legte
   // jede unpersonalisierte Sitzung eine leere Sicherung an.
-  if (!istNeutral(p)) sicherungSchreiben('profil', JSON.stringify(p))
+  if (!istNeutral(p)) void sicherungSchreiben('profil', JSON.stringify(p))
 }
 
 /** Nur die reinen Datenfelder (ohne UI-Flags/Setter). */

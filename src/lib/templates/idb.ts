@@ -98,3 +98,42 @@ export async function idbClearPackage(): Promise<void> {
     db.close()
   }
 }
+
+// ---------------------------------------------------------------------------
+// Abgleichs-Marke der Datei-Sicherung (SHA-256 der zuletzt gesehenen
+// .cendova-daten/schablonen-paket.zip). Über sie erkennen MEHRERE Browser-
+// Herkünfte (CendovaPlan allein auf :5173, eingebettet unter der
+// CendovaView-Origin), ob die geteilte Sicherungs-Datei einen anderen Stand
+// trägt als die eigene IndexedDB — und gleichen sich beim Start an.
+// Liegt bewusst im META-Store: idbStorePackage/idbClearPackage räumen sie
+// damit automatisch mit ab (ein frisch importiertes Paket hat noch keinen
+// bestätigten Datei-Stand).
+// ---------------------------------------------------------------------------
+const SICHERUNGS_HASH = 'sicherungsHash'
+
+/** Gemerkten Datei-Stand lesen — null, wenn (noch) keiner bestätigt ist. */
+export async function idbLadeSicherungsHash(): Promise<string | null> {
+  if (typeof indexedDB === 'undefined') return null
+  const db = await openDb()
+  try {
+    const tx = db.transaction(META, 'readonly')
+    const req = tx.objectStore(META).get(SICHERUNGS_HASH)
+    await txDone(tx)
+    return typeof req.result === 'string' ? req.result : null
+  } finally {
+    db.close()
+  }
+}
+
+/** Datei-Stand merken (nach bestätigtem Schreiben bzw. Import der Datei). */
+export async function idbMerkeSicherungsHash(hash: string): Promise<void> {
+  if (typeof indexedDB === 'undefined') return
+  const db = await openDb()
+  try {
+    const tx = db.transaction(META, 'readwrite')
+    tx.objectStore(META).put(hash, SICHERUNGS_HASH)
+    await txDone(tx)
+  } finally {
+    db.close()
+  }
+}
