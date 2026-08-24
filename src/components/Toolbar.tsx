@@ -196,6 +196,32 @@ function KneeFamilienDropdown<K extends string>({
   )
 }
 
+/**
+ * Paket geladen, aber dieses Modul bleibt leer — das war bisher STILL
+ * (Realtest 24.08.: eingebettet „nichts erscheint", ohne jede Erklärung;
+ * der KeinPaketHinweis greift nur OHNE Paket). Die Box sagt, WAS fehlt:
+ * kein Katalog fürs Modul, oder Familien ohne platzierbare Kontur.
+ */
+function PaketOhneModulHinweis({
+  paketName,
+  modul,
+  deklariert,
+}: {
+  paketName: string
+  modul: string
+  deklariert: number
+}) {
+  return (
+    <div className="mx-1 mb-2 rounded border border-amber-900 bg-amber-950/40 px-2 py-1.5 text-[11px] leading-relaxed text-amber-200">
+      Paket „{paketName}" ist geladen,{' '}
+      {deklariert > 0
+        ? `${deklariert} ${modul}-Familien stehen im Katalog — aber keine hat eine platzierbare Kontur.`
+        : `enthält aber keine ${modul}-Daten.`}{' '}
+      Kennzahlen: „Diagnose" in der Fußzeile.
+    </div>
+  )
+}
+
 function HipSection({ hasImage }: { hasImage: boolean }) {
   const activeKind = useHipStore((s) => s.activeKind)
   const calibrated = useViewerStore((s) => s.calibration != null)
@@ -284,6 +310,9 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
         }
       >
         {keinHipKatalog && <KeinPaketHinweis />}
+        {pkgInfo && hipKatalogLeer && (
+          <PaketOhneModulHinweis paketName={pkgInfo.name} modul="Hüft" deklariert={0} />
+        )}
         <ToolButton
           label="Pfanne hinzufügen"
           disabled={!hasImage || !cupsVerfuegbar}
@@ -734,6 +763,13 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
       {/* Seiten-Abfrage wie bei der Hüfte (UX-Befund P1-1: vorher war die
           Seite hart auf 'R' verdrahtet). */}
       {keinKneeKatalog && <KeinPaketHinweis />}
+      {pkgInfo && kneeKatalogLeer && (
+        <PaketOhneModulHinweis
+          paketName={pkgInfo.name}
+          modul="Knie"
+          deklariert={KNEE_IMPLANT_FAMILIES.length}
+        />
+      )}
       {femurFamilien.length > 0 && (
         <KneeFamilienDropdown
           label="Femurkomponente"
@@ -1402,6 +1438,13 @@ function ShoulderTemplatesSection({ hasImage }: { hasImage: boolean }) {
         }
       >
         {keinKatalog && <KeinPaketHinweis />}
+        {pkgInfo && katalogLeer && (
+          <PaketOhneModulHinweis
+            paketName={pkgInfo.name}
+            modul="Schulter"
+            deklariert={shoulderFamiliesForProsthesis(prosthesis).length}
+          />
+        )}
         {humerusFamilien.length > 0 && (
           <KneeFamilienDropdown
             label="Humerus-Komponente"

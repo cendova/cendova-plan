@@ -283,6 +283,28 @@ function publishState(): void {
 }
 
 /**
+ * Kennzahlen des ANGEWENDETEN Stands ins Diagnose-Log — je Modul Familien/
+ * Katalog, Konturen und Bilder. Grund (Realtest 24.08.): Eingebettet war
+ * „ein Paket geladen", aber die Schablonen-Listen blieben leer — von außen
+ * war nicht zu unterscheiden, ob Katalog, Konturen oder Bilder fehlten.
+ * Diese eine Zeile macht den Unterschied zwischen zwei Herkünften sichtbar
+ * (Diagnose-Knopf in der Fußzeile, auf beiden Seiten vergleichen).
+ */
+function logPaketKennzahlen(quelle: string): void {
+  logDiagnostic(
+    `Schablonen-Stand (${quelle}): ` +
+      `Knie ${sn.KNEE_IMPLANT_FAMILIES.length} Familien/` +
+      `${Object.keys(KNEE_CONTOURS).length} Konturen/` +
+      `${Object.keys(KNEE_IMAGES).length} Bilder · ` +
+      `Schulter ${SHOULDER_IMPLANT_FAMILIES.length} Familien/` +
+      `${Object.keys(SHOULDER_CONTOURS).length} Konturen/` +
+      `${Object.keys(SHOULDER_IMAGES).length} Bilder · ` +
+      `Hüfte ${MEDACTA_CATALOG.length} Katalog/` +
+      `${Object.keys(MEDACTA_IMAGES).length} Bilder`,
+  )
+}
+
+/**
  * Beim App-Start: gespeichertes Paket aus der IndexedDB laden und anwenden.
  * Fehler sind nie fatal — die App läuft dann mit den eingebauten Daten.
  */
@@ -298,6 +320,7 @@ export async function initTemplateRegistry(): Promise<void> {
         imageBlobs = stored.images
         applyOverrides(manifest)
         publishState()
+        logPaketKennzahlen(`IndexedDB: ${manifest.name}`)
         // Im Hintergrund mit der geteilten Datei-Sicherung abgleichen:
         // CendovaPlan läuft unter MEHREREN Browser-Herkünften (allein auf
         // :5173, eingebettet unter der CendovaView-Origin) mit je EIGENER
@@ -410,6 +433,7 @@ export async function importTemplatePackage(
     logDiagnostic(
       `Schablonen-Paket importiert: ${manifest.name} (${storeImages.size} Bilder)`,
     )
+    logPaketKennzahlen(`Import: ${manifest.name}`)
     return { ok: true, name: manifest.name, imageCount: storeImages.size }
   } catch (err) {
     return {
