@@ -172,6 +172,34 @@ async function main() {
     await pageB.waitForTimeout(1200)
     check('Übernahme schreibt die Datei nicht um', Buffer.compare(readFileSync(v2Datei), Buffer.from(TEST_ZIP_V2)) === 0)
 
+    // --- Datei weg, obwohl schon abgeglichen: NICHT wiederbeleben ----------
+    // Das Fehlen ist dann eine Aussage (woanders bewusst entfernt).
+    rmSync(v2Datei, { force: true })
+    await pageB.reload({ waitUntil: 'load', timeout: 60000 })
+    await pageB.waitForFunction(() => document.getElementById('root')?.children.length > 0, { timeout: 60000 })
+    await pageB.waitForTimeout(3000)
+    const nachLoeschen = await appState(pageB)
+    check('Fehlende Datei nach Abgleich bleibt weg (kein Wiederbeleben)', !existsSync(v2Datei) && nachLoeschen.pkgName === 'Sicherungs-Testpaket v2', JSON.stringify(nachLoeschen))
+
+    // --- Nie abgeglichen (Alt-Installation): Datei wird angelegt -----------
+    // Der Realtest-Fall 24.08.: Paket in der IndexedDB, aber die geteilte
+    // Datei existierte auf dem Rechner nie (Import vor der Datei-Sicherung)
+    // — der eingebettete CendovaPlan blieb leer, weil nichts sie anlegte.
+    await pageB.evaluate(() => new Promise((resolve, reject) => {
+      const req = indexedDB.open('cendova.templates.v1')
+      req.onsuccess = () => {
+        const db = req.result
+        const tx = db.transaction('meta', 'readwrite')
+        tx.objectStore('meta').delete('sicherungsHash')
+        tx.oncomplete = () => { db.close(); resolve(null) }
+        tx.onerror = () => { db.close(); reject(tx.error) }
+      }
+      req.onerror = () => reject(req.error)
+    }))
+    await pageB.reload({ waitUntil: 'load', timeout: 60000 })
+    await pageB.waitForFunction(() => document.getElementById('root')?.children.length > 0, { timeout: 60000 })
+    check('Alte Installation ohne Abgleichs-Marke legt die Datei an', await warteBis(() => existsSync(v2Datei)))
+
     // --- Bewusstes Entfernen löscht auch die Sicherung ---------------------
     await pageB.evaluate(async () => {
       const r = await import('/src/lib/templates/registry.ts')

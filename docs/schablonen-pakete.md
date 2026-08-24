@@ -46,8 +46,11 @@ gemerkt in der IndexedDB) mit dem eigenen: Hat eine ANDERE Herkunft
 importiert, wird die Datei übernommen — ohne sie zurückzuschreiben, denn
 jedes neu gebaute ZIP fällt byteweise anders aus und die Herkünfte
 schaukelten sich sonst bei jedem Start gegenseitig zu Neu-Importen auf.
-Fehlt die Datei (oder wurde das Paket woanders bewusst entfernt), bleibt
-der eigene Stand unangetastet.
+Fehlt die Datei und wurde noch nie abgeglichen (Alt-Installation: der
+Import liegt vor der Datei-Sicherung), wird sie aus dem eigenen Stand
+angelegt; fehlt sie NACH einem Abgleich, wurde das Paket woanders bewusst
+entfernt — der eigene Stand bleibt dann unangetastet, die Datei wird
+nicht wiederbelebt.
 Details: `vite-lokale-sicherung.ts` + `src/lib/lokaleSicherung.ts` +
 `gleicheMitDateiSicherungAb` in `src/lib/templates/registry.ts`;
 Test: `node scripts/test-lokale-sicherung.mjs`.

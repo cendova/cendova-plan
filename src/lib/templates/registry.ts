@@ -476,8 +476,10 @@ async function sha256Hex(bytes: Uint8Array): Promise<string | null> {
  * Beim Start: eigene IndexedDB gegen die geteilte Datei-Sicherung abgleichen.
  *
  * Regeln (bewusst konservativ):
- *  - Keine Datei (oder bewusst entfernt) → IndexedDB-Stand behalten, die
- *    Datei wird NICHT neu erzeugt (sonst käme ein auf anderer Herkunft
+ *  - Keine Datei UND noch nie abgeglichen → Datei aus dem eigenen Stand
+ *    ANLEGEN (Alt-Installationen: der Import liegt vor der Datei-Sicherung).
+ *  - Keine Datei, aber früher schon abgeglichen → IndexedDB-Stand behalten,
+ *    die Datei wird NICHT neu erzeugt (sonst käme ein auf anderer Herkunft
  *    entferntes Paket „von selbst" wieder).
  *  - Datei-Stand == gemerkter Stand → nichts zu tun.
  *  - Noch kein gemerkter Stand (Erststart nach diesem Update oder
@@ -488,11 +490,21 @@ async function sha256Hex(bytes: Uint8Array): Promise<string | null> {
  */
 async function gleicheMitDateiSicherungAb(): Promise<void> {
   try {
+    const bekannt = await idbLadeSicherungsHash()
     const datei = await sicherungLaden('paket')
-    if (!datei) return
+    if (!datei) {
+      // Noch NIE abgeglichen (Import stammt aus der Zeit vor der Datei-
+      // Sicherung, oder das Schreiben schlug damals fehl): Datei aus dem
+      // eigenen Stand anlegen. Genau daran scheiterte der Realtest 24.08. —
+      // der eingebettete CendovaPlan blieb leer, weil die geteilte Datei auf
+      // dem Rechner nie existierte und nichts sie je anlegte. Gab es dagegen
+      // schon einen Abgleich (Marke vorhanden), ist das Fehlen eine Aussage:
+      // woanders bewusst entfernt — nicht wiederbeleben.
+      if (bekannt === null) await paketSichern()
+      return
+    }
     const dateiHash = await sha256Hex(datei)
     if (!dateiHash) return
-    const bekannt = await idbLadeSicherungsHash()
     if (bekannt === dateiHash) return
     if (bekannt === null) {
       await paketSichern()
