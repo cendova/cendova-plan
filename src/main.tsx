@@ -21,6 +21,7 @@ initEmbeddedBridge()
 // Profil sich aus der lokalen Datei-Sicherung selbst wieder her.
 void templateRegistry.initTemplateRegistry()
 void import('./state/orgProfileStore').then((m) => m.initOrgProfileSicherung())
+void import('./state/templateTracerStore').then((m) => m.initTracerSicherung())
 
 // Demo-Komfort: ?beispiel=huefte|knie|schulter lädt ein mitgeliefertes Lehr-DICOM
 // (Details/Quellen: src/lib/beispielbild.ts) — asynchron, ohne den

@@ -14,6 +14,8 @@
 import { create } from 'zustand'
 import type { KneeImplantKind } from '../lib/knee/smithNephewCatalog'
 import type { KneeView } from './kneeTemplateStore'
+import { sicherungLaden, sicherungSchreiben } from '../lib/lokaleSicherung'
+import { logDiagnostic } from '../lib/diagnostics'
 
 export interface TracedPoint {
   x: number
@@ -157,6 +159,16 @@ function saveToStorage(traces: Record<string, TracedSubpath[]>) {
   }
 }
 
+/** Traces zusätzlich als Datei sichern (Write-through bei jeder Änderung).
+ *  Traces machen Familien PLATZIERBAR, wenn das Paket keine Konturen
+ *  mitbringt — sie gehören darum wie Paket und Profil in die geteilte
+ *  Datei-Sicherung, sonst bleiben sie in der localStorage EINER
+ *  Browser-Herkunft gefangen (allein vs. eingebettet unter CendovaView;
+ *  Realtest 24.08.: eingebettet „9 Familien, keine platzierbar"). */
+function sichereTraces(traces: Record<string, TracedSubpath[]>): void {
+  void sicherungSchreiben('traces', JSON.stringify(traces))
+}
+
 interface TracerState {
   /** Alle gespeicherten Konturen, gekeyt nach `${kind}|${view}[|band]`. */
   traces: Record<string, TracedSubpath[]>
@@ -196,6 +208,7 @@ export const useTemplateTracerStore = create<TracerState>((set, get) => ({
     set((s) => {
       const next = { ...s.traces, [key(kind, view, band)]: subpaths }
       saveToStorage(next)
+      sichereTraces(next)
       return { traces: next }
     }),
 
@@ -204,6 +217,7 @@ export const useTemplateTracerStore = create<TracerState>((set, get) => ({
       const next = { ...s.traces }
       delete next[key(kind, view, band)]
       saveToStorage(next)
+      sichereTraces(next)
       return { traces: next }
     }),
 
@@ -215,3 +229,41 @@ export const useTemplateTracerStore = create<TracerState>((set, get) => ({
   openTracer: (kind, view, band) => set({ open: { kind, view, band } }),
   closeTracer: () => set({ open: null }),
 }))
+
+/**
+ * Beim App-Start (Aufruf aus main.tsx, wie initOrgProfileSicherung):
+ *  - Diese Herkunft HAT Traces, die Datei-Sicherung fehlt → einmalig
+ *    hochladen (Alt-Installation: die Traces entstanden, bevor es die
+ *    Datei-Sicherung für Traces gab).
+ *  - Diese Herkunft hat KEINE Traces, die Datei-Sicherung existiert →
+ *    wiederherstellen (leere Herkunft, z. B. eingebettet unter CendovaView,
+ *    oder nach einem Richtlinien-Wipe).
+ *  - Beides vorhanden → lokalen Stand behalten (nie Eingaben überschreiben —
+ *    dieselbe Doktrin wie beim Einrichtungs-Profil).
+ */
+export async function initTracerSicherung(): Promise<void> {
+  try {
+    const lokal = useTemplateTracerStore.getState().traces
+    const datei = await sicherungLaden('traces')
+    if (Object.keys(lokal).length > 0) {
+      if (!datei) sichereTraces(lokal)
+      return
+    }
+    if (!datei) return
+    const raw: unknown = JSON.parse(new TextDecoder().decode(datei))
+    if (typeof raw !== 'object' || raw === null) return
+    const wieder: Record<string, TracedSubpath[]> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      const geprueft = migrateValue(v)
+      if (geprueft.length > 0) wieder[canonicalizeStorageKey(k)] = geprueft
+    }
+    if (Object.keys(wieder).length === 0) return
+    saveToStorage(wieder)
+    useTemplateTracerStore.setState({ traces: wieder })
+    logDiagnostic(
+      `Tracer-Konturen aus Datei-Sicherung wiederhergestellt: ${Object.keys(wieder).length} Kombinationen`,
+    )
+  } catch {
+    /* defekte Sicherung/kein Endpunkt — App läuft ohne Traces weiter */
+  }
+}

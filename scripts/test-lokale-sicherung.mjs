@@ -138,9 +138,16 @@ async function main() {
       if (!res.ok) throw new Error(res.error)
       const o = await import('/src/state/orgProfileStore.ts')
       o.useOrgProfileStore.getState().setProfile({ headerSubtitle: 'Wipe-Test-Zentrum' })
+      // Selbst gezeichnete Kontur für eine Familie OHNE Paket-Kontur —
+      // genau die machen Familien platzierbar (Realtest 24.08.).
+      const tr = await import('/src/state/templateTracerStore.ts')
+      tr.useTemplateTracerStore.getState().setTrace('sphere-femur', 'AP', [
+        { label: 'Außenkontur', style: 'fill', closed: true, points: [{ x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }] },
+      ])
     }, Array.from(TEST_ZIP))
     const beideDa = () => existsSync(join(DATEN_DIR, 'schablonen-paket.zip')) && existsSync(join(DATEN_DIR, 'profil.json'))
     check('Sicherungsdateien auf Platte', await warteBis(beideDa))
+    check('Trace-Sicherung auf Platte', await warteBis(() => existsSync(join(DATEN_DIR, 'schablonen-traces.json'))))
     await ctxA.close()
 
     // --- Kontext B: frischer Browser-Speicher (= Richtlinien-Wipe) ---------
@@ -150,6 +157,15 @@ async function main() {
     const b = await appState(pageB)
     check('Paket nach Wipe automatisch wiederhergestellt', b.contours === 1 && b.pkgName === 'Sicherungs-Testpaket', JSON.stringify(b))
     check('Profil nach Wipe automatisch wiederhergestellt', b.subtitle === 'Wipe-Test-Zentrum', JSON.stringify(b.subtitle))
+    const trace = await pageB.evaluate(async () => {
+      const tr = await import('/src/state/templateTracerStore.ts')
+      const p = await import('/src/lib/knee/kneePlaceable.ts')
+      return {
+        hat: tr.useTemplateTracerStore.getState().hasTrace('sphere-femur', 'AP'),
+        platzierbar: p.kneeKindPlaceable('sphere-femur'),
+      }
+    })
+    check('Trace nach Wipe wiederhergestellt → Familie platzierbar', trace.hat && trace.platzierbar, JSON.stringify(trace))
 
     // --- Fremder Stand in der Datei: beim Start übernehmen -----------------
     // Eine ANDERE Herkunft (im Test: direkt auf die Platte geschrieben, wie

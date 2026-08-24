@@ -16,6 +16,7 @@
  *   PUT    /__cendova/sicherung/paket   → ZIP-Bytes speichern
  *   DELETE /__cendova/sicherung/paket   → Sicherung löschen
  *   GET/PUT/DELETE /__cendova/sicherung/profil  → profil.json analog
+ *   GET/PUT/DELETE /__cendova/sicherung/traces  → schablonen-traces.json
  *
  * Datenschutz: bleibt vollständig auf dem Rechner (localhost + lokale
  * Datei); Pakete enthalten Hersteller-Material → .cendova-daten/ ist
@@ -31,6 +32,11 @@ const DATEN_DIR = join(dirname(fileURLToPath(import.meta.url)), '.cendova-daten'
 const DATEIEN: Record<string, { datei: string; typ: string }> = {
   paket: { datei: 'schablonen-paket.zip', typ: 'application/zip' },
   profil: { datei: 'profil.json', typ: 'application/json' },
+  // Selbst gezeichnete Schablonen-Konturen (Template-Tracer): sie machen
+  // Familien PLATZIERBAR, wenn das Paket keine Konturen mitbringt — ohne
+  // Sicherung blieben sie in der localStorage EINER Browser-Herkunft
+  // gefangen (Realtest 24.08.: eingebettet 9 Familien, 0 platzierbar).
+  traces: { datei: 'schablonen-traces.json', typ: 'application/json' },
 }
 // Obergrenze für einen PUT-Body: Schablonen-Pakete sind Bild-lastig, aber
 // selten > ~100 MB; das Profil ist winzig. Ohne Limit puffert der Server den
@@ -64,7 +70,7 @@ function fremdeOrigin(req: IncomingMessage): boolean {
 }
 
 function behandle(req: IncomingMessage, res: ServerResponse, next: () => void): void {
-  const m = /^\/__cendova\/sicherung\/(paket|profil)$/.exec(req.url ?? '')
+  const m = /^\/__cendova\/sicherung\/(paket|profil|traces)$/.exec(req.url ?? '')
   if (!m) return next()
   if (fremdeOrigin(req)) {
     res.statusCode = 403

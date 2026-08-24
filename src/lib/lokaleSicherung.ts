@@ -23,7 +23,7 @@ function lokalerBetrieb(): boolean {
   return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1'
 }
 
-export type SicherungsName = 'paket' | 'profil'
+export type SicherungsName = 'paket' | 'profil' | 'traces'
 
 /** Sicherung lesen — null bei „keine vorhanden" ODER „Endpunkt fehlt". */
 export async function sicherungLaden(name: SicherungsName): Promise<Uint8Array | null> {

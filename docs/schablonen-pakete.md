@@ -35,6 +35,14 @@ z. B. wenn eine Klinik-Richtlinie „Websitedaten beim Schließen löschen"
 IndexedDB/localStorage leert. „Paket entfernen"/„Zurücksetzen (neutral)"
 löschen auch die Sicherung (bewusste Entscheidungen bleiben bewusst).
 
+Gesichert werden DREI Dinge: das Paket (`schablonen-paket.zip`), das
+Einrichtungs-Profil (`profil.json`) und die selbst gezeichneten
+Tracer-Konturen (`schablonen-traces.json`). Letzteres, weil Traces
+Familien PLATZIERBAR machen, wenn das Paket keine Konturen mitbringt —
+ohne Sicherung blieben sie in der localStorage EINER Browser-Herkunft
+gefangen (Realtest 24.08.2026: eingebettet „9 Familien, keine
+platzierbar", allein lief alles).
+
 Dieselbe Datei ist zugleich der **Abgleich zwischen Browser-Herkünften**:
 CendovaPlan läuft allein auf `localhost:5173` UND eingebettet unter der
 CendovaView-Herkunft (`/plan`) — IndexedDB ist je Herkunft getrennt, das
