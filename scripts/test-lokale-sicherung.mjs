@@ -167,6 +167,14 @@ async function main() {
     })
     check('Trace nach Wipe wiederhergestellt → Familie platzierbar', trace.hat && trace.platzierbar, JSON.stringify(trace))
 
+    // --- Trace-Datei weg (Alt-Installation): Start lädt sie wieder hoch ----
+    // Vereinigungs-Abgleich: jede Herkunft trägt bei, was sie hat — eine
+    // Quelle mit Traces genügt, damit die Datei wieder entsteht.
+    rmSync(join(DATEN_DIR, 'schablonen-traces.json'), { force: true })
+    await pageB.reload({ waitUntil: 'load', timeout: 60000 })
+    await pageB.waitForFunction(() => document.getElementById('root')?.children.length > 0, { timeout: 60000 })
+    check('Traces werden beim Start wieder hochgeladen', await warteBis(() => existsSync(join(DATEN_DIR, 'schablonen-traces.json'))))
+
     // --- Fremder Stand in der Datei: beim Start übernehmen -----------------
     // Eine ANDERE Herkunft (im Test: direkt auf die Platte geschrieben, wie
     // es der CendovaView-Server für den eingebetteten CendovaPlan tut) hat

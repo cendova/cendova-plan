@@ -232,37 +232,44 @@ export const useTemplateTracerStore = create<TracerState>((set, get) => ({
 
 /**
  * Beim App-Start (Aufruf aus main.tsx, wie initOrgProfileSicherung):
- *  - Diese Herkunft HAT Traces, die Datei-Sicherung fehlt → einmalig
- *    hochladen (Alt-Installation: die Traces entstanden, bevor es die
- *    Datei-Sicherung für Traces gab).
- *  - Diese Herkunft hat KEINE Traces, die Datei-Sicherung existiert →
- *    wiederherstellen (leere Herkunft, z. B. eingebettet unter CendovaView,
- *    oder nach einem Richtlinien-Wipe).
- *  - Beides vorhanden → lokalen Stand behalten (nie Eingaben überschreiben —
- *    dieselbe Doktrin wie beim Einrichtungs-Profil).
+ * lokalen Stand und Datei-Sicherung VEREINIGEN — je Schlüssel gewinnt der
+ * lokale Eintrag. Bewusst ADDITIV: Traces sind mühsam von Hand gezeichnete
+ * Konturen; jede Herkunft (allein auf :5173, eingebettet unter CendovaView,
+ * anderer Browser, anderer Rechner via kopierter Datei) trägt bei, was sie
+ * hat, und nichts geht verloren, solange IRGENDEINE Stelle die Daten noch
+ * hält (Realtest 25.08.: ein Browser-Speicher-Verlust hatte die einzige
+ * Kopie gelöscht — ein „nur bei leer wiederherstellen" hätte eine zweite
+ * Quelle nicht einsammeln können). Grenze der Vereinfachung: Löschungen
+ * und Neu-Zeichnungen wandern nicht zwischen Herkünften — dafür bräuchte
+ * es Zeitstempel je Schlüssel; verschmerzbar, weil Neuzeichnen lokal
+ * jederzeit möglich ist und beide Stände platzierbar bleiben.
  */
 export async function initTracerSicherung(): Promise<void> {
   try {
     const lokal = useTemplateTracerStore.getState().traces
     const datei = await sicherungLaden('traces')
-    if (Object.keys(lokal).length > 0) {
-      if (!datei) sichereTraces(lokal)
-      return
+    const ausDatei: Record<string, TracedSubpath[]> = {}
+    if (datei) {
+      const raw: unknown = JSON.parse(new TextDecoder().decode(datei))
+      if (typeof raw === 'object' && raw !== null) {
+        for (const [k, v] of Object.entries(raw)) {
+          const geprueft = migrateValue(v)
+          if (geprueft.length > 0) ausDatei[canonicalizeStorageKey(k)] = geprueft
+        }
+      }
     }
-    if (!datei) return
-    const raw: unknown = JSON.parse(new TextDecoder().decode(datei))
-    if (typeof raw !== 'object' || raw === null) return
-    const wieder: Record<string, TracedSubpath[]> = {}
-    for (const [k, v] of Object.entries(raw)) {
-      const geprueft = migrateValue(v)
-      if (geprueft.length > 0) wieder[canonicalizeStorageKey(k)] = geprueft
+    const vereint = { ...ausDatei, ...lokal }
+    if (Object.keys(vereint).length === 0) return
+    const abdruck = (t: Record<string, TracedSubpath[]>): string =>
+      JSON.stringify(Object.entries(t).sort(([a], [b]) => (a < b ? -1 : 1)))
+    if (abdruck(vereint) !== abdruck(lokal)) {
+      saveToStorage(vereint)
+      useTemplateTracerStore.setState({ traces: vereint })
+      logDiagnostic(
+        `Tracer-Konturen aus Datei-Sicherung ergänzt: jetzt ${Object.keys(vereint).length} Kombinationen`,
+      )
     }
-    if (Object.keys(wieder).length === 0) return
-    saveToStorage(wieder)
-    useTemplateTracerStore.setState({ traces: wieder })
-    logDiagnostic(
-      `Tracer-Konturen aus Datei-Sicherung wiederhergestellt: ${Object.keys(wieder).length} Kombinationen`,
-    )
+    if (abdruck(vereint) !== abdruck(ausDatei)) sichereTraces(vereint)
   } catch {
     /* defekte Sicherung/kein Endpunkt — App läuft ohne Traces weiter */
   }

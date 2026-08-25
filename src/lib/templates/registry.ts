@@ -417,15 +417,15 @@ export async function importTemplatePackage(
       storeImages = new Map([...imageBlobs, ...images])
     }
 
-    await idbStorePackage(toStore, storeImages)
+    await idbStorePackage(toStore, storeImages, ausSicherung?.hash ?? null)
     revokeObjectUrls()
     manifest = toStore
     imageBlobs = storeImages
     applyOverrides(manifest)
     publishState()
     if (ausSicherung) {
-      // Quelle ist die Datei selbst: nur den übernommenen Stand vermerken.
-      if (ausSicherung.hash) void idbMerkeSicherungsHash(ausSicherung.hash)
+      // Quelle ist die Datei selbst: der übernommene Stand wurde bereits
+      // ATOMAR mit dem Paket vermerkt (idbStorePackage) — nichts schreiben.
     } else {
       // Zusätzlich als Datei sichern — übersteht Browser-Speicher-Löschungen.
       void paketSichern()

@@ -12,6 +12,8 @@
  */
 
 const DB_NAME = 'cendova.templates.v1'
+// Schlüssel der Abgleichs-Marke im META-Store (Beschreibung s. unten).
+const SICHERUNGS_HASH = 'sicherungsHash'
 const DB_VERSION = 1
 const META = 'meta'
 const IMAGES = 'images'
@@ -67,10 +69,16 @@ export async function idbLoadPackage(): Promise<{
   }
 }
 
-/** Paket atomar speichern (ersetzt ein evtl. vorhandenes komplett). */
+/** Paket atomar speichern (ersetzt ein evtl. vorhandenes komplett).
+ *  `sicherungsHash` (Stand der Datei-Sicherung, aus der das Paket stammt)
+ *  wird IN DERSELBEN Transaktion abgelegt: ein nachgelagertes Schreiben
+ *  ließ bei einer Unterbrechung (Reload mitten in der Übernahme) ein Paket
+ *  OHNE Marke zurück — der nächste Start hielt sich dann für eine
+ *  Alt-Installation und schrieb die geteilte Datei unnötig um. */
 export async function idbStorePackage(
   manifest: unknown,
   images: Map<string, Blob>,
+  sicherungsHash?: string | null,
 ): Promise<void> {
   const db = await openDb()
   try {
@@ -78,6 +86,7 @@ export async function idbStorePackage(
     tx.objectStore(META).clear()
     tx.objectStore(IMAGES).clear()
     tx.objectStore(META).put(manifest, 'manifest')
+    if (sicherungsHash) tx.objectStore(META).put(sicherungsHash, SICHERUNGS_HASH)
     for (const [path, blob] of images) tx.objectStore(IMAGES).put(blob, path)
     await txDone(tx)
   } finally {
@@ -109,8 +118,6 @@ export async function idbClearPackage(): Promise<void> {
 // damit automatisch mit ab (ein frisch importiertes Paket hat noch keinen
 // bestätigten Datei-Stand).
 // ---------------------------------------------------------------------------
-const SICHERUNGS_HASH = 'sicherungsHash'
-
 /** Gemerkten Datei-Stand lesen — null, wenn (noch) keiner bestätigt ist. */
 export async function idbLadeSicherungsHash(): Promise<string | null> {
   if (typeof indexedDB === 'undefined') return null
