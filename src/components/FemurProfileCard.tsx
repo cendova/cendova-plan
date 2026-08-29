@@ -8,12 +8,16 @@ import {
   isFemurProfileClassifiable,
 } from '../lib/hip/femurProfile'
 import { stemPlanningHints } from '../lib/hip/stemPlanningRules'
+import { vergleicheSchaftMitFemurprofil } from '../lib/hip/stemComparison'
+import { stemCatalogEntries } from '../lib/hip/templates'
+import { STEM_PROFILE_BY_FOLDER } from '../lib/hip/medactaCatalog'
 import {
   FEMUR_PROFILE_OVERRIDE_REASONS,
   type FemurProfileOverrideReason,
   type FemurProfileReview,
   useHipStore,
 } from '../state/hipStore'
+import { useTemplateStore } from '../state/templateStore'
 import { CpahMatrix } from './CpahMatrix'
 
 /**
@@ -43,6 +47,20 @@ export function FemurProfileCard({
   /** Bildqualität dieser Messung; fehlt sie, wird nicht klassifiziert. */
   review?: FemurProfileReview
 }) {
+  // Platzierte Schaftschablone für den femurseitigen Abgleich (Task 16):
+  // die selektierte, sonst die erste sichtbare. Reaktiv, damit Ziehen der
+  // Schablone die Deltas live bewegt.
+  const stems = useTemplateStore((s) => s.stems)
+  const selectedId = useTemplateStore((s) => s.selectedId)
+  const stem =
+    stems.find((s) => s.id === selectedId && s.visible !== false) ??
+    stems.find((s) => s.visible !== false) ??
+    null
+  const stemFolder = stem ? stemCatalogEntries()[stem.catalogIndex]?.folder ?? null : null
+  // Strukturiertes Profil aus dem Schablonen-Paket (Task 14) — die Regeln
+  // lesen NUR dieses, nie den Ordnernamen.
+  const stemProfil = stemFolder ? STEM_PROFILE_BY_FOLDER[stemFolder] ?? null : null
+
   const raw = computeFemurProfileRaw(points, mmPerWorldUnit)
 
   const quality = review?.imageQuality
@@ -74,16 +92,33 @@ export function FemurProfileCard({
   const dorrFuerRegeln =
     dorr == null ? null : bestaetigt && !veraltet && final != null ? final : dorr.suggested
   const hints = dorrFuerRegeln
-    ? stemPlanningHints({
-        dorr: dorrFuerRegeln,
-        dorrBestaetigt: bestaetigt && !veraltet,
-        nsaClass: raw.nsaClass,
-        offsetSubtype: cpah?.offsetSubtype ?? null,
-        corticalIndex: raw.corticalIndex,
-        nsaDeg: raw.nsaDeg,
-        femoralOffsetRatio: raw.femoralOffsetRatio,
-      })
+    ? stemPlanningHints(
+        {
+          dorr: dorrFuerRegeln,
+          dorrBestaetigt: bestaetigt && !veraltet,
+          nsaClass: raw.nsaClass,
+          offsetSubtype: cpah?.offsetSubtype ?? null,
+          corticalIndex: raw.corticalIndex,
+          nsaDeg: raw.nsaDeg,
+          femoralOffsetRatio: raw.femoralOffsetRatio,
+        },
+        stemProfil,
+      )
     : []
+
+  // Femurseitiger Abgleich der platzierten Schablone gegen die gemessene
+  // Anatomie — dieselbe Achse (Punkte 4/5), gegen die auch FO/FOR
+  // gemessen wurden. Die GESAMT-Bilanz (mit Pfanne, über die Becken-
+  // Referenzlinie) bleibt im Messungen-Panel; hier keine Doppelanzeige.
+  const abgleich =
+    stem && points.length >= 6
+      ? vergleicheSchaftMitFemurprofil({
+          anatomischesKopfzentrum: raw.headCenter,
+          schablonenKopfzentrum: stem.headCenter,
+          achse: [points[4], points[5]],
+          mmPerWorldUnit,
+        })
+      : null
 
   return (
     <div className="rounded border border-neutral-800 bg-neutral-950 p-2">
@@ -219,6 +254,60 @@ export function FemurProfileCard({
             />
           </div>
         )}
+
+      {/* Schablonen-Abgleich (Task 16): die tatsächliche Geometrie der
+          platzierten Variante gegen die gemessene Anatomie, femurseitig
+          entlang der Messachse. CPAH bleibt Vorauswahl — bewertet wird,
+          was wirklich auf dem Bild liegt. Rotation zur Achse und die
+          Gesamt-Bilanz mit Pfanne stehen bereits im Messungen-Panel und
+          werden hier bewusst NICHT wiederholt. */}
+      {stem && abgleich && (
+        <div className="mt-2 rounded border border-neutral-800 bg-neutral-950 p-2">
+          <div className="mb-1 flex items-baseline justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+              Schablonen-Abgleich
+            </span>
+            <span className="text-[11px] text-neutral-400">
+              Schaft {stem.side === 'R' ? 'rechts' : 'links'}
+            </span>
+          </div>
+          {stemFolder && (
+            <div className="text-[10px] text-neutral-400">
+              {stemFolder}
+              {stemProfil && (
+                <>
+                  {' · '}
+                  {stemProfil.fixation === 'cemented' ? 'zementiert' : 'zementfrei'}
+                  {stemProfil.radaelliClass ? ` · Radaelli ${stemProfil.radaelliClass}` : ''}
+                </>
+              )}
+            </div>
+          )}
+          <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] tabular-nums text-neutral-400">
+            <span>Δ Offset (femoral):</span>
+            <span className="text-right text-neutral-200">
+              {vorzeichenMm(abgleich.deltaFoMm)}
+            </span>
+            <span>Δ Kopfhöhe entlang Achse:</span>
+            <span className="text-right text-neutral-200">
+              {vorzeichenMm(abgleich.deltaLaengsMm)}
+            </span>
+          </div>
+          <div className="mt-1 text-[9px] leading-snug text-neutral-500">
+            Femurseitig, bezogen auf die gemessene Schaftachse; + = mehr
+            Offset bzw. Verlängerung. Gesamt-Bilanz mit Pfanne: siehe
+            Messungen-Panel.
+          </div>
+          {abgleich.warnings.map((w) => (
+            <div
+              key={w}
+              className="mt-1 rounded border border-amber-900/60 bg-amber-950/30 p-1.5 text-[10px] leading-relaxed text-amber-200"
+            >
+              {w}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Mess-Warnungen der Geometrie (vertauschte Punkte o. Ä.). */}
       {raw.warnings.length > 0 && (
@@ -395,6 +484,13 @@ function DorrBestaetigung({
       )}
     </div>
   )
+}
+
+/** Millimeter mit explizitem Vorzeichen — bei Deltas ist „+" die halbe
+ *  Information (mehr Offset / Verlängerung). */
+function vorzeichenMm(v: number): string {
+  const text = Math.abs(v).toFixed(1).replace('.', ',')
+  return `${v < -0.05 ? '−' : '+'}${text} mm`
 }
 
 /** Zahl oder „—", damit ein fehlender Wert nicht als 0 gelesen wird. */

@@ -1185,6 +1185,39 @@ in Task 16 mit der tatsächlich platzierten Schablone verbunden.
 
 Keine statische Zuordnung `CPAH 5H -> Quadra-P LAT`. Stattdessen relevante Varianten vergleichen und Differenzen anzeigen.
 
+**ERLEDIGT 29.08.2026 — mit bewussten Abgrenzungen:**
+
+- `stemComparison.ts`: femurseitiger Abgleich Schablonenkopf ↔
+  anatomisches Kopfzentrum entlang der GEMESSENEN Schaftachse (Punkte
+  4/5 — dieselbe Referenz wie FO/FOR): **Δ Offset (femoral)** und
+  **Δ Kopfhöhe entlang Achse** (+ = mehr Offset bzw. Verlängerung,
+  Vorzeichen identisch zu `PlanningDelta`); Gegenseiten-Warnung; ohne
+  Kalibrierung null. 12 Tests inkl. schräger Achse und
+  vertauschte-Achse-Doktrin.
+- Karte „Morphologie & Fixation": Abschnitt **„Schablonen-Abgleich"**
+  (reaktiv auf die selektierte bzw. erste sichtbare Schaftschablone),
+  Profilzeile (Ordner · Fixation · Radaelli-Klasse), Deltas live beim
+  Ziehen. Das Profil des platzierten Schafts fließt jetzt in die
+  Planungshinweise (Task 15) ein.
+- Neue Regel `CPAH_EVIDENZ_KLASSE` (Task-13-Konsequenz): Radaelli-Klasse
+  außerhalb der simulierten A/B3/C2/F → info „Geometrie-Analogie, keine
+  direkte Evidenz" (betrifft die B2-Arbeitspferde Quadra-P/Quadra-H).
+  Konstante `CPAH_SIMULIERTE_KLASSEN` exportiert.
+- **Bewusst NICHT umgesetzt:** Schaftrotation zur Achse und die
+  Gesamt-LLD-/Offset-Bilanz mit Pfanne existieren bereits im
+  Messungen-Panel (`stemAxisAlignment`, `computePlanningDelta`) — keine
+  Doppelanzeige. Schafttiefe, Collar-Calcar-Abstand und proximale/
+  distale Füllung sind vertagt: Die Schablonen sind Pixelbilder ohne
+  robuste Schulter-/Collar-Koordinate in der Rechenschicht, und die
+  Kanalgrenzen liegen nur auf zwei Höhen vor — der Plan selbst knüpft
+  die Füllung an „robust verfügbar". Der Toolbar-Varianten-Selektor
+  blieb unangetastet: Beim Größen-/Varianten-Wechsel aktualisiert die
+  Karte die Differenzen live, das erfüllt den Zweck ohne Umbau.
+- Voraussetzung für Profilzeile/Profilregeln: das private Paket muss
+  `stemProfileByFolder` befüllen (Task 14-Format, Task-13-Klassen) —
+  ohne Eintrag erscheinen Abgleich-Deltas trotzdem, nur ohne
+  Profil-Informationen.
+
 ---
 
 ## Task 17: Phase-B-Abnahme

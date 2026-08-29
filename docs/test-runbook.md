@@ -258,6 +258,16 @@ zwischen Messungen und Schablonen. Patienten-DICOMs bleiben lokal.
     Seiten-Information — bei bilateraler Planung prüfen, dass die
     übernommene Achse zum gewählten Femur gehört (sonst Schaft löschen
     und ohne Femurprofil neu anlegen oder Rotation per Alt+Pfeil richten).
+18. **Schablonen-Abgleich:** Mit platzierter Schaftschablone zeigt die
+    Karte „Morphologie & Fixation" den Abschnitt **„Schablonen-Abgleich"**:
+    Δ Offset (femoral) und Δ Kopfhöhe entlang der gemessenen Achse,
+    + = mehr Offset bzw. Verlängerung. Schablone ziehen → Deltas laufen
+    live mit. Bringt das Paket ein `stemProfileByFolder`-Profil mit,
+    stehen Fixation und Radaelli-Klasse dabei, und die Planungshinweise
+    werden profilbewusst (z. B. entfällt die Dorr-C-Warnung bei
+    zementiertem Profil; B2 meldet die fehlende CPAH-Simulation als
+    Info). Rotation zur Achse und die Gesamt-Bilanz mit Pfanne stehen
+    weiterhin NUR im Messungen-Panel (keine Doppelanzeige).
 
 > **Vorab automatisiert prüfbar:** Die Schritte 3–15 sind als
 > Playwright-Skripte hinterlegt (`scripts/abnahme-femurprofil/`, 117

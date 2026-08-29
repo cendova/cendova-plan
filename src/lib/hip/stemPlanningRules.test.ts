@@ -149,6 +149,35 @@ describe('Offset-Regeln (vara/H und valga)', () => {
   })
 })
 
+describe('Evidenzlücken-Regel (Task-13-Konsequenz)', () => {
+  it('weist bei B2 die fehlende CPAH-Simulation aus', () => {
+    // Betrifft lokal die Arbeitspferde Quadra-P/Quadra-H (beide B2).
+    const hints = stemPlanningHints(anatomie(), zementfrei({ radaelliClass: 'B2' }))
+    const h = hints.find((x) => x.code === 'CPAH_EVIDENZ_KLASSE')!
+    expect(h.severity).toBe('info')
+    expect(h.text).toContain('B2')
+    expect(h.text).toContain('nicht')
+    expect(h.text).toContain('Analogie')
+  })
+
+  it('schweigt bei den simulierten Klassen A, B3, C2 und F', () => {
+    for (const klasse of ['A', 'B3', 'C2', 'F'] as const) {
+      const hints = stemPlanningHints(anatomie(), zementfrei({ radaelliClass: klasse }))
+      expect(hints.find((x) => x.code === 'CPAH_EVIDENZ_KLASSE')).toBeUndefined()
+    }
+  })
+
+  it('schweigt ohne Radaelli-Klasse im Profil und ohne Profil', () => {
+    const { radaelliClass: _weg, ...ohneKlasse } = zementfrei()
+    expect(
+      stemPlanningHints(anatomie(), ohneKlasse).find((x) => x.code === 'CPAH_EVIDENZ_KLASSE'),
+    ).toBeUndefined()
+    expect(
+      stemPlanningHints(anatomie()).find((x) => x.code === 'CPAH_EVIDENZ_KLASSE'),
+    ).toBeUndefined()
+  })
+})
+
 describe('Querschnitts-Verträge', () => {
   it('sortiert warnings vor cautions vor infos', () => {
     // Dorr C (warning) + vara/H (info) in einer Anatomie.

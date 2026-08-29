@@ -19,8 +19,18 @@
  * Die Regeln lesen NIE Ordner- oder Markennamen — nur die strukturierten
  * Profile aus dem Schablonen-Paket (`StemPlanningProfile`, Task 14).
  */
-import type { StemPlanningProfile } from './medactaCatalog'
+import type { RadaelliKlasse, StemPlanningProfile } from './medactaCatalog'
 import type { DorrType, NsaClass, OffsetSubtype } from './femurProfile'
+
+/**
+ * Die im CPAH-Paper digital simulierten Radaelli-Klassen (Stauss et al.
+ * 2026, Methodenteil S. 3 — 7 Designs aus genau diesen vier Klassen).
+ * Für alle anderen Klassen gibt es nur Geometrie-ANALOGIE, keine direkte
+ * Simulation — Regel-Konsequenz aus Task 13: Diese Lücke wird
+ * AUSGEWIESEN, nicht verwischt (betrifft lokal die B2-Arbeitspferde
+ * Quadra-P/Quadra-H).
+ */
+export const CPAH_SIMULIERTE_KLASSEN: readonly RadaelliKlasse[] = ['A', 'B3', 'C2', 'F']
 
 export interface PlanningHint {
   severity: 'info' | 'caution' | 'warning'
@@ -143,6 +153,21 @@ export function stemPlanningHints(
         evidence: belege(anatomie, ['nsa', 'for']),
       })
     }
+  }
+
+  // --- Evidenzlücke der Radaelli-Klasse (Task-13-Konsequenz) ------------
+  if (
+    schaftProfil?.radaelliClass != null &&
+    !CPAH_SIMULIERTE_KLASSEN.includes(schaftProfil.radaelliClass)
+  ) {
+    hints.push({
+      severity: 'info',
+      code: 'CPAH_EVIDENZ_KLASSE',
+      text:
+        `Radaelli-Klasse ${schaftProfil.radaelliClass}: im CPAH-Paper nicht ` +
+        'simuliert (nur A, B3, C2, F) — Geometrie-Analogie, keine direkte Evidenz.',
+      evidence: [`Radaelli-Klasse ${schaftProfil.radaelliClass} aus dem Schablonen-Paket`],
+    })
   }
 
   return hints.sort((x, y) => SEVERITY_RANG[x.severity] - SEVERITY_RANG[y.severity])
