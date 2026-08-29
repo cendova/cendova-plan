@@ -13,7 +13,7 @@ import {
   rotationsDelta,
   schabloneDarfTaste,
 } from '../lib/tastaturFokus'
-import { useHipStore } from '../state/hipStore'
+import { findeFemurachseFuerSchaft, useHipStore } from '../state/hipStore'
 import { useKneeStore } from '../state/kneeStore'
 import { useShoulderStore } from '../state/shoulderStore'
 import { useNoteStore } from '../state/noteStore'
@@ -1286,7 +1286,22 @@ function PlacementBanner({
     // Für Stem: Side-Klick wechselt jetzt in die Femur-Achse-Stage
     // (2 Klicks zum Definieren der Femur-Schaft-Achse). Cup wechselt
     // wie bisher in die Tränenfigur-Stage.
+    //
+    // Ausnahme: Liegt eine vollständige Femurprofil-Messung vor, wird
+    // DEREN Schaftachse direkt übernommen und der Schaft sofort
+    // platziert — die Achse ist dann bereits vermessen, zwei weitere
+    // Klicks wären nur eine schlechtere zweite Messung (Nutzerwunsch
+    // Realtest 29.08.2026). Korrigierbar bleibt alles: Rotation per
+    // Alt+Pfeil, oder Schaft löschen und ohne Femurprofil neu anlegen.
     const pickSide = (side: CupSide) => {
+      if (pending.kind === 'stem') {
+        const achse = findeFemurachseFuerSchaft(useHipStore.getState().measurements)
+        if (achse) {
+          logDiagnostic('Schaft: Femurachse aus Femurprofil-Messung übernommen')
+          placeStemForSide(side, achse)
+          return
+        }
+      }
       store.chooseSide(side)
     }
     return (

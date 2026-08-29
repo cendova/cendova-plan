@@ -80,13 +80,11 @@ export function CpahMatrix({
   corticalIndex,
   nsaDeg,
   femoralOffsetRatio,
-  femoralOffsetMm,
 }: {
   cpah: CpahResult
   corticalIndex: number
   nsaDeg: number
   femoralOffsetRatio: number
-  femoralOffsetMm: number
 }) {
   // Trennlinien aus den Schwellen ableiten — dieselbe Technik wie in der
   // CpakMatrix, damit Zellen und Punkt garantiert konsistent bleiben.
@@ -271,23 +269,9 @@ export function CpahMatrix({
           strokeWidth={1.5}
         />
       </svg>
-
-      <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] tabular-nums text-neutral-400">
-        <span>CI:</span>
-        <span className="text-right text-neutral-200">
-          {corticalIndex.toFixed(2).replace('.', ',')}
-        </span>
-        <span>NSA:</span>
-        <span className="text-right text-neutral-200">{nsaDeg.toFixed(1)}°</span>
-        <span>FOR:</span>
-        <span className="text-right text-neutral-200">
-          {femoralOffsetRatio.toFixed(2).replace('.', ',')}
-        </span>
-        <span>FO:</span>
-        <span className="text-right text-neutral-200">
-          {femoralOffsetMm.toFixed(1).replace('.', ',')} mm
-        </span>
-      </div>
+      {/* KEINE Werteliste unter dem Plot: CI/NSA/FOR/FO stehen bereits in
+          der Rohwerte-Tabelle der Karte darüber — die Doppelung hat der
+          Realtest 29.08.2026 zu Recht moniert. */}
     </div>
   )
 }

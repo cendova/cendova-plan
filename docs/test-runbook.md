@@ -211,7 +211,10 @@ zwischen Messungen und Schablonen. Patienten-DICOMs bleiben lokal.
    abgegeben wurde.
 7. Gate bestehen, dann die **13 Punkte** setzen. Ab Punkt 7 (Trochanter
    minor) erscheint die gestrichelte **10-cm-Linie** — die vier
-   Kortikalis-Punkte gehören genau darauf.
+   Kortikalis-Punkte gehören genau darauf. Für die letzten beiden Punkte
+   (Kanalränder) erscheint zusätzlich die zweite gestrichelte Linie **auf
+   Höhe des Trochanter minor** — beide Kanalrand-Punkte darauf anklicken
+   (Realtest-Wunsch 29.08.2026).
 8. Ergebnisse in der Karte **„Morphologie & Fixation"** plausibilisieren
    (CI, CCR, NSA, FO, FOR, CPAH). Die Messzeile darüber trägt bewusst
    keine Werte mehr, nur den Verweis auf die Karte.
@@ -238,6 +241,15 @@ zwischen Messungen und Schablonen. Patienten-DICOMs bleiben lokal.
 16. **Grenzfälle** A/B und B/C mit synthetischer Geometrie oder
     nichtpatientenbezogenen Testbildern: Der Punkt muss sichtbar im amber
     **Grenzband** liegen, und die Karte nennt den Grenzbereich.
+17. **Schaft-Platzierung nach Femurprofil:** Schaft anlegen → nach der
+    Seitenwahl wird die **Schaftachse aus der Femurprofil-Messung
+    übernommen** und der Schaft sofort entlang dieser Achse platziert —
+    die zwei Achsen-Klicks entfallen. Ohne Femurprofil-Messung (CCD
+    genügt bewusst nicht) bleibt der bisherige Zwei-Klick-Ablauf.
+    ⚠ Gleiche Seitenfalle wie beim CCD-Prefill: Messungen tragen keine
+    Seiten-Information — bei bilateraler Planung prüfen, dass die
+    übernommene Achse zum gewählten Femur gehört (sonst Schaft löschen
+    und ohne Femurprofil neu anlegen oder Rotation per Alt+Pfeil richten).
 
 > **Vorab automatisiert prüfbar:** Die Schritte 3–15 sind als
 > Playwright-Skripte hinterlegt (`scripts/abnahme-femurprofil/`, 117

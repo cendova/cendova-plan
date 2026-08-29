@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { Types } from '@cornerstonejs/core'
 import {
   findeCcdFuerPrefill,
+  findeFemurachseFuerSchaft,
   istGueltigeFemurProfileReview,
   useHipStore,
 } from './hipStore'
@@ -392,6 +393,56 @@ describe('CCD-Prefill des Femurprofils', () => {
     useHipStore.getState().toggleTool('femurProfile')
     expect(useHipStore.getState().draftPoints).toHaveLength(6)
     expect(useHipStore.getState().measurements).toHaveLength(nachher)
+  })
+})
+
+describe('Femurachse für die Schaft-Platzierung', () => {
+  /** Legt eine vollständige Femurprofil-Messung an (13 Punkte). */
+  function femurProfilMessung(versatz = 0): Types.Point3[] {
+    useHipStore.getState().toggleTool('femurProfile')
+    const pts = Array.from({ length: 13 }, (_, i) => p(versatz + i, versatz + 10 * i))
+    pts.forEach((q) => useHipStore.getState().addDraftPoint(q))
+    return pts
+  }
+
+  it('liefert die Schaftachse (Punkte 4/5) der jüngsten vollständigen Messung', () => {
+    femurProfilMessung(0)
+    const zweite = femurProfilMessung(500)
+    const achse = findeFemurachseFuerSchaft(useHipStore.getState().measurements)
+    expect(achse).toEqual([zweite[4], zweite[5]])
+  })
+
+  it('liefert KOPIEN — die Schablone darf die Messpunkte nicht teilen', () => {
+    femurProfilMessung()
+    const achse = findeFemurachseFuerSchaft(useHipStore.getState().measurements)!
+    achse[0][0] = 9999
+    const m = useHipStore.getState().measurements.find((x) => x.kind === 'femurProfile')!
+    expect(m.points[4][0]).not.toBe(9999)
+  })
+
+  it('liefert null ohne Femurprofil — eine CCD-Messung genügt bewusst NICHT', () => {
+    // Die Automatik greift nur beim expliziten Femurprofil-Arbeitsfluss;
+    // eine bloße CCD-Messung soll die zwei Achsen-Klicks nicht ersetzen.
+    expect(findeFemurachseFuerSchaft([])).toBeNull()
+    useHipStore.getState().toggleTool('ccd')
+    for (let i = 0; i < 6; i++) useHipStore.getState().addDraftPoint(p(i, i))
+    expect(findeFemurachseFuerSchaft(useHipStore.getState().measurements)).toBeNull()
+  })
+
+  it('ignoriert eine unvollständige Femurprofil-Messung', () => {
+    useHipStore.setState({
+      measurements: [
+        {
+          id: 'hip-y',
+          kind: 'femurProfile',
+          points: Array.from({ length: 7 }, (_, i) => p(i, i)),
+          visible: true,
+          labelOffset: { x: 0, y: 0 },
+          labelStyle: { fontSize: 13, color: '#fff', bold: false, underline: false },
+        },
+      ],
+    })
+    expect(findeFemurachseFuerSchaft(useHipStore.getState().measurements)).toBeNull()
   })
 })
 

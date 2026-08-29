@@ -299,3 +299,65 @@ describe('femurProfile — 10-cm-Hilfslinie während der Platzierung', () => {
     expect(mitte(draft)[1]).toBeCloseTo(mitte(fertig)[1], 6)
   })
 })
+
+// ----------------------------------------------------------------------
+// Zweite Führungslinie auf Höhe Trochanter minor (Realtest 29.08.2026):
+// Die letzten beiden Punkte (Kanalränder, Indizes 11/12) werden AUF diese
+// Linie geklickt — vorher blieb ihre Höhe reine Schätzung.
+// ----------------------------------------------------------------------
+
+describe('femurProfile — TM-Hilfslinie für die Kanalrand-Punkte', () => {
+  const recipe = getRecipe('femurProfile')!
+  const gestrichelte = (g: {
+    lines: { from: Types.Point3; to: Types.Point3; dashed?: boolean }[]
+  }) => g.lines.filter((l) => l.dashed)
+
+  it('erscheint NICHT, solange die Kortikalis-Punkte gesetzt werden', () => {
+    // Während der Punkte 7–10 gilt die 10-cm-Linie allein — eine zweite
+    // Linie in Sichtweite würde zum falschen Klick-Ziel einladen.
+    for (const n of [7, 8, 9, 10]) {
+      expect(gestrichelte(recipe.computeDraft!(femurProfilPunkte().slice(0, n), 1))).toHaveLength(1)
+    }
+  })
+
+  it('erscheint ab dem 11. Punkt auf Höhe des Trochanter minor', () => {
+    const linien = gestrichelte(recipe.computeDraft!(femurProfilPunkte().slice(0, 11), 1))
+    expect(linien).toHaveLength(2)
+    // Fixture: Achse vertikal, TM-Fußpunkt bei y = 40 → Linie bei y = 40,
+    // symmetrisch um die Achse (± Halbbreite).
+    const tm = linien[1]
+    expect(tm.from[1]).toBeCloseTo(40, 6)
+    expect(tm.to[1]).toBeCloseTo(40, 6)
+    expect(Math.min(tm.from[0], tm.to[0])).toBeCloseTo(-45, 6)
+    expect(Math.max(tm.from[0], tm.to[0])).toBeCloseTo(45, 6)
+  })
+
+  it('bleibt beim 12. Punkt stehen', () => {
+    expect(gestrichelte(recipe.computeDraft!(femurProfilPunkte().slice(0, 12), 1))).toHaveLength(2)
+  })
+
+  it('läuft durch den geklickten Trochanter-minor-Punkt', () => {
+    // Der TM-Punkt liegt seitlich der Achse; die Linie geht durch seinen
+    // FUSSPUNKT und damit (Senkrechte!) auch durch den Punkt selbst.
+    const pts = femurProfilPunkte().slice(0, 11)
+    pts[6] = p(-12, 40)
+    const tm = gestrichelte(recipe.computeDraft!(pts, 1))[1]
+    // Abstand des TM-Punkts von der Linie (2D, Linie ist horizontal).
+    expect(tm.from[1]).toBeCloseTo(40, 6)
+  })
+
+  it('liegt exakt dort, wo die fertige Messung ihre TM-Linie zeichnet', () => {
+    // Führung = Ergebnis, dieselbe Doktrin wie bei der 10-cm-Linie.
+    const draft = gestrichelte(recipe.computeDraft!(femurProfilPunkte().slice(0, 11), 1))[1]
+    const grau = recipe
+      .compute(femurProfilPunkte(), 1)
+      .geometry.lines.filter((l) => l.dashed && l.color === '#94a3b8')
+    expect(grau).toHaveLength(2)
+    expect(grau[1].from).toEqual(draft.from)
+    expect(grau[1].to).toEqual(draft.to)
+  })
+
+  it('fehlt ohne Kalibrierung wie alle Referenzlinien', () => {
+    expect(recipe.computeDraft!(femurProfilPunkte().slice(0, 11), null).lines).toEqual([])
+  })
+})

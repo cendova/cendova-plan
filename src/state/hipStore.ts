@@ -46,6 +46,30 @@ export function findeCcdFuerPrefill(
 }
 
 /**
+ * Schaftachse (proximal, distal) der jüngsten VOLLSTÄNDIGEN
+ * Femurprofil-Messung — für die Schablonen-Platzierung: Liegt die Achse
+ * bereits vermessen vor, entfallen die zwei Achsen-Klicks beim Anlegen
+ * des Schafts (Realtest 29.08.2026). Punkte 4/5 sind per Prefill-Vertrag
+ * (Steps wortgleich mit dem CCD-Rezept) die Femurschaftachse.
+ *
+ * Gibt KOPIEN zurück — die Schablone darf die Messpunkte nicht teilen,
+ * sonst verschöbe eine spätere Punktkorrektur still die Schaftreferenz.
+ */
+export function findeFemurachseFuerSchaft(
+  measurements: HipMeasurement[],
+): [Types.Point3, Types.Point3] | null {
+  const rezept = getRecipe('femurProfile')
+  if (!rezept) return null
+  for (let i = measurements.length - 1; i >= 0; i--) {
+    const m = measurements[i]
+    if (m.kind === 'femurProfile' && m.points.length === rezept.steps.length) {
+      return [[...m.points[4]] as Types.Point3, [...m.points[5]] as Types.Point3]
+    }
+  }
+  return null
+}
+
+/**
  * Synchronisiert die Becken-Referenz-Punkte einer Hüft-Messung in den
  * globalen `templateStore.referenceLine`. Damit teilen sich LLD/CE und
  * die Pfannen-Schablone EINE gemeinsame Beckenebene.

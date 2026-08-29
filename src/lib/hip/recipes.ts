@@ -424,32 +424,36 @@ function ratio2(v: number): string {
 
 const NICHT_BESTIMMBAR = 'nicht zuverlässig bestimmbar'
 
-/** Farbe der 10-cm-Referenzlinie — identisch in Führung und Ergebnis. */
-const ZEHN_CM_FARBE = '#94a3b8'
+/** Farbe der Referenz-Querlinien (10 cm UND Höhe Trochanter minor) —
+ *  identisch in Führung und Ergebnis. */
+const QUERLINIEN_FARBE = '#94a3b8'
 
-/** Halbe Länge der gezeichneten 10-cm-Linie in mm. Rein optisch: breit
+/** Halbe Länge der gezeichneten Querlinien in mm. Rein optisch: breit
  *  genug, um jeden Femurschaft zu überspannen, ohne das Bild zuzumalen. */
-const ZEHN_CM_HALBBREITE_MM = 45
+const QUERLINIEN_HALBBREITE_MM = 45
 
 /**
- * DIE eine Quelle der 10-cm-Querlinie: senkrecht zur Schaftachse, 10 cm
- * distal des Trochanter-minor-Fußpunkts auf der Achse.
+ * DIE eine Quelle der Referenz-Querlinien: senkrecht zur Schaftachse,
+ * `abstandMm` distal des Trochanter-minor-Fußpunkts auf der Achse
+ * (100 = 10-cm-Linie für die Kortikalis-Punkte, 0 = Linie auf Höhe des
+ * Trochanter minor für die beiden Kanalrand-Punkte).
  *
  * Bewusst von Führung UND fertiger Messung benutzt: Der Nutzer setzt die
- * vier Kortikalis-Punkte AUF diese Linie. Läge die Linie der fertigen
- * Messung auch nur leicht woanders, wäre die Führung eine Lüge gewesen —
- * zwei Implementierungen würden früher oder später genau das tun.
+ * Punkte AUF diese Linien. Läge eine Linie der fertigen Messung auch nur
+ * leicht woanders, wäre die Führung eine Lüge gewesen — zwei
+ * Implementierungen würden früher oder später genau das tun.
  *
  * `null`, wenn die Linie nicht ehrlich gezeichnet werden kann: ohne
- * Kalibrierung (mmPerWorldUnit === null) gäbe es keine echten 10 cm,
+ * Kalibrierung (mmPerWorldUnit === null) gäbe es keine echten Abstände,
  * ohne Achsrichtung keine Senkrechte.
  */
-function zehnCmQuerlinie(
+function querlinieZurAchse(
   s1: P,
   s2: P,
   tmPt: P,
   mmPerWorldUnit: number | null,
   halbeBreiteMm: number,
+  abstandMm: number,
 ): { from: P; to: P } | null {
   if (mmPerWorldUnit == null || !Number.isFinite(mmPerWorldUnit) || mmPerWorldUnit <= 0) {
     return null
@@ -462,7 +466,7 @@ function zehnCmQuerlinie(
   const n: P = [-u[1], u[0], 0]
   // Weltkoordinaten: mm = WU · factor, also WU = mm / factor.
   const fuss = closestPointOnLine(tmPt, s1, s2)
-  const mitte = add(fuss, scale(u, 100 / mmPerWorldUnit))
+  const mitte = add(fuss, scale(u, abstandMm / mmPerWorldUnit))
   const halb = halbeBreiteMm / mmPerWorldUnit
   return { from: add(mitte, scale(n, -halb)), to: add(mitte, scale(n, halb)) }
 }
@@ -486,18 +490,22 @@ const femurProfile: Recipe = {
   ],
   lineGroups: [[4, 5]],
   // Führung während der Platzierung: sobald Schaftachse (4/5) und
-  // Trochanter minor (6) stehen, zeigt die Linie, WO die vier
-  // Kortikalis-Punkte hingehören.
+  // Trochanter minor (6) stehen, zeigt die 10-cm-Linie, WO die vier
+  // Kortikalis-Punkte hingehören. Für die letzten beiden Punkte (Kanal-
+  // ränder, Indizes 11/12) kommt die zweite Linie AUF Höhe des Trochanter
+  // minor dazu — ohne sie bliebe die Klick-Höhe Schätzung (Realtest
+  // 29.08.2026).
   computeDraft: (points, mmPerWorldUnit) => {
     if (points.length < 7) return LEERE_GEOMETRIE
     const [, , , , s1, s2, tmPt] = points
-    const linie = zehnCmQuerlinie(s1, s2, tmPt, mmPerWorldUnit, ZEHN_CM_HALBBREITE_MM)
-    if (!linie) return LEERE_GEOMETRIE
-    return {
-      lines: [{ ...linie, dashed: true, color: ZEHN_CM_FARBE }],
-      circles: [],
-      labels: [],
+    const zehnCm = querlinieZurAchse(s1, s2, tmPt, mmPerWorldUnit, QUERLINIEN_HALBBREITE_MM, 100)
+    if (!zehnCm) return LEERE_GEOMETRIE
+    const lines = [{ ...zehnCm, dashed: true, color: QUERLINIEN_FARBE }]
+    if (points.length >= 11) {
+      const tmLinie = querlinieZurAchse(s1, s2, tmPt, mmPerWorldUnit, QUERLINIEN_HALBBREITE_MM, 0)
+      if (tmLinie) lines.push({ ...tmLinie, dashed: true, color: QUERLINIEN_FARBE })
     }
+    return { lines, circles: [], labels: [] }
   },
   compute: (points, factor) => {
     const raw = computeFemurProfileRaw(points, factor)
@@ -545,9 +553,10 @@ const femurProfile: Recipe = {
     // Halsachse wie im CCD-Rezept über den gesetzten Punkt verlängern.
     const neckEnd = add(center, scale(sub(neckPt, center), 1.6))
 
-    // Dieselbe Funktion wie die Führung — die Linie darf nach dem
+    // Dieselbe Funktion wie die Führung — die Linien dürfen nach dem
     // Abschluss der Messung nicht woanders liegen als vorher.
-    const zehnCm = zehnCmQuerlinie(s1, s2, tmPt, factor, ZEHN_CM_HALBBREITE_MM)
+    const zehnCm = querlinieZurAchse(s1, s2, tmPt, factor, QUERLINIEN_HALBBREITE_MM, 100)
+    const tmLinie = querlinieZurAchse(s1, s2, tmPt, factor, QUERLINIEN_HALBBREITE_MM, 0)
 
     return {
       values,
@@ -555,7 +564,8 @@ const femurProfile: Recipe = {
         lines: [
           { from: center, to: neckEnd },
           { from: s1, to: s2 },
-          ...(zehnCm ? [{ ...zehnCm, dashed: true, color: ZEHN_CM_FARBE }] : []),
+          ...(zehnCm ? [{ ...zehnCm, dashed: true, color: QUERLINIEN_FARBE }] : []),
+          ...(tmLinie ? [{ ...tmLinie, dashed: true, color: QUERLINIEN_FARBE }] : []),
           // Gemessene Breiten: außen kräftig, innen (Kanal) gestrichelt.
           { from: om, to: ol },
           { from: im, to: il, dashed: true },

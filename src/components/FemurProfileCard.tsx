@@ -184,7 +184,6 @@ export function FemurProfileCard({
               corticalIndex={raw.corticalIndex}
               nsaDeg={raw.nsaDeg}
               femoralOffsetRatio={raw.femoralOffsetRatio}
-              femoralOffsetMm={raw.femoralOffsetMm}
             />
           </div>
         )}
