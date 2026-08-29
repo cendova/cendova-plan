@@ -13,7 +13,17 @@ import {
   rotationsDelta,
   schabloneDarfTaste,
 } from '../lib/tastaturFokus'
-import { findeFemurachseFuerSchaft, useHipStore } from '../state/hipStore'
+import {
+  findeFemurachseFuerSchaft,
+  findeFemurprofilFuerSchaft,
+  useHipStore,
+} from '../state/hipStore'
+import {
+  computeFemurProfileRaw,
+  isFemurProfileClassifiable,
+} from '../lib/hip/femurProfile'
+import { schlageStartVarianteVor } from '../lib/hip/stemPlanningRules'
+import { STEM_PROFILE_BY_FOLDER } from '../lib/hip/medactaCatalog'
 import { useKneeStore } from '../state/kneeStore'
 import { useShoulderStore } from '../state/shoulderStore'
 import { useNoteStore } from '../state/noteStore'
@@ -1272,6 +1282,45 @@ function useStemContourPlacement(
   }
 }
 
+/**
+ * Start-Variante für den neuen Schaft aus der Femurprofil-Messung —
+ * eine VORAUSWAHL im Selektor (frei änderbar), keine Empfehlung.
+ * Klassenbasiert wird nur gewählt, wenn die Bildqualität bestätigt wurde
+ * (dieselbe Freigabe wie für die Klasse selbst); der ärztlich bestätigte
+ * Dorr gewinnt, außer die Bestätigung ist veraltet (Punkte nachträglich
+ * verändert). Ohne Treffer gilt das Standardverhalten (Eintrag 0).
+ */
+function ermittleStartVariante(
+  messungen: Parameters<typeof findeFemurprofilFuerSchaft>[0],
+): number | null {
+  const messung = findeFemurprofilFuerSchaft(messungen)
+  if (!messung) return null
+  const review = messung.femurProfileReview
+  if (!isFemurProfileClassifiable(review?.imageQuality)) return null
+  const factor = useViewerStore.getState().calibration?.mmPerWorldUnit
+  if (factor == null) return null
+  const raw = computeFemurProfileRaw(messung.points, factor)
+  if (!raw) return null
+  const veraltet =
+    review?.dorrFinal != null &&
+    review.dorrSuggested != null &&
+    raw.dorr?.suggested !== review.dorrSuggested
+  const vorauswahl = schlageStartVarianteVor(
+    {
+      dorr: (!veraltet && review?.dorrFinal) || (raw.dorr?.suggested ?? null),
+      nsaClass: raw.nsaClass,
+      offsetSubtype: raw.cpah?.offsetSubtype ?? null,
+    },
+    stemCatalogEntries().map((e) => e.folder),
+    STEM_PROFILE_BY_FOLDER,
+  )
+  if (!vorauswahl) return null
+  const index = stemCatalogEntries().findIndex((e) => e.folder === vorauswahl.folder)
+  if (index < 0) return null
+  logDiagnostic(`Schaft: ${vorauswahl.grund} („${vorauswahl.folder}")`)
+  return index
+}
+
 /** Banner über dem Viewport für Pfannen- und Schaft-Anlage-Ablauf. */
 function PlacementBanner({
   pending,
@@ -1295,10 +1344,11 @@ function PlacementBanner({
     // Alt+Pfeil, oder Schaft löschen und ohne Femurprofil neu anlegen.
     const pickSide = (side: CupSide) => {
       if (pending.kind === 'stem') {
-        const achse = findeFemurachseFuerSchaft(useHipStore.getState().measurements)
+        const messungen = useHipStore.getState().measurements
+        const achse = findeFemurachseFuerSchaft(messungen)
         if (achse) {
           logDiagnostic('Schaft: Femurachse aus Femurprofil-Messung übernommen')
-          placeStemForSide(side, achse)
+          placeStemForSide(side, achse, ermittleStartVariante(messungen))
           return
         }
       }

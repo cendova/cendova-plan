@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import type { StemPlanningProfile } from './medactaCatalog'
 import {
   type StemPlanningAnatomie,
+  schlageStartVarianteVor,
   stemPlanningHints,
 } from './stemPlanningRules'
 
@@ -218,5 +219,69 @@ describe('Querschnitts-Verträge', () => {
   it('lässt fehlende Messwerte einfach aus den Belegen weg', () => {
     const hints = stemPlanningHints(anatomie({ dorr: 'C', corticalIndex: null }))
     expect(hints[0].evidence).toEqual(['Dorr C (ärztlich bestätigt)'])
+  })
+})
+
+describe('Start-Variante für die Schaft-Platzierung', () => {
+  // Synthetisches Portfolio in Katalog-Reihenfolge — die Funktion darf
+  // NUR über die Profile entscheiden, nie über diese Namen.
+  const FOLDERS = ['S1 STD', 'S1 LAT', 'S2 Kurz', 'S3 Zementiert', 'S4 Revision']
+  const PROFILE: Record<string, StemPlanningProfile> = {
+    'S1 STD': zementfrei({ offsetVariant: 'standard' }),
+    'S1 LAT': zementfrei({ offsetVariant: 'lateralized' }),
+    'S2 Kurz': zementfrei({ radaelliClass: 'F' }),
+    'S3 Zementiert': ZEMENTIERT,
+    'S4 Revision': { ...ZEMENTIERT, intendedUse: 'revision' },
+  }
+  const neutral = { dorr: 'B' as const, nsaClass: 'norma' as const, offsetSubtype: 'N' as const }
+
+  it('wählt bei Dorr C die erste zementierte Primär-Variante', () => {
+    const v = schlageStartVarianteVor({ ...neutral, dorr: 'C' }, FOLDERS, PROFILE)!
+    expect(v.folder).toBe('S3 Zementiert')
+    expect(v.grund).toContain('Dorr C')
+  })
+
+  it('wählt bei vara+High-Offset die lateralisierte Variante', () => {
+    const v = schlageStartVarianteVor(
+      { dorr: 'B', nsaClass: 'vara', offsetSubtype: 'H' },
+      FOLDERS,
+      PROFILE,
+    )!
+    expect(v.folder).toBe('S1 LAT')
+  })
+
+  it('lässt die Fixations-Sicherheit über den Offset-Komfort gewinnen', () => {
+    // Dorr C UND vara+H: zementiert schlägt lateralisiert.
+    const v = schlageStartVarianteVor(
+      { dorr: 'C', nsaClass: 'vara', offsetSubtype: 'H' },
+      FOLDERS,
+      PROFILE,
+    )!
+    expect(v.folder).toBe('S3 Zementiert')
+  })
+
+  it('wählt bei coxa valga bewusst nichts vor', () => {
+    // Eine lateralisierte Vorauswahl widerspräche der Überoffset-Warnung.
+    expect(
+      schlageStartVarianteVor({ dorr: 'B', nsaClass: 'valga', offsetSubtype: 'H' }, FOLDERS, PROFILE),
+    ).toBeNull()
+  })
+
+  it('wählt bei unauffälliger Anatomie nichts vor (Standardverhalten)', () => {
+    expect(schlageStartVarianteVor(neutral, FOLDERS, PROFILE)).toBeNull()
+  })
+
+  it('wählt nie einen Revisionsschaft, auch wenn er als einziger passt', () => {
+    const nurRevision: Record<string, StemPlanningProfile> = {
+      'S4 Revision': { ...ZEMENTIERT, intendedUse: 'revision' },
+    }
+    expect(
+      schlageStartVarianteVor({ ...neutral, dorr: 'C' }, ['S4 Revision'], nurRevision),
+    ).toBeNull()
+  })
+
+  it('liefert ohne Profile null — keine Vorauswahl aus dem Nichts', () => {
+    expect(schlageStartVarianteVor({ ...neutral, dorr: 'C' }, FOLDERS, {})).toBeNull()
+    expect(schlageStartVarianteVor({ dorr: null, nsaClass: null, offsetSubtype: null }, FOLDERS, PROFILE)).toBeNull()
   })
 })

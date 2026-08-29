@@ -172,3 +172,62 @@ export function stemPlanningHints(
 
   return hints.sort((x, y) => SEVERITY_RANG[x.severity] - SEVERITY_RANG[y.severity])
 }
+
+// ======================================================================
+// START-VARIANTE FÜR DIE SCHAFT-PLATZIERUNG
+// ======================================================================
+
+export interface StartVariantenKriterien {
+  dorr: DorrType | null
+  nsaClass: NsaClass | null
+  offsetSubtype: OffsetSubtype | null
+}
+
+/**
+ * Schlägt die START-Variante für das Anlegen eines Schafts vor — eine
+ * VORAUSWAHL im Selektor, keine Empfehlung: Der Selektor bleibt offen,
+ * der Nutzer wechselt frei, und ohne Treffer gilt das bisherige
+ * Standardverhalten (erster Katalogeintrag).
+ *
+ * Marken-agnostisch: Entschieden wird NUR über die Profile aus dem
+ * Schablonen-Paket, nie über Ordnernamen. Genommen wird jeweils der
+ * ERSTE passende Eintrag in Katalog-Reihenfolge; Revisionsschäfte
+ * (`intendedUse: 'revision'`) werden nie vorausgewählt.
+ *
+ * Priorität: Die Fixations-Sicherheitsregel (Dorr C → zementiert) steht
+ * ÜBER dem Offset-Komfort (vara+H → lateralisiert). Coxa valga wählt
+ * bewusst nichts vor — eine lateralisierte Vorauswahl liefe der eigenen
+ * Überoffset-Warnung entgegen.
+ */
+export function schlageStartVarianteVor(
+  kriterien: StartVariantenKriterien,
+  folders: string[],
+  profile: Record<string, StemPlanningProfile>,
+): { folder: string; grund: string } | null {
+  const primaer = (f: string) => profile[f] != null && profile[f].intendedUse === 'primary'
+
+  if (kriterien.dorr === 'C') {
+    const f = folders.find((x) => primaer(x) && profile[x].fixation === 'cemented')
+    if (f) {
+      return {
+        folder: f,
+        grund: 'Dorr C — zementierte Variante als Ausgangspunkt vorausgewählt',
+      }
+    }
+  }
+  if (kriterien.nsaClass === 'vara' && kriterien.offsetSubtype === 'H') {
+    const f = folders.find(
+      (x) =>
+        primaer(x) &&
+        profile[x].fixation === 'cementless' &&
+        profile[x].offsetVariant === 'lateralized',
+    )
+    if (f) {
+      return {
+        folder: f,
+        grund: 'Coxa vara mit High-Offset — lateralisierte Variante als Ausgangspunkt vorausgewählt',
+      }
+    }
+  }
+  return null
+}

@@ -1218,6 +1218,24 @@ Keine statische Zuordnung `CPAH 5H -> Quadra-P LAT`. Stattdessen relevante Varia
   ohne Eintrag erscheinen Abgleich-Deltas trotzdem, nur ohne
   Profil-Informationen.
 
+**NACHTRAG 29.08.2026 (Nutzerwunsch nach Task 16):**
+
+- `scripts/build-stem-profile-addon.mjs` + `schaft-profile.beispiel.json`:
+  die Einmal-Brücke von den bestätigten Task-13-Klassen ins private
+  Paket (zweistufig `--init` → prüfen → bauen; Heuristik-Vorschläge nur
+  als Startpunkt, Platzhalter blocken den Bau; Addon gegen die echte
+  `validateManifest` verifiziert).
+- **Start-Varianten-Vorauswahl** beim Schaft-Anlegen
+  (`schlageStartVarianteVor` in stemPlanningRules, 7 Tests): Dorr C →
+  erste zementierte Primär-Variante, vara+H → erste lateralisierte;
+  Fixations-Sicherheit schlägt Offset-Komfort; valga wählt bewusst
+  nichts vor (Überoffset-Warnung); Revisionsschäfte nie. Marken-
+  agnostisch (nur Profile), klassenbasiert NUR bei bestätigter
+  Bildqualität, ärztlicher Dorr gewinnt außer bei veralteter
+  Bestätigung. Verdrahtet über `placeStem(..., startCatalogIndex)`;
+  bleibt VORAUSWAHL im offenen Selektor — keine Empfehlung, Grund im
+  Diagnose-Log.
+
 ---
 
 ## Task 17: Phase-B-Abnahme

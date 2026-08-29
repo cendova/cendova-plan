@@ -1,0 +1,25 @@
+{
+  "_dokumentation": "Beispielstruktur für scripts/schaft-profile.local.json (per build-stem-profile-addon.mjs --init erzeugt). Schlüssel = Schaft-Ordnername aus dem eigenen Paket. Schlüssel mit _ werden ignoriert. Wertelisten: fixation cementless|cemented · collar none|collared · primaryFixation metaphyseal|metadiaphyseal|diaphyseal|cement · radaelliClass A|B1|B2|B3|C1|C2|C3|D|E|F (nur zementfrei) · neckVariant regular|short (optional) · offsetVariant standard|lateralized (optional) · intendedUse primary|revision.",
+  "Beispiel-Hersteller Schaft STD": {
+    "fixation": "cementless",
+    "radaelliClass": "B2",
+    "collar": "none",
+    "primaryFixation": "metadiaphyseal",
+    "offsetVariant": "standard",
+    "intendedUse": "primary"
+  },
+  "Beispiel-Hersteller Schaft LAT": {
+    "fixation": "cementless",
+    "radaelliClass": "B2",
+    "collar": "none",
+    "primaryFixation": "metadiaphyseal",
+    "offsetVariant": "lateralized",
+    "intendedUse": "primary"
+  },
+  "Beispiel-Hersteller Schaft Zementiert": {
+    "fixation": "cemented",
+    "collar": "none",
+    "primaryFixation": "cement",
+    "intendedUse": "primary"
+  }
+}

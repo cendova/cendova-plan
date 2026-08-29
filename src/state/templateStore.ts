@@ -149,6 +149,9 @@ interface TemplateState {
     headCenter: Types.Point3,
     rotationDeg: number,
     femurAxis: [Types.Point3, Types.Point3] | null,
+    /** Optionale Start-Variante (Katalog-Index) — Vorauswahl aus den
+     *  Planungsregeln (schlageStartVarianteVor); ohne Angabe Eintrag 0. */
+    startCatalogIndex?: number | null,
   ) => void
   /** Klick im Femur-Achse-Stage: erster Klick speichert den ersten
    *  Punkt in `pending.axisDraft`, zweiter Klick verlässt den Stage und
@@ -265,10 +268,12 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
       }
     }),
 
-  placeStem: (side, headCenter, rotationDeg, femurAxis) =>
+  placeStem: (side, headCenter, rotationDeg, femurAxis, startCatalogIndex) =>
     set((s) => {
       const entries = stemCatalogEntries()
-      const catalogIndex = 0 // Quadra-P STD als Default
+      // Vorauswahl aus den Planungsregeln, sonst Eintrag 0 als Default.
+      const catalogIndex =
+        startCatalogIndex != null ? clampStemCatalogIndex(startCatalogIndex) : 0
       const sizes = entries[catalogIndex]?.sizes ?? []
       const sizeIndex = Math.max(0, Math.floor((sizes.length - 1) / 2))
       const headOffsetIndex = 0 // -4 mm (kleinster Kopf) als Start für alle Schäfte

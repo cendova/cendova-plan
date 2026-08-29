@@ -129,6 +129,16 @@ eigenen Herstellerunterlagen befüllen):
   merge-Addon-ZIP (gegen die App-Validierung geprüft).
 - `scripts/export-knee-contours-addon.mjs` — Konturen (+ CCD-Winkel) →
   Nachzug-Addon für Bestandspakete.
+- `scripts/build-stem-profile-addon.mjs` — Schaft-Planungsprofile
+  (`stemProfileByFolder`: Fixation, Radaelli-Klasse, Offset-Variante …)
+  → merge-Addon-ZIP. Zweistufig: `--init` liest das eigene Paket
+  (Standard `.cendova-daten/schablonen-paket.zip`, sonst `--src`),
+  listet die Schaft-Ordner und schreibt Vorschläge nach
+  `scripts/schaft-profile.local.json` (gitignored; Struktur:
+  `schaft-profile.beispiel.json`); nach dem Prüfen baut der zweite
+  Lauf ohne `--init` das Addon und gleicht die Ordnernamen gegen das
+  Paket ab. Die Profile speisen die Planungshinweise und die
+  Start-Varianten-Vorauswahl beim Schaft-Anlegen.
 
 Paket-ZIPs (`cendova-*.zip`) sind per `.gitignore` geblockt — sie
 enthalten Hersteller-Material und gehören nicht ins Repository.

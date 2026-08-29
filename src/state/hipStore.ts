@@ -58,13 +58,21 @@ export function findeCcdFuerPrefill(
 export function findeFemurachseFuerSchaft(
   measurements: HipMeasurement[],
 ): [Types.Point3, Types.Point3] | null {
+  const m = findeFemurprofilFuerSchaft(measurements)
+  if (!m) return null
+  return [[...m.points[4]] as Types.Point3, [...m.points[5]] as Types.Point3]
+}
+
+/** Jüngste VOLLSTÄNDIGE Femurprofil-Messung — Grundlage für Achsen-
+ *  Übernahme und Start-Varianten-Vorauswahl beim Schaft-Anlegen. */
+export function findeFemurprofilFuerSchaft(
+  measurements: HipMeasurement[],
+): HipMeasurement | null {
   const rezept = getRecipe('femurProfile')
   if (!rezept) return null
   for (let i = measurements.length - 1; i >= 0; i--) {
     const m = measurements[i]
-    if (m.kind === 'femurProfile' && m.points.length === rezept.steps.length) {
-      return [[...m.points[4]] as Types.Point3, [...m.points[5]] as Types.Point3]
-    }
+    if (m.kind === 'femurProfile' && m.points.length === rezept.steps.length) return m
   }
   return null
 }

@@ -268,6 +268,17 @@ zwischen Messungen und Schablonen. Patienten-DICOMs bleiben lokal.
     zementiertem Profil; B2 meldet die fehlende CPAH-Simulation als
     Info). Rotation zur Achse und die Gesamt-Bilanz mit Pfanne stehen
     weiterhin NUR im Messungen-Panel (keine Doppelanzeige).
+    Profile einspielen: `node scripts/build-stem-profile-addon.mjs --init`,
+    Datei prüfen, dann ohne `--init` bauen und das Addon importieren
+    (Details in `docs/schablonen-pakete.md`).
+19. **Start-Varianten-Vorauswahl:** Mit eingespielten Profilen UND
+    bestätigter Bildqualität wählt das Schaft-Anlegen die Start-Variante
+    passend zur Messung vor: Dorr C → erste zementierte Primär-Variante;
+    coxa vara + High-Offset → erste lateralisierte Variante; coxa valga
+    und alles andere → bisheriger Standard (erster Eintrag). Es ist eine
+    VORAUSWAHL: Der Selektor bleibt frei änderbar, und der Grund steht im
+    Diagnose-Log. Der ärztlich bestätigte Dorr gewinnt über den
+    Vorschlag, außer die Bestätigung ist veraltet.
 
 > **Vorab automatisiert prüfbar:** Die Schritte 3–15 sind als
 > Playwright-Skripte hinterlegt (`scripts/abnahme-femurprofil/`, 117
