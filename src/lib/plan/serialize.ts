@@ -99,7 +99,8 @@ export function setEmbeddedSaveHook(hook: (() => void) | null): void {
 // Version 7: + Schulter-Messungen (CSA) inkl. Seite und Prothesentyp
 // Version 8: + Schulter-Schablonen (gingen vorher beim Speichern verloren)
 // Version 9: + Schaft-Fragmente (Osteotomie-Simulation am Humerus)
-const PLAN_FORMAT_VERSION = 9
+// Version 10: + Femurprofil-Review (Bildqualitaet, Dorr-Bestaetigung/Override)
+const PLAN_FORMAT_VERSION = 10
 
 export interface PlanFile {
   /** Schema-Version. Beim Laden prüfen und ggf. migrieren. */

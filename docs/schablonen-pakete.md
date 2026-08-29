@@ -91,12 +91,14 @@ Maßgeblich ist `src/lib/templates/packageFormat.ts` (Typen +
 | `medactaImages` / `medactaCatalog` | Hüft-Schablonen: Bilder `[folder][refNo]` + Katalog (Größen, Bezugspunkte, Kopfpositionen) |
 | `headOffsetsMm` | genau 5 Halslängen-Stufen (UI-Vertrag) |
 | `stemCcdByFolder` | CCD-Winkel (Grad) je Schaft-Ordnername; schlüsselweise Vereinigung, Plausibilitätsfenster 100–160° |
+| `stemProfileByFolder` | Schaft-Planungsprofil je Ordnername: `fixation` (cementless/cemented), `radaelliClass` (A/B1–B3/C1–C3/D/E/F, NUR zementfrei), `collar`, `primaryFixation`, optional `neckVariant`/`offsetVariant`, `intendedUse`; schlüsselweise Vereinigung. Grundlage der Schaft-Planungshinweise — Regeln lesen nie Ordnernamen |
 | `backgrounds` | Tracer-Hintergründe, Schlüssel `kind\|view` bzw. `kind\|view\|band` |
 
 Addons (`merge:true`) dürfen beliebige Teilmengen liefern — z. B. nur
 `kneeContours` oder nur `stemCcdByFolder`; `kneeContours`,
-`shoulderContours` und `stemCcdByFolder` werden schlüsselweise vereinigt
-(Addon gewinnt), alle anderen definierten Felder ersetzen die Basis.
+`shoulderContours`, `stemCcdByFolder` und `stemProfileByFolder` werden
+schlüsselweise vereinigt (Addon gewinnt), alle anderen definierten Felder
+ersetzen die Basis.
 
 ## Eigene Pakete erzeugen (Generator-Skripte)
 

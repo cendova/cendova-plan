@@ -9,10 +9,15 @@ Weil die zugrunde liegenden Röntgenbilder unter **CC BY-SA** stehen, stehen
 die davon abgeleiteten Screenshots (`.png`) unter derselben Lizenz —
 unabhängig von der Apache-2.0-Lizenz des Programmcodes.
 
+**Ausnahme:** reine UI-Mockups ohne Röntgenbild (Design-Vorlagen) enthalten
+nichts Fremdlizenziertes und stehen wie der Code unter Apache 2.0. Welcher
+Eintrag was ist, steht in der Lizenzspalte der Tabelle.
+
 | Screenshot | Zugrunde liegendes Bild | Autor | Lizenz | Quelle |
 | --- | --- | --- | --- | --- |
 | `huefte-becken-ap.jpg` | „Protrusio acetabuli rechts mehr als links 81W – CR ap – 001" | Hellerhoff | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Protrusio_acetabuli_rechts_mehr_als_links_81W_-_CR_ap_-_001.jpg) |
 | `knie-ganzbein.png` | „Genu varum – Roe Ganzbein 001" | Hellerhoff | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Genu_varum_-_Roe_Ganzbein_001.jpg) |
+| `cpah-matrix-mockup.png` | — (reines UI-Mockup, synthetische Beispielwerte, kein Röntgenbild) | eigenes Projekt | Apache 2.0 (wie der Code) | Design-Vorlage für `CpahMatrix.tsx`, siehe `docs/plans/2026-08-08-femurprofil-cpah.md` Task 6 |
 
 **Eigene Demo-Screenshots erzeugen** (ohne echte Patientendaten):
 

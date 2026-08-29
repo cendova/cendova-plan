@@ -1,4 +1,5 @@
 import type { Types } from '@cornerstonejs/core'
+import { computeFemurProfileRaw } from './femurProfile'
 import {
   add,
   angleBetweenLines,
@@ -34,6 +35,7 @@ export type HipKind =
   | 'lld'
   | 'globalOffset'
   | 'osteotomy'
+  | 'femurProfile'
 
 /** Renderdaten einer Messung in Weltkoordinaten. */
 export interface RenderGeometry {
@@ -80,7 +82,21 @@ export interface Recipe {
    */
   pelvicRefIndices?: [number, number]
   compute: (points: P[], mmPerWorldUnit: number) => HipComputed
+  /**
+   * Optionale Hilfsgeometrie WÄHREND der Platzierung (z. B. die
+   * 10-cm-Linie des Femurprofils). Rezepte ohne dieses Feld verhalten
+   * sich unverändert; das Overlay rendert nur, was da ist.
+   *
+   * `mmPerWorldUnit` ist hier bewusst `number | null`: `null` heißt
+   * NICHT KALIBRIERT. Der Kalibrierfaktor allein kann das nicht
+   * ausdrücken — bei Kalibrierung aus dem DICOM-Pixelabstand ist er
+   * exakt 1 als ECHTER Wert, `=== 1` wäre also die falsche Prüfung.
+   * Ohne Kalibrierung darf keine scheinbar metrische Linie entstehen.
+   */
+  computeDraft?: (points: P[], mmPerWorldUnit: number | null) => RenderGeometry
 }
+
+const LEERE_GEOMETRIE: RenderGeometry = { lines: [], circles: [], labels: [] }
 
 const HEAD_CONTOUR = [
   'Hüftkopfkontur — Punkt 1',
@@ -390,6 +406,172 @@ const osteotomy: Recipe = {
   },
 }
 
+// ----------------------------------------------------------------------
+// Femurprofil: geführte 13-Punkt-Vollvermessung des proximalen Femurs.
+// Die gesamte Rechenlogik liegt in femurProfile.ts (computeFemurProfileRaw)
+// — das Rezept ist nur die dünne Brücke: Steps, Formatierung, Geometrie.
+//
+// PREFILL-VERTRAG (Task 10): Die Steps 0–5 sind wortgleich mit dem
+// CCD-Rezept, damit dessen Punkte übernommen werden können. Wer hier die
+// Reihenfolge ändert, bricht das Prefill — der Test nagelt es fest.
+// ----------------------------------------------------------------------
+
+/** Ratio mit deutschem Komma, zwei Nachkommastellen (wie die Anzeige
+ *  „CI 0,54 · CCR 0,60" der Ergebnis-Karte). */
+function ratio2(v: number): string {
+  return v.toFixed(2).replace('.', ',')
+}
+
+const NICHT_BESTIMMBAR = 'nicht zuverlässig bestimmbar'
+
+/** Farbe der 10-cm-Referenzlinie — identisch in Führung und Ergebnis. */
+const ZEHN_CM_FARBE = '#94a3b8'
+
+/** Halbe Länge der gezeichneten 10-cm-Linie in mm. Rein optisch: breit
+ *  genug, um jeden Femurschaft zu überspannen, ohne das Bild zuzumalen. */
+const ZEHN_CM_HALBBREITE_MM = 45
+
+/**
+ * DIE eine Quelle der 10-cm-Querlinie: senkrecht zur Schaftachse, 10 cm
+ * distal des Trochanter-minor-Fußpunkts auf der Achse.
+ *
+ * Bewusst von Führung UND fertiger Messung benutzt: Der Nutzer setzt die
+ * vier Kortikalis-Punkte AUF diese Linie. Läge die Linie der fertigen
+ * Messung auch nur leicht woanders, wäre die Führung eine Lüge gewesen —
+ * zwei Implementierungen würden früher oder später genau das tun.
+ *
+ * `null`, wenn die Linie nicht ehrlich gezeichnet werden kann: ohne
+ * Kalibrierung (mmPerWorldUnit === null) gäbe es keine echten 10 cm,
+ * ohne Achsrichtung keine Senkrechte.
+ */
+function zehnCmQuerlinie(
+  s1: P,
+  s2: P,
+  tmPt: P,
+  mmPerWorldUnit: number | null,
+  halbeBreiteMm: number,
+): { from: P; to: P } | null {
+  if (mmPerWorldUnit == null || !Number.isFinite(mmPerWorldUnit) || mmPerWorldUnit <= 0) {
+    return null
+  }
+  const dir = sub(s2, s1)
+  const dl = len(dir)
+  if (dl === 0) return null
+
+  const u = scale(dir, 1 / dl) // zeigt nach distal (s1 = proximal)
+  const n: P = [-u[1], u[0], 0]
+  // Weltkoordinaten: mm = WU · factor, also WU = mm / factor.
+  const fuss = closestPointOnLine(tmPt, s1, s2)
+  const mitte = add(fuss, scale(u, 100 / mmPerWorldUnit))
+  const halb = halbeBreiteMm / mmPerWorldUnit
+  return { from: add(mitte, scale(n, -halb)), to: add(mitte, scale(n, halb)) }
+}
+
+const femurProfile: Recipe = {
+  kind: 'femurProfile',
+  label: 'Femurprofil',
+  needsCalibration: true,
+  steps: [
+    ...HEAD_CONTOUR,
+    'Schenkelhals — Mitte',
+    'Femurschaftachse — proximaler Punkt',
+    'Femurschaftachse — distaler Punkt',
+    'Mitte Trochanter minor',
+    'Äußere Kortikalis medial — auf der 10-cm-Linie',
+    'Innere Kortikalis medial — auf der 10-cm-Linie',
+    'Innere Kortikalis lateral — auf der 10-cm-Linie',
+    'Äußere Kortikalis lateral — auf der 10-cm-Linie',
+    'Innerer Kanalrand medial — Höhe Trochanter minor',
+    'Innerer Kanalrand lateral — Höhe Trochanter minor',
+  ],
+  lineGroups: [[4, 5]],
+  // Führung während der Platzierung: sobald Schaftachse (4/5) und
+  // Trochanter minor (6) stehen, zeigt die Linie, WO die vier
+  // Kortikalis-Punkte hingehören.
+  computeDraft: (points, mmPerWorldUnit) => {
+    if (points.length < 7) return LEERE_GEOMETRIE
+    const [, , , , s1, s2, tmPt] = points
+    const linie = zehnCmQuerlinie(s1, s2, tmPt, mmPerWorldUnit, ZEHN_CM_HALBBREITE_MM)
+    if (!linie) return LEERE_GEOMETRIE
+    return {
+      lines: [{ ...linie, dashed: true, color: ZEHN_CM_FARBE }],
+      circles: [],
+      labels: [],
+    }
+  },
+  compute: (points, factor) => {
+    const raw = computeFemurProfileRaw(points, factor)
+    if (!raw) {
+      // Defensiv: compute wird regulär erst mit allen 13 Punkten gerufen.
+      return {
+        values: [{ label: '⚠ Femurprofil', value: 'Messung unvollständig — Punkte fehlen.' }],
+        geometry: { lines: [], circles: [], labels: [] },
+      }
+    }
+
+    const values: HipResultValue[] = [
+      ...raw.warnings.map((w) => ({ label: '⚠ Femurprofil', value: w })),
+      {
+        label: 'Dorr-Vorschlag',
+        value: raw.dorr
+          ? raw.dorr.borderline
+            ? `${raw.dorr.suggested} (Grenzbereich ${raw.dorr.borderline})`
+            : raw.dorr.suggested
+          : NICHT_BESTIMMBAR,
+      },
+      {
+        label: 'Cortical Index',
+        value: raw.corticalIndex != null ? ratio2(raw.corticalIndex) : NICHT_BESTIMMBAR,
+      },
+      {
+        label: 'Canal-Calcar Ratio',
+        value: raw.canalCalcarRatio != null ? ratio2(raw.canalCalcarRatio) : NICHT_BESTIMMBAR,
+      },
+      {
+        label: 'NSA (CCD)',
+        value: raw.nsaDeg != null ? deg(raw.nsaDeg) : NICHT_BESTIMMBAR,
+      },
+      { label: 'Femorales Offset', value: mm(raw.femoralOffsetMm) },
+      {
+        label: 'Femoral Offset Ratio',
+        value: raw.femoralOffsetRatio != null ? ratio2(raw.femoralOffsetRatio) : NICHT_BESTIMMBAR,
+      },
+      { label: 'CPAH', value: raw.cpah ? raw.cpah.code : NICHT_BESTIMMBAR },
+    ]
+
+    const [, , , neckPt, s1, s2, tmPt, om, im, il, ol, calM, calL] = points
+    const { headCenter: center, headRadiusWorld: radius } = raw
+
+    // Halsachse wie im CCD-Rezept über den gesetzten Punkt verlängern.
+    const neckEnd = add(center, scale(sub(neckPt, center), 1.6))
+
+    // Dieselbe Funktion wie die Führung — die Linie darf nach dem
+    // Abschluss der Messung nicht woanders liegen als vorher.
+    const zehnCm = zehnCmQuerlinie(s1, s2, tmPt, factor, ZEHN_CM_HALBBREITE_MM)
+
+    return {
+      values,
+      geometry: {
+        lines: [
+          { from: center, to: neckEnd },
+          { from: s1, to: s2 },
+          ...(zehnCm ? [{ ...zehnCm, dashed: true, color: ZEHN_CM_FARBE }] : []),
+          // Gemessene Breiten: außen kräftig, innen (Kanal) gestrichelt.
+          { from: om, to: ol },
+          { from: im, to: il, dashed: true },
+          { from: calM, to: calL, dashed: true, color: '#fbbf24' },
+        ],
+        circles: [{ center, radius }],
+        // GENAU EIN Label (Vertrag des geteilten Renderers: OverlayLabels
+        // zeigt nur labels[0]). Mehrere Einträge wären tote Artefakte —
+        // und bei nicht messbarem NSA wechselte das sichtbare Label still
+        // seine Bedeutung. CI steht ohnehin in der Werteliste.
+        labels: raw.nsaDeg != null ? [{ at: neckPt, text: `NSA ${deg(raw.nsaDeg)}` }] : [],
+      },
+    }
+  },
+}
+
 /** Alle implementierten Rezepte in Anzeigereihenfolge. */
 export const RECIPES: Record<HipKind, Recipe> = {
   fourPointAngle,
@@ -398,6 +580,7 @@ export const RECIPES: Record<HipKind, Recipe> = {
   lld,
   globalOffset,
   osteotomy,
+  femurProfile,
 }
 
 /** Liste der Mess-Rezepte für die Werkzeugleiste (Sektion „Hüft-

@@ -25,6 +25,7 @@ import {
   HEAD_OFFSETS_MM,
   MEDACTA_CATALOG,
   STEM_CCD_BY_FOLDER,
+  STEM_PROFILE_BY_FOLDER,
 } from '../hip/medactaCatalog'
 import * as sn from '../knee/smithNephewCatalog'
 import { SHOULDER_CONTOURS } from '../shoulder/shoulderContours'
@@ -78,6 +79,7 @@ const bundled = {
   medactaCatalog: [...MEDACTA_CATALOG],
   headOffsetsMm: [...HEAD_OFFSETS_MM] as number[],
   stemCcdByFolder: { ...STEM_CCD_BY_FOLDER },
+  stemProfileByFolder: { ...STEM_PROFILE_BY_FOLDER },
   backgrounds: { ...BACKGROUNDS },
   legionPsFemur: [...sn.LEGION_PS_FEMUR],
   genesisTibia: [...sn.GENESIS_II_TIBIA_FEMALE_TAPERED],
@@ -137,6 +139,13 @@ function applyOverrides(m: TemplatePackageManifest): void {
   if (m.stemCcdByFolder) {
     replaceRecord(STEM_CCD_BY_FOLDER, { ...bundled.stemCcdByFolder, ...m.stemCcdByFolder })
   }
+  // Schaft-Planungsprofile: gleiches Muster wie die CCD-Winkel.
+  if (m.stemProfileByFolder) {
+    replaceRecord(STEM_PROFILE_BY_FOLDER, {
+      ...bundled.stemProfileByFolder,
+      ...m.stemProfileByFolder,
+    })
+  }
   replaceRecord(BACKGROUNDS, m.backgrounds)
   const kc = m.kneeCatalog
   if (kc) {
@@ -186,6 +195,7 @@ function restoreBundled(): void {
   replaceArray(MEDACTA_CATALOG, bundled.medactaCatalog)
   replaceArray(HEAD_OFFSETS_MM, bundled.headOffsetsMm)
   replaceRecord(STEM_CCD_BY_FOLDER, bundled.stemCcdByFolder)
+  replaceRecord(STEM_PROFILE_BY_FOLDER, bundled.stemProfileByFolder)
   replaceRecord(BACKGROUNDS, bundled.backgrounds)
   replaceArray(sn.LEGION_PS_FEMUR, bundled.legionPsFemur)
   replaceArray(sn.GENESIS_II_TIBIA_FEMALE_TAPERED, bundled.genesisTibia)

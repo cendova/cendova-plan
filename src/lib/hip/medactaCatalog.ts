@@ -48,3 +48,52 @@ export const MEDACTA_CATALOG: MedactaEntry[] = []
  * Default 135° (stemCcdDeg in templates.ts).
  */
 export const STEM_CCD_BY_FOLDER: Record<string, number> = {}
+
+/**
+ * Radaelli-Geometrieklassen ZEMENTFREIER Primärschäfte
+ * (Radaelli et al. 2022, DOI 10.1016/j.arth.2022.09.014):
+ * A flacher Taper · B1 rechteckiger Taper (gestrahlt) · B2 quadrangulärer
+ * Taper (HA) · B3 verkürzter quadrangulärer Taper · C1–C3 fit-and-fill
+ * (traditionell/anatomisch/kurz) · D konisch · E zylindrisch ·
+ * F kalkargeführter Kurzschaft. Zementierte Schäfte haben KEINE Klasse.
+ */
+export const RADAELLI_KLASSEN = [
+  'A',
+  'B1',
+  'B2',
+  'B3',
+  'C1',
+  'C2',
+  'C3',
+  'D',
+  'E',
+  'F',
+] as const
+export type RadaelliKlasse = (typeof RADAELLI_KLASSEN)[number]
+
+/**
+ * Strukturiertes Planungsprofil eines Schafts — die fachliche Grundlage
+ * der Schaft-Planungshinweise (stemPlanningRules): Regeln lesen NUR diese
+ * Felder, nie Ordner- oder Markennamen. Der CCD-Winkel steht bewusst
+ * NICHT hier — er hat mit `stemCcdByFolder` bereits eine Quelle, eine
+ * zweite würde still divergieren.
+ */
+export interface StemPlanningProfile {
+  /** Fixationsprinzip laut Hersteller. */
+  fixation: 'cementless' | 'cemented'
+  /** Radaelli-Klasse — NUR für zementfreie Schäfte; fehlt, wenn unbekannt. */
+  radaelliClass?: RadaelliKlasse
+  collar: 'none' | 'collared'
+  /** Zone der primären Verankerung; bei zementierten Schäften 'cement'. */
+  primaryFixation: 'metaphyseal' | 'metadiaphyseal' | 'diaphyseal' | 'cement'
+  neckVariant?: 'regular' | 'short'
+  offsetVariant?: 'standard' | 'lateralized'
+  intendedUse: 'primary' | 'revision'
+}
+
+/**
+ * Planungsprofil je Katalog-Ordnername. Wie STEM_CCD_BY_FOLDER im
+ * öffentlichen Repo bewusst LEER — kommt aus dem Schablonen-Paket
+ * (Manifest-Feld `stemProfileByFolder`, schlüsselweise Vereinigung).
+ */
+export const STEM_PROFILE_BY_FOLDER: Record<string, StemPlanningProfile> = {}

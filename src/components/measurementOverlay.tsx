@@ -311,6 +311,7 @@ export function MeasurementSvg<M extends OverlayMeasurement>({
   vp,
   showLabelConnector = false,
   draftLineGroups,
+  draftGeometry,
 }: {
   svgRef: RefObject<SVGSVGElement | null>
   computed: Array<{ m: M; geometry: OverlayGeometry }>
@@ -320,6 +321,14 @@ export function MeasurementSvg<M extends OverlayMeasurement>({
   /** lineGroups des aktiven Rezepts — nur gesetzt, wenn Draft-Paare
    *  verbunden werden sollen (eine Gruppe erst ab BEIDEN Endpunkten). */
   draftLineGroups?: number[][]
+  /**
+   * BERECHNETE Hilfsgeometrie der laufenden Platzierung (Femurprofil:
+   * die 10-cm-Linie). Anders als `draftLineGroups`, das nur bereits
+   * GESETZTE Punkte verbindet, zeigt sie, wo die nächsten Punkte
+   * hingehören. Das Rezept liefert sie über `computeDraft`; wer keine
+   * hat, setzt den Prop nicht — Knie und Schulter bleiben unberührt.
+   */
+  draftGeometry?: OverlayGeometry
 }) {
   const { w2c, radiusToCanvas } = overlayProjection(vp)
   return (
@@ -388,6 +397,39 @@ export function MeasurementSvg<M extends OverlayMeasurement>({
               />
             )}
           </g>
+        )
+      })}
+
+      {/* Hilfsgeometrie der laufenden Platzierung (z. B. die 10-cm-Linie
+          des Femurprofils) — derselbe Zeichenpfad wie fertige Messungen. */}
+      {draftGeometry?.lines.map((ln, i) => {
+        const a = w2c(ln.from)
+        const b = w2c(ln.to)
+        return (
+          <line
+            key={`dg${i}`}
+            x1={a[0]}
+            y1={a[1]}
+            x2={b[0]}
+            y2={b[1]}
+            stroke={ln.color ?? '#e2e8f0'}
+            strokeWidth={ln.width ?? 1.5}
+            strokeDasharray={ln.dashed ? '5 4' : undefined}
+          />
+        )
+      })}
+      {draftGeometry?.circles.map((ci, i) => {
+        const c = w2c(ci.center)
+        return (
+          <circle
+            key={`dgc${i}`}
+            cx={c[0]}
+            cy={c[1]}
+            r={radiusToCanvas(ci.center, ci.radius)}
+            fill="none"
+            stroke="#e2e8f0"
+            strokeWidth={1.5}
+          />
         )
       })}
 
