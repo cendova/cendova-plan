@@ -1147,6 +1147,19 @@ interface PlanningHint {
 }
 ```
 
+**ERLEDIGT 29.08.2026:** `stemPlanningRules.ts` (reine Funktion, 5 Regeln
+wie oben, PlanningHint exakt nach Entwurf, warnings→cautions→infos
+sortiert) + 16 Tests inkl. Verbots-Sweep über alle Kombinationen. Die
+UI-Anbindung in `FemurProfileCard` kam gleich mit (war im Task nicht
+gelistet, aber der Nutzer wartete sichtbar darauf): Die statische
+Dorr-C-Box ist durch die Regel-Hinweise ersetzt; ihr Wortlaut lebt als
+Regel `DORR_C_FIXATION` wörtlich weiter — `pruefe-karte.mjs` prüft ihn
+und bleibt grün. Hinweise nur bei Klassifikationsfreigabe; unbestätigter
+Dorr wird in den Belegen als „Vorschlag, unbestätigt" gekennzeichnet;
+zementierte Profile lösen die Dorr-C-Regel bewusst nicht aus. Der
+`schaftProfil`-Parameter ist implementiert und getestet, wird aber erst
+in Task 16 mit der tatsächlich platzierten Schablone verbunden.
+
 ---
 
 ## Task 16: Tatsächlichen Variantenvergleich anbinden

@@ -217,7 +217,15 @@ zwischen Messungen und Schablonen. Patienten-DICOMs bleiben lokal.
    (Realtest-Wunsch 29.08.2026).
 8. Ergebnisse in der Karte **„Morphologie & Fixation"** plausibilisieren
    (CI, CCR, NSA, FO, FOR, CPAH). Die Messzeile darüber trägt bewusst
-   keine Werte mehr, nur den Verweis auf die Karte.
+   keine Werte mehr, nur den Verweis auf die Karte. Unter den Rohwerten
+   erscheinen die **Planungshinweise** (regelbasiert, `stemPlanningRules`):
+   rot = Warnung (z. B. Dorr C → zementierte Fixation prüfen), amber =
+   Vorsicht (z. B. Dorr A → Verklemmen/Undersizing; coxa valga →
+   Überoffset), neutral = Vergleichshinweis (coxa vara + High-Offset →
+   lateralisierte Variante). Jeder Hinweis nennt seine **Belege**
+   (Dorr-Status, CI/NSA/FOR) — ein Hinweis ohne sichtbaren Grund ist ein
+   Bug. Vor der Dorr-Bestätigung steht in den Belegen „Vorschlag,
+   unbestätigt".
 9. **CPAH-Matrix sichtprüfen:** aktive Zelle passt zu Dorr-Typ und
    NSA-Klasse, der Punkt sitzt an der erwarteten Stelle, die FOR-Leiste
    zeigt N bzw. H.

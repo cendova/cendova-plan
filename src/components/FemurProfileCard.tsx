@@ -7,6 +7,7 @@ import {
   computeFemurProfileRaw,
   isFemurProfileClassifiable,
 } from '../lib/hip/femurProfile'
+import { stemPlanningHints } from '../lib/hip/stemPlanningRules'
 import {
   FEMUR_PROFILE_OVERRIDE_REASONS,
   type FemurProfileOverrideReason,
@@ -64,6 +65,25 @@ export function FemurProfileCard({
     dorr.suggested !== review.dorrSuggested
 
   if (!raw) return null
+
+  // Planungshinweise (Task 15): regelbasiert aus finalem Dorr (bzw. dem
+  // Vorschlag, solange nichts Gültiges bestätigt ist) und den
+  // CPAH-Bausteinen. Ohne Klassifikationsfreigabe ist `dorr` null und es
+  // gibt bewusst KEINE Hinweise — eine Regel aus einer ungeeigneten
+  // Aufnahme wäre dieselbe Scheinpräzision wie die Klasse selbst.
+  const dorrFuerRegeln =
+    dorr == null ? null : bestaetigt && !veraltet && final != null ? final : dorr.suggested
+  const hints = dorrFuerRegeln
+    ? stemPlanningHints({
+        dorr: dorrFuerRegeln,
+        dorrBestaetigt: bestaetigt && !veraltet,
+        nsaClass: raw.nsaClass,
+        offsetSubtype: cpah?.offsetSubtype ?? null,
+        corticalIndex: raw.corticalIndex,
+        nsaDeg: raw.nsaDeg,
+        femoralOffsetRatio: raw.femoralOffsetRatio,
+      })
+    : []
 
   return (
     <div className="rounded border border-neutral-800 bg-neutral-950 p-2">
@@ -128,15 +148,27 @@ export function FemurProfileCard({
         <Wert v={raw.femoralOffsetRatio} nachkomma={2} />
       </div>
 
-      {/* Fixationshinweis bei Dorr C (CPAH 7–9). Bewusst als PRÜF-Auftrag
-          formuliert, nicht als Entscheidung: Der geometrisch gute Sitz
-          eines zementfreien Schafts hebt das Frakturrisiko nicht auf. */}
-      {cpah && cpah.type >= 7 && (
-        <div className="mt-1.5 rounded border border-red-900/60 bg-red-950/30 p-1.5 text-[10px] leading-relaxed text-red-200">
-          Dorr C: zementierte Fixation/Alternative aktiv prüfen.
-          Geometrischer Fit hebt das Frakturrisiko nicht auf.
+      {/* Planungshinweise: regelbasiert (stemPlanningRules), jeder mit
+          sichtbaren Belegen. Sie ersetzen die frühere statische Dorr-C-Box;
+          deren Wortlaut lebt als Regel DORR_C_FIXATION weiter — das
+          Abnahme-Skript pruefe-karte.mjs prüft ihn wörtlich. Bewusst als
+          PRÜF-Aufträge formuliert, nie als Entscheidung. */}
+      {hints.map((h) => (
+        <div
+          key={h.code}
+          className={[
+            'mt-1.5 rounded border p-1.5 text-[10px] leading-relaxed',
+            h.severity === 'warning'
+              ? 'border-red-900/60 bg-red-950/30 text-red-200'
+              : h.severity === 'caution'
+                ? 'border-amber-900/60 bg-amber-950/30 text-amber-200'
+                : 'border-neutral-800 bg-neutral-900/60 text-neutral-300',
+          ].join(' ')}
+        >
+          {h.text}
+          <div className="mt-0.5 text-[9px] opacity-70">{h.evidence.join(' · ')}</div>
         </div>
-      )}
+      ))}
 
       {/* Warum keine Klasse? Die Gründe stehen aus der Checkliste fest. */}
       {!darfKlassifizieren && (
