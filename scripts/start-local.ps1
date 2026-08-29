@@ -224,4 +224,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host 'Starte Dev-Server und oeffne Browser (Strg+C beendet) ...' -ForegroundColor Green
-npm run dev -- --open
+# Bewusst das eigene npm-Skript statt `npm run dev -- --open`: PowerShell
+# verschluckt das nackte `--` bei nativen Befehlen, npm bekam also
+# `npm run dev --open` - und npm 12 bricht bei unbekannten Flags hart ab
+# (EUNKNOWNCONFIG, Realfehler 29.08.2026), wo aeltere npm nur warnten.
+npm run dev:open

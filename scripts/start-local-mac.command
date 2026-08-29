@@ -198,5 +198,7 @@ else
   echo "HINWEIS: Chrome nicht gefunden. Falls Bilder schwarz bleiben oder eine"
   echo "         Codec-Meldung erscheint, bitte Chrome installieren und die"
   echo "         Adresse $URL dort öffnen."
-  npm run dev -- --open
+  # Gleiche Form wie im Windows-Launcher: eigenes npm-Skript statt
+  # `-- --open`-Weiterreichung (npm 12 lehnt unbekannte Flags hart ab).
+  npm run dev:open
 fi
