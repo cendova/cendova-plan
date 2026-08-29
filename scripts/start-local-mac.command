@@ -4,6 +4,15 @@
 # holt den aktuellen Stand, installiert Abhängigkeiten, startet den
 # Dev-Server und ÖFFNET DEN BROWSER (http://localhost:5173).
 set -u
+
+# Eigenen Stand merken: Das Update weiter unten kann den Launcher SELBST
+# verändern; die laufende Instanz liest aber die alte Datei zu Ende (git
+# ersetzt per Rename, der offene Deskriptor zeigt aufs alte Inode). Nach
+# dem Update wird verglichen und bei Änderung die neue Fassung gestartet
+# (gleiches Muster wie im Windows-Launcher, Realfall 29.08.2026).
+LAUNCHER_PFAD="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+LAUNCHER_HASH="$(shasum -a 256 "$LAUNCHER_PFAD" 2>/dev/null | cut -d' ' -f1)"
+
 cd "$(dirname "$0")/.." || exit 1
 
 # Vom Installer ggf. lokal abgelegtes Node (ohne Admin-Rechte) in den PATH.
@@ -147,6 +156,16 @@ if git remote get-url origin >/dev/null 2>&1; then
   fi
 else
   echo "Kein Server hinterlegt — überspringe Update."
+fi
+
+# Hat das Update den Launcher selbst verändert? Dann die NEUE Fassung
+# starten statt mit der alten weiterzulaufen. CENDOVA_LAUNCHER_NEUSTART
+# verhindert eine Endlosschleife: höchstens ein Neustart pro Kette.
+NEUER_LAUNCHER_HASH="$(shasum -a 256 "$LAUNCHER_PFAD" 2>/dev/null | cut -d' ' -f1)"
+if [ -n "$NEUER_LAUNCHER_HASH" ] && [ "$NEUER_LAUNCHER_HASH" != "$LAUNCHER_HASH" ] \
+   && [ -z "${CENDOVA_LAUNCHER_NEUSTART:-}" ]; then
+  echo "Der Launcher wurde soeben aktualisiert — starte die neue Fassung ..."
+  CENDOVA_LAUNCHER_NEUSTART=1 exec bash "$LAUNCHER_PFAD"
 fi
 
 # Welcher Stand läuft jetzt wirklich? Bewusst IMMER ausgeben.

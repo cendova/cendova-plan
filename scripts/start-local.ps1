@@ -13,6 +13,14 @@
 
 Set-Location (Join-Path $PSScriptRoot '..')
 
+# Eigenen Stand merken: Der Launcher aktualisiert gleich das Repo — und
+# damit ggf. SICH SELBST. PowerShell hat diese Datei zu diesem Zeitpunkt
+# aber bereits komplett geparst und führt stur die ALTE Fassung zu Ende
+# (Realfall 29.08.2026: der npm-12-Fix lag nach dem Update auf der Platte,
+# der laufende alte Launcher stürzte trotzdem noch einmal ab). Nach dem
+# Update wird deshalb verglichen und bei Änderung die neue Fassung gestartet.
+$eigenerLauncherHash = (Get-FileHash -Algorithm SHA256 $PSCommandPath).Hash
+
 # Vom Installer ggf. lokal abgelegte Node.js-Kopie (ohne Admin) nutzen -
 # gleiches Muster wie start-local-mac.command (.node/current).
 $localNode = Join-Path (Get-Location) '.node\current'
@@ -189,6 +197,20 @@ if ($LASTEXITCODE -eq 0) {
   }
 } else {
   Write-Host 'Kein Server hinterlegt - ueberspringe Update.' -ForegroundColor Yellow
+}
+
+# Hat das Update den Launcher selbst veraendert? Dann die NEUE Fassung
+# starten statt mit der alten (bereits geparsten) weiterzulaufen.
+# CENDOVA_LAUNCHER_NEUSTART verhindert eine Endlosschleife: hoechstens
+# ein Neustart pro Kette.
+if (-not $env:CENDOVA_LAUNCHER_NEUSTART) {
+  $neuerLauncherHash = (Get-FileHash -Algorithm SHA256 $PSCommandPath).Hash
+  if ($neuerLauncherHash -ne $eigenerLauncherHash) {
+    Write-Host 'Der Launcher wurde soeben aktualisiert - starte die neue Fassung ...' -ForegroundColor Yellow
+    $env:CENDOVA_LAUNCHER_NEUSTART = '1'
+    powershell -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath
+    exit $LASTEXITCODE
+  }
 }
 
 # Welcher Stand laeuft jetzt wirklich? Bewusst IMMER ausgeben.
