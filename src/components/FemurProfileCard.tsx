@@ -8,7 +8,7 @@ import {
   isFemurProfileClassifiable,
 } from '../lib/hip/femurProfile'
 import { stemPlanningHints } from '../lib/hip/stemPlanningRules'
-import { radaelliKlassenHinweis } from '../lib/hip/radaelliKlassen'
+import { cpahKlassenHinweis } from '../lib/hip/cpahKlassenHinweis'
 import { vergleicheSchaftMitFemurprofil } from '../lib/hip/stemComparison'
 import { stemCatalogEntries } from '../lib/hip/templates'
 import { STEM_PROFILE_BY_FOLDER } from '../lib/hip/medactaCatalog'
@@ -20,7 +20,6 @@ import {
 } from '../state/hipStore'
 import { useTemplateStore } from '../state/templateStore'
 import { CpahMatrix } from './CpahMatrix'
-import { RadaelliLegende, RadaelliPiktogramm } from './RadaelliPiktogramm'
 
 /**
  * Ergebnis-Karte „Morphologie & Fixation" zu einer Femurprofil-Messung.
@@ -109,8 +108,11 @@ export function FemurProfileCard({
     : []
 
   // Klassenbezogener CPAH-Hinweis (öffentliche Ebene, braucht kein
-  // Schablonen-Paket): was das Paper über die Radaelli-Klassen berichtet.
-  const klassenHinweis = radaelliKlassenHinweis(cpah, stemProfil)
+  // Schablonen-Paket): die Paper-Befunde zu den Radaelli-Klassen für
+  // genau diesen Morphotyp. Reiht sich als Info-Hinweis hinter die
+  // Anatomie-Regeln ein.
+  const klassenHinweis = cpahKlassenHinweis(cpah, stemProfil)
+  const alleHinweise = klassenHinweis ? [...hints, klassenHinweis] : hints
 
   // Femurseitiger Abgleich der platzierten Schablone gegen die gemessene
   // Anatomie — dieselbe Achse (Punkte 4/5), gegen die auch FO/FOR
@@ -194,7 +196,7 @@ export function FemurProfileCard({
           deren Wortlaut lebt als Regel DORR_C_FIXATION weiter — das
           Abnahme-Skript pruefe-karte.mjs prüft ihn wörtlich. Bewusst als
           PRÜF-Aufträge formuliert, nie als Entscheidung. */}
-      {hints.map((h) => (
+      {alleHinweise.map((h) => (
         <div
           key={h.code}
           className={[
@@ -210,25 +212,6 @@ export function FemurProfileCard({
           <div className="mt-0.5 text-[9px] opacity-70">{h.evidence.join(' · ')}</div>
         </div>
       ))}
-
-      {/* Radaelli-Klassen: der klassenbezogene CPAH-Hinweis plus Legende
-          mit Piktogrammen — die markenneutrale Ebene für alle Anwender.
-          Ein konkreter Schaft wird nur hervorgehoben, wenn das Paket ein
-          Profil für ihn kennt. Nur mit Morphotyp, wie alle Hinweise. */}
-      {klassenHinweis && (
-        <div className="mt-2 rounded border border-neutral-800 bg-neutral-950 p-2">
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
-            Radaelli-Klassen
-          </div>
-          <div className="rounded border border-neutral-800 bg-neutral-900/60 p-1.5 text-[10px] leading-relaxed text-neutral-300">
-            {klassenHinweis.text}
-            <div className="mt-0.5 text-[9px] opacity-70">{klassenHinweis.evidence.join(' · ')}</div>
-          </div>
-          <div className="mt-1.5">
-            <RadaelliLegende hervorgehoben={stemProfil?.radaelliClass ?? null} />
-          </div>
-        </div>
-      )}
 
       {/* Warum keine Klasse? Die Gründe stehen aus der Checkliste fest. */}
       {!darfKlassifizieren && (
@@ -304,13 +287,6 @@ export function FemurProfileCard({
                   {' · '}
                   {stemProfil.fixation === 'cemented' ? 'zementiert' : 'zementfrei'}
                   {stemProfil.radaelliClass ? ` · Radaelli ${stemProfil.radaelliClass}` : ''}
-                  {stemProfil.radaelliClass && (
-                    <RadaelliPiktogramm
-                      klasse={stemProfil.radaelliClass}
-                      height={14}
-                      className="ml-1 inline-block align-middle text-neutral-300"
-                    />
-                  )}
                 </>
               )}
             </div>
