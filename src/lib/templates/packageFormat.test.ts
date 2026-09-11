@@ -110,6 +110,15 @@ describe('mergeManifests', () => {
     expect(out.name).toBe('Klinik-Paket + S&N Narrow (DXF)')
     expect(out.merge).toBeUndefined()
   })
+  it('hängt denselben Addon-Namen bei erneutem Import nicht noch einmal an', () => {
+    const einmal = mergeManifests(basis, addon)
+    const zweimal = mergeManifests(einmal, addon)
+    expect(zweimal.name).toBe('Klinik-Paket + S&N Narrow (DXF)')
+  })
+  it('heilt einen bereits doppelten Namen beim nächsten Merge', () => {
+    const doppelt = { ...basis, name: 'Klinik-Paket + Profile + Profile' }
+    expect(mergeManifests(doppelt, addon).name).toBe('Klinik-Paket + Profile + S&N Narrow (DXF)')
+  })
   it('funktioniert ohne Basis-Paket (Addon wirkt allein über Bundled-Daten)', () => {
     const out = mergeManifests(null, addon)
     expect(out.name).toBe('S&N Narrow (DXF)')

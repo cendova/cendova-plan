@@ -8,6 +8,7 @@ import {
   isFemurProfileClassifiable,
 } from '../lib/hip/femurProfile'
 import { stemPlanningHints } from '../lib/hip/stemPlanningRules'
+import { cpahKlassenHinweis } from '../lib/hip/cpahKlassenHinweis'
 import { vergleicheSchaftMitFemurprofil } from '../lib/hip/stemComparison'
 import { stemCatalogEntries } from '../lib/hip/templates'
 import { STEM_PROFILE_BY_FOLDER } from '../lib/hip/medactaCatalog'
@@ -106,6 +107,13 @@ export function FemurProfileCard({
       )
     : []
 
+  // Klassenbezogener CPAH-Hinweis (öffentliche Ebene, braucht kein
+  // Schablonen-Paket): die Paper-Befunde zu den Radaelli-Klassen für
+  // genau diesen Morphotyp. Reiht sich als Info-Hinweis hinter die
+  // Anatomie-Regeln ein.
+  const klassenHinweis = cpahKlassenHinweis(cpah, stemProfil)
+  const alleHinweise = klassenHinweis ? [...hints, klassenHinweis] : hints
+
   // Femurseitiger Abgleich der platzierten Schablone gegen die gemessene
   // Anatomie — dieselbe Achse (Punkte 4/5), gegen die auch FO/FOR
   // gemessen wurden. Die GESAMT-Bilanz (mit Pfanne, über die Becken-
@@ -188,7 +196,7 @@ export function FemurProfileCard({
           deren Wortlaut lebt als Regel DORR_C_FIXATION weiter — das
           Abnahme-Skript pruefe-karte.mjs prüft ihn wörtlich. Bewusst als
           PRÜF-Aufträge formuliert, nie als Entscheidung. */}
-      {hints.map((h) => (
+      {alleHinweise.map((h) => (
         <div
           key={h.code}
           className={[

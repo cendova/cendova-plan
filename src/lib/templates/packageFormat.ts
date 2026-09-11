@@ -315,7 +315,11 @@ export function mergeManifests(
         continue
       ;(out as unknown as Record<string, unknown>)[k] = val
     }
-    out.name = `${base.name} + ${addon.name}`
+    // Namen als „A + B"-Segmente vereinigen, ohne Dubletten: Wer dasselbe
+    // Addon zweimal importiert (Profile werden ohnehin nur überschrieben),
+    // bekam sonst „… + Schaft-Planungsprofile + Schaft-Planungsprofile".
+    // Bereits doppelte Namen heilen dabei beim nächsten Merge mit.
+    out.name = [...new Set([...base.name.split(' + '), ...addon.name.split(' + ')])].join(' + ')
   }
   if (addon.kneeContours) {
     out.kneeContours = { ...(base?.kneeContours ?? {}), ...addon.kneeContours }
