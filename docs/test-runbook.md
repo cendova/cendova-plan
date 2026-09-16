@@ -195,21 +195,18 @@ zwischen Messungen und Schablonen. Patienten-DICOMs bleiben lokal.
    Punkt, steht **vor** den Schablonen; das Femurprofil taucht **nicht**
    als Werkzeug in „2 · Messungen" auf. Die übrigen Sektionen behalten
    ihre gemerkten Einklapp-Zustände.
-4. **„Femurprofil starten"** → zuerst erscheint die **Bildqualitäts-
-   Checkliste**. Sie misst nichts, sie fragt; nur die Kalibrier-Zeile kommt
-   aus dem Viewer und ist nicht abwählbar.
-5. **Gate bewusst NICHT bestehen** (eine Zeile offen lassen): Der Knopf
-   heißt dann ehrlich „Ohne Klassifikation messen". Messen bleibt möglich,
-   aber Dorr/CPAH stehen als `nicht zuverlässig bestimmbar` da — samt
-   Grund —, und die CPAH-Matrix wird **nicht** gezeichnet. Die Rohwerte
-   erscheinen trotzdem.
-   ⚠ Achtung auf die Zeile **„Ausgeprägte Deformität verfälscht die
-   Geometrie"**: Sie ist die einzige mit umgekehrter Bedeutung —
-   *anhaken = Ausschlussgrund*.
-6. Messung abbrechen (Esc) und neu starten: Die Checkliste erscheint
-   **wieder leer**. Eine Bestätigung gilt nur für den Anlauf, für den sie
-   abgegeben wurde.
-7. Gate bestehen, dann die **13 Punkte** setzen. Ab Punkt 7 (Trochanter
+4. **„Femurprofil starten"** → die Messung beginnt **sofort** (seit
+   16.09.2026 keine Pflicht-Checkliste mehr — die Eignung der Aufnahme
+   prüft der Planende vorher). Die Kriterien stehen in der Ergebniskarte
+   als aufklappbare Erklärung **„Voraussetzungen der Aufnahme für
+   Dorr/CPAH"**.
+5. **Ältere Pläne** (vor 16.09.2026) können eine gespeicherte, nicht
+   bestandene Checkliste mitbringen: Dann bleiben Dorr/CPAH `nicht
+   zuverlässig bestimmbar` — samt Gründen —, die Matrix fehlt, die
+   Rohwerte erscheinen. Nur beim Laden solcher Pläne prüfbar.
+6. Messung abbrechen (Esc) und neu starten: Start wieder bei Schritt 1
+   (bzw. 7 mit CCD-Prefill), nichts bleibt hängen.
+7. Die **13 Punkte** setzen. Ab Punkt 7 (Trochanter
    minor) erscheint die gestrichelte **10-cm-Linie** — die vier
    Kortikalis-Punkte gehören genau darauf. Für die letzten beiden Punkte
    (Kanalränder) erscheint zusätzlich die zweite gestrichelte Linie **auf
@@ -217,15 +214,10 @@ zwischen Messungen und Schablonen. Patienten-DICOMs bleiben lokal.
    (Realtest-Wunsch 29.08.2026).
 8. Ergebnisse in der Karte **„Morphologie & Fixation"** plausibilisieren
    (CI, CCR, NSA, FO, FOR, CPAH). Die Messzeile darüber trägt bewusst
-   keine Werte mehr, nur den Verweis auf die Karte. Unter den Rohwerten
-   erscheinen die **Planungshinweise** (regelbasiert, `stemPlanningRules`):
-   rot = Warnung (z. B. Dorr C → zementierte Fixation prüfen), amber =
-   Vorsicht (z. B. Dorr A → Verklemmen/Undersizing; coxa valga →
-   Überoffset), neutral = Vergleichshinweis (coxa vara + High-Offset →
-   lateralisierte Variante). Jeder Hinweis nennt seine **Belege**
-   (Dorr-Status, CI/NSA/FOR) — ein Hinweis ohne sichtbaren Grund ist ein
-   Bug. Vor der Dorr-Bestätigung steht in den Belegen „Vorschlag,
-   unbestätigt".
+   keine Werte mehr, nur den Verweis auf die Karte. Bei Dorr C erscheint
+   der Fixationshinweis („zementierte Fixation/Alternative aktiv prüfen")
+   — mehr Schaftbezug gibt es bewusst nicht (Entscheidung 16.09.2026:
+   Implantatwahl bleibt beim planenden Chirurgen).
 9. **CPAH-Matrix sichtprüfen:** aktive Zelle passt zu Dorr-Typ und
    NSA-Klasse, der Punkt sitzt an der erwarteten Stelle, die FOR-Leiste
    zeigt N bzw. H.
@@ -237,12 +229,14 @@ zwischen Messungen und Schablonen. Patienten-DICOMs bleiben lokal.
     Vorschlag ändert → die Karte muss die Bestätigung als **veraltet**
     melden.
 13. **Plan speichern** → erneut laden: Punkte, Bildqualität, Vorschlag,
-    ärztliche Entscheidung und Grund sind wieder da (Format v10), keine
-    ID-Kollision.
+    ärztliche Entscheidung und Grund sind wieder da (Format v10; ältere
+    Pläne bringen ggf. ihre Checkliste mit), keine ID-Kollision.
 14. **PDF-Export** → Abschnitt **„Femurprofil"** vorhanden, mit
-    Planungshinweis; bei ungeeigneter Aufnahme ohne Klasse.
-15. **Zweiter Durchlauf mit vorhandener CCD-Messung:** Der Dialog kündigt
-    an, dass sechs Punkte übernommen werden, die Messung startet bei
+    Planungshinweis; ältere Pläne mit nicht bestandener Checkliste: ohne
+    Klasse.
+15. **Zweiter Durchlauf mit vorhandener CCD-Messung:** Der Hinweis unter
+    dem Start-Knopf kündigt an, dass sechs Punkte übernommen werden, die
+    Messung startet bei
     Schritt 7/13. ⚠ Prüfen, ob die übernommenen Punkte am **gewünschten
     Femur** liegen — Hüft-Messungen tragen keine Seiten-Information, eine
     CCD-Messung der Gegenseite ist für das Programm nicht erkennbar.
@@ -258,30 +252,8 @@ zwischen Messungen und Schablonen. Patienten-DICOMs bleiben lokal.
     Seiten-Information — bei bilateraler Planung prüfen, dass die
     übernommene Achse zum gewählten Femur gehört (sonst Schaft löschen
     und ohne Femurprofil neu anlegen oder Rotation per Alt+Pfeil richten).
-18. **Schablonen-Abgleich:** Mit platzierter Schaftschablone zeigt die
-    Karte „Morphologie & Fixation" den Abschnitt **„Schablonen-Abgleich"**:
-    Δ Offset (femoral) und Δ Kopfhöhe entlang der gemessenen Achse,
-    + = mehr Offset bzw. Verlängerung. Schablone ziehen → Deltas laufen
-    live mit. Bringt das Paket ein `stemProfileByFolder`-Profil mit,
-    stehen Fixation und Radaelli-Klasse dabei, und die Planungshinweise
-    werden profilbewusst (z. B. entfällt die Dorr-C-Warnung bei
-    zementiertem Profil; B2 meldet die fehlende CPAH-Simulation als
-    Info). Rotation zur Achse und die Gesamt-Bilanz mit Pfanne stehen
-    weiterhin NUR im Messungen-Panel (keine Doppelanzeige).
-    Profile einspielen: `node scripts/build-stem-profile-addon.mjs --init`,
-    Datei prüfen, dann ohne `--init` bauen und das Addon importieren
-    (Details in `docs/schablonen-pakete.md`).
-19. **Start-Varianten-Vorauswahl:** Mit eingespielten Profilen UND
-    bestätigter Bildqualität wählt das Schaft-Anlegen die Start-Variante
-    passend zur Messung vor: Dorr C → erste zementierte Primär-Variante;
-    coxa vara + High-Offset → erste lateralisierte Variante; coxa valga
-    und alles andere → bisheriger Standard (erster Eintrag). Es ist eine
-    VORAUSWAHL: Der Selektor bleibt frei änderbar, und der Grund steht im
-    Diagnose-Log. Der ärztlich bestätigte Dorr gewinnt über den
-    Vorschlag, außer die Bestätigung ist veraltet.
-
 > **Vorab automatisiert prüfbar:** Die Schritte 3–15 sind als
-> Playwright-Skripte hinterlegt (`scripts/abnahme-femurprofil/`, 117
+> Playwright-Skripte hinterlegt (`scripts/abnahme-femurprofil/`, 96
 > Prüfungen gegen einen laufenden `npm run dev`). Sie ersetzen den Test
 > mit echtem DICOM nicht — sie fahren nur synthetische Geometrie —,
 > nehmen ihm aber die stumpfe Arbeit ab. Details im README dort.

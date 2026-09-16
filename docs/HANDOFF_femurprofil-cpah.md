@@ -256,6 +256,11 @@ Nicht im ersten Schritt:
 
 ## Radaelli-Zuordnung des lokalen Portfolios — BESTÄTIGT 22.08.2026
 
+*Hinweis 16.09.2026: Im Code NICHT mehr verwendet — der Schaft-Vorschlag
+samt Radaelli-Verknüpfung wurde auf Nutzerentscheid zurückgenommen (die
+Implantatwahl bleibt beim Chirurgen). Die Tabelle bleibt als
+Recherche-Dokumentation stehen.*
+
 *Von Philipp vollständig bestätigt: Quadra-P = B2 („nicht verkürzt"),
 SMS = F, MasterLoc = A; Quadra-H, Quadra-C und Quadra-P Cemented sind —
 anders als zunächst angenommen — im Einsatz. **Alle Schäfte im Einsatz

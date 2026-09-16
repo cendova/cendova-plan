@@ -63,8 +63,8 @@ export function findeFemurachseFuerSchaft(
   return [[...m.points[4]] as Types.Point3, [...m.points[5]] as Types.Point3]
 }
 
-/** Jüngste VOLLSTÄNDIGE Femurprofil-Messung — Grundlage für Achsen-
- *  Übernahme und Start-Varianten-Vorauswahl beim Schaft-Anlegen. */
+/** Jüngste VOLLSTÄNDIGE Femurprofil-Messung — Grundlage der Achsen-
+ *  Übernahme beim Schaft-Anlegen. */
 export function findeFemurprofilFuerSchaft(
   measurements: HipMeasurement[],
 ): HipMeasurement | null {
@@ -145,7 +145,10 @@ export type FemurProfileOverrideReason =
  * Entscheidung, ihren Grund und den Zeitpunkt.
  */
 export interface FemurProfileReview {
-  imageQuality: FemurProfileImageQuality
+  /** Bildqualitaets-Checkliste — nur noch in Plaenen, die vor dem
+   *  16.09.2026 mit der damaligen Pflicht-Checkliste entstanden sind.
+   *  Fehlt sie, gilt die Aufnahme als aerztlich vorab geprueft. */
+  imageQuality?: FemurProfileImageQuality
   /**
    * Der Vorschlag, GEGEN DEN bestätigt wurde.
    *
@@ -200,7 +203,8 @@ export interface HipMeasurement {
   labelOffset: LabelOffset
   /** Stil der Beschriftung. */
   labelStyle: LabelStyle
-  /** Nur beim Femurprofil: die vor der Messung bestätigte Bildqualität. */
+  /** Nur beim Femurprofil: aerztliche Beurteilung (Dorr-Bestaetigung; in
+   *  aelteren Plaenen auch die damalige Bildqualitaets-Checkliste). */
   femurProfileReview?: FemurProfileReview
 }
 
@@ -213,22 +217,10 @@ interface HipState {
   draftPoints: Types.Point3[]
   /** Aktuell ausgewählte Mess-Beschriftung (für die Stil-Leiste). */
   selectedLabelId: string | null
-  /**
-   * Bildqualitäts-Checkliste der GERADE laufenden Femurprofil-Messung.
-   * Wird vor dem Start bestätigt und in Task 7 an die fertige Messung
-   * geheftet; bis dahin lebt sie nur hier.
-   *
-   * Sie wird beim Abbruch verworfen (siehe `cancelTool`): eine
-   * Bestätigung gehört zu GENAU der Aufnahme, für die sie abgegeben
-   * wurde — sonst klebte sie am nächsten Bild weiter.
-   */
-  femurProfileGate: FemurProfileImageQuality | null
 
   /** Aktiviert ein Werkzeug; erneuter Aufruf desselben schaltet es ab. */
   toggleTool: (kind: HipKind) => void
   cancelTool: () => void
-  /** Hinterlegt die bestätigte Checkliste (vor dem Start der Messung). */
-  setFemurProfileGate: (q: FemurProfileImageQuality | null) => void
   /**
    * Speichert die ärztliche Beurteilung an einer Femurprofil-Messung.
    *
@@ -264,21 +256,12 @@ export const useHipStore = create<HipState>((set) => ({
   activeKind: null,
   draftPoints: [],
   selectedLabelId: null,
-  femurProfileGate: null,
 
   toggleTool: (kind) =>
     set((s) => {
-      // Die Qualitäts-Bestätigung gehört zur LAUFENDEN Femurprofil-
-      // Sitzung. Sie überlebt nur den einen Fall, für den sie gedacht
-      // ist: das Einschalten des Femurprofils, unmittelbar nachdem der
-      // Dialog sie gesetzt hat. Abschalten oder Wechsel auf ein anderes
-      // Werkzeug bricht die Messung ab — dann muss auch die Bestätigung
-      // weg, sonst gälte sie stillschweigend für den nächsten Anlauf.
-      const gateBehalten = kind === 'femurProfile' && s.activeKind !== kind
-      const femurProfileGate = gateBehalten ? s.femurProfileGate : null
       // Tool ausschalten, wenn dasselbe nochmal geklickt wird.
       if (s.activeKind === kind) {
-        return { activeKind: null, draftPoints: [], femurProfileGate }
+        return { activeKind: null, draftPoints: [] }
       }
       // Beim Einschalten: wenn das Rezept eine Becken-Referenzlinie
       // verlangt UND global schon eine definiert ist, die ersten beiden
@@ -299,17 +282,10 @@ export const useHipStore = create<HipState>((set) => ({
           prefilled = ccd.points.slice(0, 6).map((p) => [...p] as Types.Point3)
         }
       }
-      return { activeKind: kind, draftPoints: prefilled, femurProfileGate }
+      return { activeKind: kind, draftPoints: prefilled }
     }),
 
-  // Abbruch verwirft AUCH die Qualitäts-Bestätigung: Sie gilt für die
-  // Aufnahme, für die sie abgegeben wurde. Bliebe sie liegen, startete
-  // der nächste Versuch — womöglich an einem anderen Bild — stillschweigend
-  // mit einer fremden Bestätigung.
-  cancelTool: () =>
-    set({ activeKind: null, draftPoints: [], femurProfileGate: null }),
-
-  setFemurProfileGate: (q) => set({ femurProfileGate: q }),
+  cancelTool: () => set({ activeKind: null, draftPoints: [] }),
 
   setFemurProfileReview: (id, review) =>
     set((s) => {
@@ -339,14 +315,6 @@ export const useHipStore = create<HipState>((set) => ({
           visible: true,
           labelOffset: { x: 16, y: -14 },
           labelStyle: { ...DEFAULT_LABEL_STYLE },
-          // Die Qualitäts-Bestätigung wandert aus der Sitzung an die
-          // fertige Messung — ab hier gehört sie zu ihr und nicht mehr
-          // zum laufenden Anlauf. Ohne diese Bindung könnte die
-          // Ergebnis-Karte einer zweiten oder geladenen Messung nicht
-          // sagen, ob sie klassifizieren darf.
-          ...(s.activeKind === 'femurProfile' && s.femurProfileGate
-            ? { femurProfileReview: { imageQuality: s.femurProfileGate } }
-            : {}),
         }
         // Wenn diese Messung die Becken-Referenzlinie definiert (LLD, CE),
         // global propagieren, damit Pfannen-Tools sie nutzen.
@@ -432,7 +400,6 @@ export const useHipStore = create<HipState>((set) => ({
       draftPoints: [],
       activeKind: null,
       selectedLabelId: null,
-      femurProfileGate: null,
     }),
 }))
 

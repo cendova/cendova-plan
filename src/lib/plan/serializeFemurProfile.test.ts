@@ -43,7 +43,6 @@ function bestandeneQualitaet() {
 
 /** Legt eine fertige Femurprofil-Messung an und gibt ihre id zurück. */
 function femurProfilMessung(): string {
-  useHipStore.getState().setFemurProfileGate(bestandeneQualitaet())
   useHipStore.getState().toggleTool('femurProfile')
   for (let i = 0; i < 13; i++) useHipStore.getState().addDraftPoint(p(i, i))
   return useHipStore.getState().measurements[0].id
@@ -56,13 +55,20 @@ describe('Plan-Speicherung des Femurprofils', () => {
     expect(buildPlan().version).toBe(10)
   })
 
-  it('nimmt die Femurprofil-Messung samt Bildqualität auf', () => {
+  it('nimmt die Femurprofil-Messung ohne Beurteilung auf (Normalfall seit 16.09.2026)', () => {
     femurProfilMessung()
     const plan = buildPlan()
     const m = plan.hipMeasurements.find((x) => x.kind === 'femurProfile')
     expect(m).toBeDefined()
     expect(m!.points).toHaveLength(13)
-    expect(m!.femurProfileReview?.imageQuality.confirmedAt).toBe(
+    expect(m!.femurProfileReview).toBeUndefined()
+  })
+
+  it('nimmt eine gespeicherte Bildqualität (ältere Pläne) unverändert mit', () => {
+    const id = femurProfilMessung()
+    useHipStore.getState().setFemurProfileReview(id, { imageQuality: bestandeneQualitaet() })
+    const m = buildPlan().hipMeasurements.find((x) => x.kind === 'femurProfile')
+    expect(m!.femurProfileReview?.imageQuality?.confirmedAt).toBe(
       '2026-08-11T12:00:00.000Z',
     )
   })
@@ -90,21 +96,22 @@ describe('Plan-Speicherung des Femurprofils', () => {
     expect(r?.confirmedAt).toBe('2026-08-11T13:00:00.000Z')
     // Die Bildqualität muss vollständig mitkommen — sonst wüsste die
     // Karte nach dem Laden nicht mehr, ob sie klassifizieren darf.
-    expect(r?.imageQuality.rotationAcceptable).toBe(true)
-    expect(r?.imageQuality.exclusionReasons).toEqual([])
+    expect(r?.imageQuality?.rotationAcceptable).toBe(true)
+    expect(r?.imageQuality?.exclusionReasons).toEqual([])
   })
 
-  it('erhält auch eine NICHT bestandene Bildqualität samt Gründen', () => {
-    useHipStore.getState().setFemurProfileGate({
-      ...leereBildqualitaet(true),
-      exclusionReasons: ['Rotation nicht vertretbar'],
+  it('erhält auch eine NICHT bestandene Bildqualität samt Gründen (ältere Pläne)', () => {
+    const id = femurProfilMessung()
+    useHipStore.getState().setFemurProfileReview(id, {
+      imageQuality: {
+        ...leereBildqualitaet(true),
+        exclusionReasons: ['Rotation nicht vertretbar'],
+      },
     })
-    useHipStore.getState().toggleTool('femurProfile')
-    for (let i = 0; i < 13; i++) useHipStore.getState().addDraftPoint(p(i, i))
 
     const geladen = JSON.parse(JSON.stringify(buildPlan())) as PlanFile
     expect(
-      geladen.hipMeasurements[0].femurProfileReview?.imageQuality.exclusionReasons,
+      geladen.hipMeasurements[0].femurProfileReview?.imageQuality?.exclusionReasons,
     ).toEqual(['Rotation nicht vertretbar'])
   })
 })

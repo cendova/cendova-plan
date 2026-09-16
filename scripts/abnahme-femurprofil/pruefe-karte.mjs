@@ -31,19 +31,21 @@ async function messung(bestanden, punkte = PUNKTE) {
       const { hip, viewer } = window.__stores
       hip.getState().reset()
       viewer.getState().setCalibration({ mmPerWorldUnit: 1, referenceMm: 100, magnification: 1 })
-      hip.getState().setFemurProfileGate({
-        calibrated: true,
-        apProjectionAcceptable: bestanden,
-        rotationAcceptable: bestanden,
-        lesserTrochanterVisible: bestanden,
-        cortexVisible: bestanden,
-        femurCoverage10cm: bestanden,
-        deformityAffectsGeometry: false,
-        exclusionReasons: bestanden ? [] : ['Rotation nicht vertretbar'],
-        confirmedAt: '2026-08-11T12:00:00.000Z',
-      })
       hip.getState().toggleTool('femurProfile')
       punkte.forEach((p) => hip.getState().addDraftPoint(p))
+      // Seit 16.09.2026 gibt es keine Pflicht-Checkliste mehr. "Nicht
+      // bestanden" simuliert einen AELTEREN Plan, der eine gespeicherte
+      // Checkliste mit offenem Kriterium mitbringt — deren Entscheidung
+      // respektiert die Karte weiterhin.
+      if (!bestanden) {
+        const m = hip.getState().measurements[0]
+        hip.getState().setFemurProfileReview(m.id, { imageQuality: {
+            calibrated: true, apProjectionAcceptable: true, rotationAcceptable: false,
+            lesserTrochanterVisible: true, cortexVisible: true, femurCoverage10cm: true,
+            deformityAffectsGeometry: false, exclusionReasons: ['Rotation nicht vertretbar'],
+            confirmedAt: '2026-08-11T12:00:00.000Z',
+          } })
+      }
     },
     { bestanden, punkte },
   )
@@ -84,7 +86,7 @@ await page.screenshot({
   path: '.test-artifacts/karte-bestanden.png',
 })
 
-// --- 2) Nicht bestandene Qualitaet: keine Klasse, keine Matrix -------
+// --- 2) Aelterer Plan mit nicht bestandener Checkliste: keine Klasse ---
 await messung(false)
 const text2 = await page.locator('div.rounded.border').filter({ hasText: 'Morphologie & Fixation' }).last().innerText()
 ok(/nicht zuverlässig bestimmbar/.test(text2), 'Ohne Bestaetigung: „nicht zuverlaessig bestimmbar"')

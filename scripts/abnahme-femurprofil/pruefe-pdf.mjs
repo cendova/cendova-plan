@@ -32,20 +32,23 @@ async function messung(bestanden, mitBestaetigung) {
       const { hip, viewer } = window.__stores
       hip.getState().reset()
       viewer.getState().setCalibration({ mmPerWorldUnit: 1, referenceMm: 100, magnification: 1 })
-      hip.getState().setFemurProfileGate({
-        calibrated: true,
-        apProjectionAcceptable: bestanden, rotationAcceptable: bestanden,
-        lesserTrochanterVisible: bestanden, cortexVisible: bestanden,
-        femurCoverage10cm: bestanden, deformityAffectsGeometry: false,
-        exclusionReasons: bestanden ? [] : ['Rotation nicht vertretbar'],
-        confirmedAt: '2026-08-11T12:00:00.000Z',
-      })
       hip.getState().toggleTool('femurProfile')
       punkte.forEach((p) => hip.getState().addDraftPoint(p))
+      // "Nicht bestanden" = aelterer Plan mit gespeicherter Checkliste
+      // (seit 16.09.2026 fragt das Programm die Bildqualitaet nicht mehr ab).
+      if (!bestanden) {
+        const m = hip.getState().measurements[0]
+        hip.getState().setFemurProfileReview(m.id, { imageQuality: {
+            calibrated: true, apProjectionAcceptable: true, rotationAcceptable: false,
+            lesserTrochanterVisible: true, cortexVisible: true, femurCoverage10cm: true,
+            deformityAffectsGeometry: false, exclusionReasons: ['Rotation nicht vertretbar'],
+            confirmedAt: '2026-08-11T12:00:00.000Z',
+          } })
+      }
       if (mitBestaetigung) {
         const m = hip.getState().measurements[0]
         hip.getState().setFemurProfileReview(m.id, {
-          imageQuality: m.femurProfileReview.imageQuality,
+          ...(m.femurProfileReview ?? {}),
           dorrSuggested: 'B', dorrFinal: 'C',
           overrideReason: 'gesamtmorphologie',
           confirmedAt: '2026-08-11T13:00:00.000Z',

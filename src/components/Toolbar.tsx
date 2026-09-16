@@ -23,7 +23,6 @@ import { recipesForProsthesis } from '../lib/shoulder/recipes'
 import { useUiStore } from '../state/uiStore'
 import { Hint } from './Hint'
 import { KeinPaketHinweis } from './KeinPaketHinweis'
-import { FemurProfileQualityGate } from './FemurProfileQualityGate'
 import {
   applyNavToolsPane2,
   startSlopeToolPane2,
@@ -432,21 +431,22 @@ function FemurProfileButton({
   active: boolean
 }) {
   const gesperrt = !hasImage || !calibrated
-  const [gateOffen, setGateOffen] = useState(false)
   // Ob beim Start sechs Punkte aus einer CCD-Messung uebernommen werden —
-  // der Dialog sagt es an, damit niemand vor fremden Punkten steht.
+  // der Hinweis unter dem Knopf sagt es an, damit niemand vor fremden
+  // Punkten steht (der fruehere Dialog ist entfallen).
   const ccdPrefill = useHipStore(
     (s) => findeCcdFuerPrefill(s.measurements) != null,
   )
   return (
     <>
       <button
-        // Erst die Bildqualitäts-Checkliste, dann die Messung. Ist das
-        // Werkzeug bereits aktiv, bricht der Klick es ab (wie bei den
-        // übrigen Werkzeugen) — dabei verwirft der Store auch die
-        // Bestätigung, sie gehört zu genau diesem Anlauf.
+        // Startet die Messung direkt — die Eignung der Aufnahme prueft die
+        // Aerztin/der Arzt VOR der Planung, nicht das Programm (die fruehere
+        // Pflicht-Checkliste ist seit 16.09.2026 entfallen; die Kriterien
+        // stehen als Erklaerung in der Ergebnis-Karte). Ist das Werkzeug
+        // bereits aktiv, bricht der Klick es ab (wie bei den uebrigen).
         onClick={() =>
-          active ? useHipStore.getState().cancelTool() : setGateOffen(true)
+          active ? useHipStore.getState().cancelTool() : pickHipTool('femurProfile')
         }
         disabled={gesperrt}
         title={
@@ -471,23 +471,15 @@ function FemurProfileButton({
           13 Punkte · Dorr · CI · CCR · NSA · Offset · CPAH
         </div>
       </button>
-      <FemurProfileQualityGate
-        open={gateOffen}
-        calibrated={calibrated}
-        ccdPrefill={ccdPrefill}
-        onStart={(quality) => {
-          setGateOffen(false)
-          // Reihenfolge zählt: erst die Bestätigung hinterlegen, dann das
-          // Werkzeug einschalten — `toggleTool` behält sie genau in
-          // diesem Übergang und räumt sie in jedem anderen ab.
-          useHipStore.getState().setFemurProfileGate(quality)
-          pickHipTool('femurProfile')
-        }}
-        onCancel={() => setGateOffen(false)}
-      />
       <Hint>
         <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
           Optional: Dorr, CPAH und Femurmorphologie quantitativ bestimmen.
+          {ccdPrefill && !active && (
+            <span>
+              {' '}
+              Die sechs Punkte der CCD-Messung werden übernommen — Seite prüfen.
+            </span>
+          )}
           {hasImage && !calibrated && (
             <span className="text-amber-500">
               {' '}

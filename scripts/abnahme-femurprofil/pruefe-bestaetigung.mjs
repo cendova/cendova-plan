@@ -25,12 +25,6 @@ await page.evaluate((punkte) => {
   const { hip, viewer } = window.__stores
   hip.getState().reset()
   viewer.getState().setCalibration({ mmPerWorldUnit: 1, referenceMm: 100, magnification: 1 })
-  hip.getState().setFemurProfileGate({
-    calibrated: true, apProjectionAcceptable: true, rotationAcceptable: true,
-    lesserTrochanterVisible: true, cortexVisible: true, femurCoverage10cm: true,
-    deformityAffectsGeometry: false, exclusionReasons: [],
-    confirmedAt: '2026-08-11T12:00:00.000Z',
-  })
   hip.getState().toggleTool('femurProfile')
   punkte.forEach((p) => hip.getState().addDraftPoint(p))
 }, PUNKTE)
@@ -98,7 +92,7 @@ await page.evaluate(() => {
   const hip = window.__stores.hip
   const id = hip.getState().measurements[0].id
   hip.getState().setFemurProfileReview(id, {
-    imageQuality: hip.getState().measurements[0].femurProfileReview.imageQuality,
+    ...(hip.getState().measurements[0].femurProfileReview ?? {}),
     dorrSuggested: 'A', // so, als waere gegen A bestaetigt worden
     dorrFinal: 'A',
     confirmedAt: '2026-08-11T13:00:00.000Z',

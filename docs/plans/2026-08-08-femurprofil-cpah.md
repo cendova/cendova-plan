@@ -1003,6 +1003,24 @@ Punktsetzung am realen Röntgenbild, und die Frage, ob die
 
 # Phase B – schaftspezifische Planung
 
+# Phase B ZURÜCKGENOMMEN — 16.09.2026
+
+**Entscheidung des Nutzers nach dem Realtest:** Der gesamte Block
+„Schaft-Vorschlag" (Tasks 13–16 samt Nachträgen: Schaftprofile im
+Paketformat, Planungsregeln, Schablonen-Abgleich, Start-Vorauswahl,
+Profil-Addon-Skript, klassenbezogener CPAH-Hinweis aus PR #44 und jede
+Radaelli-Verknüpfung) ist **aus dem Code entfernt**. Das Programm bleibt
+bei der reinen CPAH-Klassifikation (Dorr · NSA · FOR → Morphotyp,
+Matrix, ärztliche Dorr-Bestätigung, Dorr-C-Fixationshinweis) — die
+Implantatwahl liegt beim planenden orthopädischen Chirurgen. Die
+Femurachsen-Übernahme beim Schaft-Anlegen (Realtest-Wunsch 29.08.)
+bleibt, sie ist Platzierungskomfort, kein Vorschlag. Die Task-Texte
+unten bleiben als Dokumentation stehen; ebenfalls am 16.09.2026
+entfallen: die Pflicht-Checkliste zur Bildqualität vor der Messung
+(Task 5a) — die Kriterien stehen jetzt als aufklappbare Erklärung in der
+Ergebniskarte, gespeicherte Checklisten älterer Pläne werden weiter
+respektiert.
+
 ## Task 13: Lokales Schaftportfolio fachlich bestätigen
 
 **Ziel:** Keine Hersteller- oder Variantenannahmen in Code gießen.

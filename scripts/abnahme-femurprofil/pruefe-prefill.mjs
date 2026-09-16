@@ -12,22 +12,25 @@ await page.waitForTimeout(3000)
 await page.evaluate(() =>
   window.__stores.viewer.getState().setCalibration({ mmPerWorldUnit: 1, referenceMm: 100, magnification: 1 }))
 
-const oeffneGate = async () => {
+const sektionAuf = async () => {
   const zu = page.locator('aside button[title="Sektion ausklappen"]').filter({ hasText: 'Femurprofil' })
   if (await zu.count()) await zu.first().click()
   await page.waitForTimeout(300)
+}
+const starteFemurprofil = async () => {
   await page.locator('button', { hasText: 'Femurprofil starten' }).first().click()
   await page.waitForTimeout(400)
 }
 
+// Seit 16.09.2026 gibt es keinen Dialog mehr vor der Messung; der
+// Prefill wird im Hinweis UNTER dem Start-Knopf angekuendigt.
 // --- 1) OHNE CCD-Messung: kein Hinweis, Start bei 1/13 ---------------
-await oeffneGate()
+await sektionAuf()
 ok(
-  !/Sechs Punkte werden übernommen/.test(await page.locator('body').innerText()),
+  !/Punkte der CCD-Messung werden übernommen/.test(await page.locator('body').innerText()),
   'Ohne CCD kein Prefill-Hinweis',
 )
-await page.locator('button', { hasText: 'Ohne Klassifikation messen' }).last().click()
-await page.waitForTimeout(400)
+await starteFemurprofil()
 ok(/Schritt 1\/13/.test(await page.locator('body').innerText()), 'Ohne CCD Start bei Schritt 1/13')
 await page.keyboard.press('Escape')
 await page.waitForTimeout(300)
@@ -41,15 +44,13 @@ await page.evaluate(() => {
     .forEach((p) => hip.getState().addDraftPoint(p))
 })
 await page.waitForTimeout(400)
-await oeffneGate()
+await sektionAuf()
 const t2 = await page.locator('body').innerText()
-ok(/Sechs Punkte werden übernommen/.test(t2), 'Prefill wird im Dialog angekuendigt')
-ok(/Schritt 7 von 13/.test(t2), 'Dialog nennt den Startschritt')
-ok(/am gewünschten Femur/.test(t2), 'Dialog mahnt die Seiten-Pruefung an')
-await page.screenshot({ path: '.test-artifacts/prefill-dialog.png' })
+ok(/sechs Punkte der CCD-Messung werden übernommen/.test(t2), 'Prefill wird unter dem Knopf angekuendigt')
+ok(/Seite prüfen/.test(t2), 'Hinweis mahnt die Seiten-Pruefung an')
+await page.screenshot({ path: '.test-artifacts/prefill-hinweis.png' })
 
-await page.locator('button', { hasText: 'Ohne Klassifikation messen' }).last().click()
-await page.waitForTimeout(500)
+await starteFemurprofil()
 const draft = await page.evaluate(() => window.__stores.hip.getState().draftPoints)
 ok(draft.length === 6, `Sechs Punkte uebernommen (${draft.length})`)
 ok(/Schritt 7\/13/.test(await page.locator('body').innerText()), 'Messung startet bei Schritt 7/13')

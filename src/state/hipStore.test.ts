@@ -1,7 +1,5 @@
-// Charakterisierungs-Tests des Hüft-Stores. Schwerpunkt: der Lebenszyklus
-// der Bildqualitäts-Bestätigung (Gate) — sie darf ihre Sitzung NICHT
-// überleben, sonst gälte eine Bestätigung stillschweigend für eine andere
-// Aufnahme.
+// Charakterisierungs-Tests des Hüft-Stores: Femurprofil-Messung,
+// ärztliche Dorr-Bestätigung, CCD-Prefill und Achsen-Übernahme.
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Types } from '@cornerstonejs/core'
 import {
@@ -36,114 +34,34 @@ beforeEach(() => {
   useHipStore.getState().reset()
 })
 
-describe('Bildqualitäts-Gate im Store', () => {
-  it('startet ohne Bestätigung', () => {
-    expect(useHipStore.getState().femurProfileGate).toBeNull()
-  })
-
-  it('hält eine bestätigte Checkliste', () => {
-    useHipStore.getState().setFemurProfileGate(bestandenesGate())
-    const gate = useHipStore.getState().femurProfileGate
-    expect(gate).not.toBeNull()
-    expect(isFemurProfileClassifiable(gate)).toBe(true)
-  })
-
-  it('erhält Ausschlussgründe unverändert über den Store-Roundtrip', () => {
-    const gate: FemurProfileImageQuality = {
-      ...leereBildqualitaet(true),
-      apProjectionAcceptable: true,
-      rotationAcceptable: false,
-      lesserTrochanterVisible: true,
-      cortexVisible: true,
-      femurCoverage10cm: true,
-      exclusionReasons: ['Rotation nicht vertretbar'],
-    }
-    useHipStore.getState().setFemurProfileGate(gate)
-    const zurueck = useHipStore.getState().femurProfileGate!
-    expect(zurueck.exclusionReasons).toEqual(['Rotation nicht vertretbar'])
-    // Nicht bestanden heißt: keine Klassifikation — aber der Store hält
-    // den Befund trotzdem, damit er dokumentiert werden kann.
-    expect(isFemurProfileClassifiable(zurueck)).toBe(false)
-  })
-
-  it('bleibt beim Einschalten des Femurprofils erhalten', () => {
-    // Der Dialog setzt das Gate unmittelbar VOR dem Start — genau dieser
-    // eine Übergang darf es nicht wegräumen.
-    useHipStore.getState().setFemurProfileGate(bestandenesGate())
-    useHipStore.getState().toggleTool('femurProfile')
-    expect(useHipStore.getState().activeKind).toBe('femurProfile')
-    expect(useHipStore.getState().femurProfileGate).not.toBeNull()
-  })
-
-  it('wird von cancelTool verworfen', () => {
-    useHipStore.getState().setFemurProfileGate(bestandenesGate())
-    useHipStore.getState().toggleTool('femurProfile')
-    useHipStore.getState().cancelTool()
-    expect(useHipStore.getState().femurProfileGate).toBeNull()
-    expect(useHipStore.getState().activeKind).toBeNull()
-  })
-
-  it('wird beim Abschalten desselben Werkzeugs verworfen', () => {
-    useHipStore.getState().setFemurProfileGate(bestandenesGate())
-    useHipStore.getState().toggleTool('femurProfile')
-    useHipStore.getState().toggleTool('femurProfile') // aus
-    expect(useHipStore.getState().femurProfileGate).toBeNull()
-  })
-
-  it('wird beim Wechsel auf ein anderes Werkzeug verworfen', () => {
-    useHipStore.getState().setFemurProfileGate(bestandenesGate())
-    useHipStore.getState().toggleTool('femurProfile')
-    useHipStore.getState().toggleTool('ccd')
-    expect(useHipStore.getState().femurProfileGate).toBeNull()
-  })
-
-  it('wandert beim Abschluss an die fertige Messung', () => {
-    useHipStore.getState().setFemurProfileGate(bestandenesGate())
+describe('Femurprofil ohne Checkliste', () => {
+  it('schließt die Messung ohne Beurteilung ab — und die ist klassifizierbar', () => {
+    // Seit 16.09.2026 fragt das Programm die Bildqualität nicht mehr ab:
+    // Die Eignung der Aufnahme ist ärztliche Vorarbeit. Eine frische
+    // Messung trägt deshalb KEINE Beurteilung — und darf klassifizieren.
     useHipStore.getState().toggleTool('femurProfile')
     for (let i = 0; i < 13; i++) useHipStore.getState().addDraftPoint(p(i, i))
     const m = useHipStore.getState().measurements[0]
-    expect(m.femurProfileReview?.imageQuality.confirmedAt).toBe(
-      '2026-08-11T12:00:00.000Z',
-    )
+    expect(m.femurProfileReview).toBeUndefined()
     expect(isFemurProfileClassifiable(m.femurProfileReview?.imageQuality)).toBe(true)
     expect(useHipStore.getState().activeKind).toBeNull()
   })
 
-  it('heftet auch eine NICHT bestandene Bestätigung an', () => {
-    // Gerade der Fall muss dokumentiert werden — sonst wüsste die Karte
-    // später nicht, warum sie keine Klasse zeigt.
+  it('respektiert eine gespeicherte Checkliste mit offenen Kriterien weiterhin', () => {
+    // Ältere Pläne (vor 16.09.2026) können eine nicht bestandene
+    // Checkliste tragen — deren Entscheidung bleibt bestehen.
     const gate: FemurProfileImageQuality = {
       ...leereBildqualitaet(true),
       exclusionReasons: ['Rotation nicht vertretbar'],
     }
-    useHipStore.getState().setFemurProfileGate(gate)
-    useHipStore.getState().toggleTool('femurProfile')
-    for (let i = 0; i < 13; i++) useHipStore.getState().addDraftPoint(p(i, i))
-    const m = useHipStore.getState().measurements[0]
-    expect(m.femurProfileReview?.imageQuality.exclusionReasons).toEqual([
-      'Rotation nicht vertretbar',
-    ])
-    expect(isFemurProfileClassifiable(m.femurProfileReview?.imageQuality)).toBe(false)
-  })
-
-  it('heftet an andere Messarten nichts an', () => {
-    useHipStore.getState().setFemurProfileGate(bestandenesGate())
-    useHipStore.getState().toggleTool('ccd') // verwirft das Gate
-    for (let i = 0; i < 6; i++) useHipStore.getState().addDraftPoint(p(i, i))
-    expect(useHipStore.getState().measurements[0].femurProfileReview).toBeUndefined()
-  })
-
-  it('wird von reset verworfen (neues Bild)', () => {
-    useHipStore.getState().setFemurProfileGate(bestandenesGate())
-    useHipStore.getState().reset()
-    expect(useHipStore.getState().femurProfileGate).toBeNull()
+    expect(isFemurProfileClassifiable(gate)).toBe(false)
+    expect(isFemurProfileClassifiable(bestandenesGate())).toBe(true)
   })
 })
 
 describe('Ärztliche Bestätigung und Override', () => {
   /** Legt eine fertige Femurprofil-Messung an und gibt ihre id zurück. */
   function messungAnlegen(): string {
-    useHipStore.getState().setFemurProfileGate(bestandenesGate())
     useHipStore.getState().toggleTool('femurProfile')
     for (let i = 0; i < 13; i++) useHipStore.getState().addDraftPoint(p(i, i))
     return useHipStore.getState().measurements[0].id
@@ -152,7 +70,6 @@ describe('Ärztliche Bestätigung und Override', () => {
   it('speichert die Bestätigung an der richtigen Messung', () => {
     const id = messungAnlegen()
     // Zweite Messung, damit ein Verwechseln auffiele.
-    useHipStore.getState().setFemurProfileGate(bestandenesGate())
     useHipStore.getState().toggleTool('femurProfile')
     for (let i = 0; i < 13; i++) useHipStore.getState().addDraftPoint(p(i + 50, i))
     const zweite = useHipStore.getState().measurements[1].id

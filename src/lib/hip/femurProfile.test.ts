@@ -202,9 +202,11 @@ describe('Bildqualitäts-Gate', () => {
     expect(femurProfileAusschlussgruende(bestanden())).toEqual([])
   })
 
-  it('ist ohne Checkliste nicht klassifizierbar', () => {
-    expect(isFemurProfileClassifiable(null)).toBe(false)
-    expect(isFemurProfileClassifiable(undefined)).toBe(false)
+  it('klassifiziert OHNE Checkliste — die Aufnahmeprüfung ist ärztliche Vorarbeit', () => {
+    // Seit 16.09.2026 gibt es keine Pflicht-Checkliste mehr; ohne
+    // gespeicherte Einwände gilt die Aufnahme als vorab geprüft.
+    expect(isFemurProfileClassifiable(null)).toBe(true)
+    expect(isFemurProfileClassifiable(undefined)).toBe(true)
   })
 
   it('sperrt bei fehlender Kalibrierung', () => {

@@ -1000,8 +1000,6 @@ export function addStemTemplate() {
 export function placeStemForSide(
   side: 'R' | 'L',
   femurAxis: [Types.Point3, Types.Point3] | null,
-  /** Optionale Start-Variante (Katalog-Index) aus den Planungsregeln. */
-  startCatalogIndex?: number | null,
 ) {
   const viewport = getViewport()
   if (!viewport) return
@@ -1039,7 +1037,7 @@ export function placeStemForSide(
     }
     rotationDeg = angle
   }
-  tmplStore.placeStem(side, center, rotationDeg, femurAxis, startCatalogIndex)
+  tmplStore.placeStem(side, center, rotationDeg, femurAxis)
 }
 
 /**

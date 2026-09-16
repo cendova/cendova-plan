@@ -120,10 +120,13 @@ describe('Femurprofil-Zeilen im PDF', () => {
     expect(t).toContain('Cortical Index: 0,50')
   })
 
-  it('unterdrückt die Klasse auch ganz ohne Beurteilung', () => {
+  it('klassifiziert auch ganz ohne Beurteilung — die Aufnahmeprüfung ist Vorarbeit', () => {
+    // Seit 16.09.2026 keine Pflicht-Checkliste mehr: ohne gespeicherte
+    // Einwände nennt das PDF die Klasse.
     const t = alsText(femurProfilPdfZeilen(punkte(), 1, undefined))
-    expect(t).toContain('nicht zuverlässig bestimmbar')
-    expect(t).toContain('Bildqualität nicht bestätigt')
+    expect(t).not.toContain('nicht zuverlässig bestimmbar')
+    expect(t).toContain('Dorr-Vorschlag: B')
+    expect(t).toContain('5H')
   })
 
   it('warnt bei Dorr C vorsichtig — Prüfauftrag, keine Entscheidung', () => {

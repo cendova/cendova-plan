@@ -85,12 +85,14 @@ export function femurProfilPdfZeilen(
   // 1) Die Klasse — oder ihr Fehlen, mit Begründung.
   if (!darfKlassifizieren) {
     zeilen.push('• Dorr/CPAH: nicht zuverlässig bestimmbar')
+    // Nur noch aus aelteren Plaenen erreichbar (gespeicherte Checkliste
+    // mit offenen Kriterien) — ohne Checkliste wird klassifiziert.
     const gruende = quality?.exclusionReasons ?? []
-    if (gruende.length > 0) {
-      zeilen.push(`   Bildqualität: ${gruende.join('; ')}`)
-    } else {
-      zeilen.push('   Bildqualität nicht bestätigt')
-    }
+    zeilen.push(
+      gruende.length > 0
+        ? `   Bildqualität: ${gruende.join('; ')}`
+        : '   Bildqualität laut gespeicherter Checkliste nicht bestätigt',
+    )
   } else if (final != null) {
     const abweichend =
       review?.dorrSuggested != null && final !== review.dorrSuggested

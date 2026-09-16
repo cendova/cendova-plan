@@ -1,7 +1,7 @@
 # Abnahme-Skripte Femurprofil
 
-Acht Playwright-Skripte, die den Femurprofil-Workflow im echten Browser
-gegen einen laufenden **Dev-Server** prüfen — zusammen 117 Einzelprüfungen.
+Sieben Playwright-Skripte, die den Femurprofil-Workflow im echten Browser
+gegen einen laufenden **Dev-Server** prüfen — zusammen 96 Einzelprüfungen.
 
 Sie ergänzen die Unit-Tests um das, was diese prinzipiell nicht sehen:
 ob etwas tatsächlich im DOM landet, ob der Klickweg funktioniert und ob
@@ -40,10 +40,9 @@ die fehlgeschlagenen Prüfungen. Screenshots landen unter
 |---|---|
 | `pruefe-hilfslinie` | 10-cm-Linie während der Platzierung: erscheint ab Punkt 7, bleibt ohne Kalibrierung aus, verschwindet nach Abschluss |
 | `pruefe-femurprofil-sektion` | Reihenfolge und Nummerierung der Sektionen, Statuspunkt-Doktrin, Kalibrier-Sperre, Klickweg |
-| `pruefe-gate` | Bildqualitäts-Checkliste: Pflicht vor der Messung, umgekehrte Polarität der Deformitäts-Zeile, Zeitstempel, Verwerfen beim Abbruch |
-| `pruefe-karte` | Ergebnis-Karte und CPAH-Matrix, Unterdrückung der Klasse ohne Bestätigung, verbotene Formulierungen, Dorr-C-Warnung |
+| `pruefe-karte` | Ergebnis-Karte und CPAH-Matrix, Unterdrückung der Klasse bei gespeicherter Checkliste älterer Pläne, verbotene Formulierungen, Dorr-C-Warnung |
 | `pruefe-bestaetigung` | Ärztliche Bestätigung/Override samt Pflichtgrund, Undo, Erkennung veralteter Bestätigungen |
-| `pruefe-prefill` | Übernahme der sechs CCD-Punkte, Ankündigung im Dialog, Unabhängigkeit der Kopien |
+| `pruefe-prefill` | Übernahme der sechs CCD-Punkte, Ankündigung unter dem Start-Knopf, Unabhängigkeit der Kopien |
 | `pruefe-plan-v10` | Speichern/Laden über den echten Serialisierungsweg, Abwehr eines präparierten Plans |
 | `pruefe-pdf` | Erzeugt ein echtes PDF über den Export-Knopf und sucht die Zeilen im Byte-Strom |
 
@@ -60,4 +59,7 @@ die fehlgeschlagenen Prüfungen. Screenshots landen unter
 - Ändert sich der Ablauf bewusst, **veralten diese Skripte** — genau das
   ist beim Bildqualitäts-Gate passiert: Der Knopf startete nicht mehr
   direkt die Messung, und `pruefe-femurprofil-sektion` fiel um. Das
-  Skript gehört dann im selben Commit nachgezogen.
+  Skript gehört dann im selben Commit nachgezogen. (Und noch einmal am
+  16.09.2026, als die Pflicht-Checkliste wieder entfiel — `pruefe-gate`
+  wurde gelöscht, die übrigen Skripte simulieren „nicht bestanden" jetzt
+  als älteren Plan mit gespeicherter Checkliste.)

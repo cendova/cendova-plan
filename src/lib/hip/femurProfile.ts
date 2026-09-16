@@ -217,8 +217,9 @@ export interface FemurProfileImageQuality {
   confirmedAt?: string
 }
 
-/** Klartext je Kriterium — dient der Checkliste UND den Ausschlussgruenden,
- *  damit beide nicht auseinanderlaufen. */
+/** Klartext je Kriterium — dient der Erklärung in der Karte, der Auswertung
+ *  gespeicherter Checklisten UND den Ausschlussgruenden, damit nichts
+ *  davon auseinanderlaeuft. */
 export const FEMUR_PROFILE_QUALITAETS_KRITERIEN: {
   feld: keyof FemurProfileImageQuality
   frage: string
@@ -226,6 +227,9 @@ export const FEMUR_PROFILE_QUALITAETS_KRITERIEN: {
   grund: string
   /** true, wenn das Feld invertiert ist (erfuellt = false). */
   invertiert?: true
+  /** Formulierung als VORAUSSETZUNG für die Erklärung in der Karte —
+   *  nur nötig, wo die Frage invertiert ist. */
+  voraussetzung?: string
 }[] = [
   {
     feld: 'calibrated',
@@ -262,6 +266,7 @@ export const FEMUR_PROFILE_QUALITAETS_KRITERIEN: {
     frage: 'Ausgeprägte Deformität verfälscht die Geometrie',
     grund: 'Deformität verfälscht die Geometrie',
     invertiert: true,
+    voraussetzung: 'Keine ausgeprägte Deformität, die die Geometrie verfälscht',
   },
 ]
 
@@ -300,7 +305,13 @@ export function femurProfileAusschlussgruende(
 export function isFemurProfileClassifiable(
   q: FemurProfileImageQuality | null | undefined,
 ): boolean {
-  if (!q) return false
+  // Ohne gespeicherte Checkliste gibt es keinen Einwand: Die Eignung der
+  // Aufnahme ist aerztliche Vorarbeit VOR der Planung, keine Abfrage des
+  // Programms (Nutzerentscheid 16.09.2026 — die Pflicht-Checkliste vor
+  // der Messung ist entfallen; die Kriterien stehen als Erklaerung in der
+  // Karte). Eine gespeicherte Checkliste mit offenen Kriterien — aus
+  // Plaenen vor diesem Datum — unterdrueckt die Klasse weiterhin.
+  if (!q) return true
   return femurProfileAusschlussgruende(q).length === 0
 }
 

@@ -4,30 +4,27 @@ import {
   type DorrType,
   type FemurProfileImageQuality,
   type FemurProfileRaw,
+  FEMUR_PROFILE_QUALITAETS_KRITERIEN,
   computeFemurProfileRaw,
   isFemurProfileClassifiable,
 } from '../lib/hip/femurProfile'
-import { stemPlanningHints } from '../lib/hip/stemPlanningRules'
-import { cpahKlassenHinweis } from '../lib/hip/cpahKlassenHinweis'
-import { vergleicheSchaftMitFemurprofil } from '../lib/hip/stemComparison'
-import { stemCatalogEntries } from '../lib/hip/templates'
-import { STEM_PROFILE_BY_FOLDER } from '../lib/hip/medactaCatalog'
 import {
   FEMUR_PROFILE_OVERRIDE_REASONS,
   type FemurProfileOverrideReason,
   type FemurProfileReview,
   useHipStore,
 } from '../state/hipStore'
-import { useTemplateStore } from '../state/templateStore'
 import { CpahMatrix } from './CpahMatrix'
 
 /**
  * Ergebnis-Karte „Morphologie & Fixation" zu einer Femurprofil-Messung.
  *
- * Grundregel der Darstellung: Die Karte zeigt IMMER die Rohwerte, die
- * KLASSE aber nur, wenn die Bildqualität dafür bestätigt wurde. Eine
- * Dorr-/CPAH-Klasse aus einer ungeeigneten Aufnahme wäre
- * Scheinpräzision — und zwar eine, die Therapieentscheidungen beeinflusst.
+ * Die Karte zeigt Rohwerte UND Klasse. Die Eignung der Aufnahme
+ * (AP-Standard, Rotation, Trochanter minor, Kortikalis, 10 cm, Deformität)
+ * ist ärztliche Vorarbeit VOR der Planung — seit 16.09.2026 fragt das
+ * Programm sie nicht mehr ab, die Kriterien stehen unten als aufklappbare
+ * Erklärung. Nur eine in älteren Plänen gespeicherte Checkliste mit
+ * offenen Kriterien unterdrückt die Klasse weiterhin.
  *
  * Der Ton ist bewusst zurückhaltend. Formulierungen wie „Implantat X
  * verwenden", „zementfrei kontraindiziert" oder „Osteoporose
@@ -45,23 +42,10 @@ export function FemurProfileCard({
   id: string
   points: Types.Point3[]
   mmPerWorldUnit: number
-  /** Bildqualität dieser Messung; fehlt sie, wird nicht klassifiziert. */
+  /** Ärztliche Beurteilung; eine darin gespeicherte Checkliste (ältere
+   *  Pläne) kann die Klasse unterdrücken. */
   review?: FemurProfileReview
 }) {
-  // Platzierte Schaftschablone für den femurseitigen Abgleich (Task 16):
-  // die selektierte, sonst die erste sichtbare. Reaktiv, damit Ziehen der
-  // Schablone die Deltas live bewegt.
-  const stems = useTemplateStore((s) => s.stems)
-  const selectedId = useTemplateStore((s) => s.selectedId)
-  const stem =
-    stems.find((s) => s.id === selectedId && s.visible !== false) ??
-    stems.find((s) => s.visible !== false) ??
-    null
-  const stemFolder = stem ? stemCatalogEntries()[stem.catalogIndex]?.folder ?? null : null
-  // Strukturiertes Profil aus dem Schablonen-Paket (Task 14) — die Regeln
-  // lesen NUR dieses, nie den Ordnernamen.
-  const stemProfil = stemFolder ? STEM_PROFILE_BY_FOLDER[stemFolder] ?? null : null
-
   const raw = computeFemurProfileRaw(points, mmPerWorldUnit)
 
   const quality = review?.imageQuality
@@ -84,49 +68,6 @@ export function FemurProfileCard({
     dorr.suggested !== review.dorrSuggested
 
   if (!raw) return null
-
-  // Planungshinweise (Task 15): regelbasiert aus finalem Dorr (bzw. dem
-  // Vorschlag, solange nichts Gültiges bestätigt ist) und den
-  // CPAH-Bausteinen. Ohne Klassifikationsfreigabe ist `dorr` null und es
-  // gibt bewusst KEINE Hinweise — eine Regel aus einer ungeeigneten
-  // Aufnahme wäre dieselbe Scheinpräzision wie die Klasse selbst.
-  const dorrFuerRegeln =
-    dorr == null ? null : bestaetigt && !veraltet && final != null ? final : dorr.suggested
-  const hints = dorrFuerRegeln
-    ? stemPlanningHints(
-        {
-          dorr: dorrFuerRegeln,
-          dorrBestaetigt: bestaetigt && !veraltet,
-          nsaClass: raw.nsaClass,
-          offsetSubtype: cpah?.offsetSubtype ?? null,
-          corticalIndex: raw.corticalIndex,
-          nsaDeg: raw.nsaDeg,
-          femoralOffsetRatio: raw.femoralOffsetRatio,
-        },
-        stemProfil,
-      )
-    : []
-
-  // Klassenbezogener CPAH-Hinweis (öffentliche Ebene, braucht kein
-  // Schablonen-Paket): die Paper-Befunde zu den Radaelli-Klassen für
-  // genau diesen Morphotyp. Reiht sich als Info-Hinweis hinter die
-  // Anatomie-Regeln ein.
-  const klassenHinweis = cpahKlassenHinweis(cpah, stemProfil)
-  const alleHinweise = klassenHinweis ? [...hints, klassenHinweis] : hints
-
-  // Femurseitiger Abgleich der platzierten Schablone gegen die gemessene
-  // Anatomie — dieselbe Achse (Punkte 4/5), gegen die auch FO/FOR
-  // gemessen wurden. Die GESAMT-Bilanz (mit Pfanne, über die Becken-
-  // Referenzlinie) bleibt im Messungen-Panel; hier keine Doppelanzeige.
-  const abgleich =
-    stem && points.length >= 6
-      ? vergleicheSchaftMitFemurprofil({
-          anatomischesKopfzentrum: raw.headCenter,
-          schablonenKopfzentrum: stem.headCenter,
-          achse: [points[4], points[5]],
-          mmPerWorldUnit,
-        })
-      : null
 
   return (
     <div className="rounded border border-neutral-800 bg-neutral-950 p-2">
@@ -191,52 +132,38 @@ export function FemurProfileCard({
         <Wert v={raw.femoralOffsetRatio} nachkomma={2} />
       </div>
 
-      {/* Planungshinweise: regelbasiert (stemPlanningRules), jeder mit
-          sichtbaren Belegen. Sie ersetzen die frühere statische Dorr-C-Box;
-          deren Wortlaut lebt als Regel DORR_C_FIXATION weiter — das
-          Abnahme-Skript pruefe-karte.mjs prüft ihn wörtlich. Bewusst als
-          PRÜF-Aufträge formuliert, nie als Entscheidung. */}
-      {alleHinweise.map((h) => (
-        <div
-          key={h.code}
-          className={[
-            'mt-1.5 rounded border p-1.5 text-[10px] leading-relaxed',
-            h.severity === 'warning'
-              ? 'border-red-900/60 bg-red-950/30 text-red-200'
-              : h.severity === 'caution'
-                ? 'border-amber-900/60 bg-amber-950/30 text-amber-200'
-                : 'border-neutral-800 bg-neutral-900/60 text-neutral-300',
-          ].join(' ')}
-        >
-          {h.text}
-          <div className="mt-0.5 text-[9px] opacity-70">{h.evidence.join(' · ')}</div>
+      {/* Fixationshinweis bei Dorr C (CPAH 7–9). Bewusst als PRÜF-Auftrag
+          formuliert, nicht als Entscheidung: Der geometrisch gute Sitz
+          eines zementfreien Schafts hebt das Frakturrisiko nicht auf.
+          Mehr Schaft-Bezug gibt es hier bewusst NICHT (Entscheidung
+          16.09.2026): Die Implantatwahl bleibt beim planenden Chirurgen. */}
+      {cpah && cpah.type >= 7 && (
+        <div className="mt-1.5 rounded border border-red-900/60 bg-red-950/30 p-1.5 text-[10px] leading-relaxed text-red-200">
+          Dorr C: zementierte Fixation/Alternative aktiv prüfen.
+          Geometrischer Fit hebt das Frakturrisiko nicht auf.
         </div>
-      ))}
+      )}
 
-      {/* Warum keine Klasse? Die Gründe stehen aus der Checkliste fest. */}
-      {!darfKlassifizieren && (
+      {/* Warum keine Klasse? Nur noch bei älteren Plänen, deren gespeicherte
+          Checkliste offene Kriterien trägt — deren Entscheidung bleibt. */}
+      {!darfKlassifizieren && quality && (
         <div className="mt-1.5 rounded border border-amber-900/60 bg-amber-950/30 p-1.5 text-[10px] leading-relaxed text-amber-200">
-          {quality ? (
-            <>
-              <span className="font-semibold">
-                Bildqualität nicht bestätigt — Rohwerte bleiben, Klasse nicht:
-              </span>
-              <ul className="mt-0.5 list-inside list-disc text-amber-200/80">
-                {quality.exclusionReasons.map((g) => (
-                  <li key={g}>{g}</li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            'Ohne bestätigte Bildqualität wird keine Dorr-/CPAH-Klasse abgeleitet.'
-          )}
+          <span className="font-semibold">
+            Bildqualität laut gespeicherter Checkliste nicht bestätigt — Rohwerte
+            bleiben, Klasse nicht:
+          </span>
+          <ul className="mt-0.5 list-inside list-disc text-amber-200/80">
+            {quality.exclusionReasons.map((g) => (
+              <li key={g}>{g}</li>
+            ))}
+          </ul>
         </div>
       )}
 
       {/* Ärztliche Bestätigung. Nur sinnvoll, wenn überhaupt eine Klasse
           abgeleitet werden darf — ohne Vorschlag gibt es nichts zu
           bestätigen und nichts zu übersteuern. */}
-      {dorr && quality && (
+      {dorr && (
         <DorrBestaetigung
           id={id}
           vorschlag={dorr.suggested}
@@ -246,9 +173,8 @@ export function FemurProfileCard({
         />
       )}
 
-      {/* Das Schaubild NUR bei bestätigter Bildqualität — es zeigt eine
-          Klasse, und genau die darf ohne Bestätigung nicht entstehen.
-          Ohne die Werte wäre der Punkt ohnehin nicht platzierbar. */}
+      {/* Das Schaubild nur mit Klasse — ohne die Werte wäre der Punkt
+          ohnehin nicht platzierbar. */}
       {cpah &&
         raw.corticalIndex != null &&
         raw.nsaDeg != null &&
@@ -263,60 +189,6 @@ export function FemurProfileCard({
           </div>
         )}
 
-      {/* Schablonen-Abgleich (Task 16): die tatsächliche Geometrie der
-          platzierten Variante gegen die gemessene Anatomie, femurseitig
-          entlang der Messachse. CPAH bleibt Vorauswahl — bewertet wird,
-          was wirklich auf dem Bild liegt. Rotation zur Achse und die
-          Gesamt-Bilanz mit Pfanne stehen bereits im Messungen-Panel und
-          werden hier bewusst NICHT wiederholt. */}
-      {stem && abgleich && (
-        <div className="mt-2 rounded border border-neutral-800 bg-neutral-950 p-2">
-          <div className="mb-1 flex items-baseline justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
-              Schablonen-Abgleich
-            </span>
-            <span className="text-[11px] text-neutral-400">
-              Schaft {stem.side === 'R' ? 'rechts' : 'links'}
-            </span>
-          </div>
-          {stemFolder && (
-            <div className="text-[10px] text-neutral-400">
-              {stemFolder}
-              {stemProfil && (
-                <>
-                  {' · '}
-                  {stemProfil.fixation === 'cemented' ? 'zementiert' : 'zementfrei'}
-                  {stemProfil.radaelliClass ? ` · Radaelli ${stemProfil.radaelliClass}` : ''}
-                </>
-              )}
-            </div>
-          )}
-          <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] tabular-nums text-neutral-400">
-            <span>Δ Offset (femoral):</span>
-            <span className="text-right text-neutral-200">
-              {vorzeichenMm(abgleich.deltaFoMm)}
-            </span>
-            <span>Δ Kopfhöhe entlang Achse:</span>
-            <span className="text-right text-neutral-200">
-              {vorzeichenMm(abgleich.deltaLaengsMm)}
-            </span>
-          </div>
-          <div className="mt-1 text-[9px] leading-snug text-neutral-500">
-            Femurseitig, bezogen auf die gemessene Schaftachse; + = mehr
-            Offset bzw. Verlängerung. Gesamt-Bilanz mit Pfanne: siehe
-            Messungen-Panel.
-          </div>
-          {abgleich.warnings.map((w) => (
-            <div
-              key={w}
-              className="mt-1 rounded border border-amber-900/60 bg-amber-950/30 p-1.5 text-[10px] leading-relaxed text-amber-200"
-            >
-              {w}
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Mess-Warnungen der Geometrie (vertauschte Punkte o. Ä.). */}
       {raw.warnings.length > 0 && (
         <ul className="mt-1.5 list-inside list-disc text-[10px] leading-relaxed text-amber-300/80">
@@ -325,6 +197,24 @@ export function FemurProfileCard({
           ))}
         </ul>
       )}
+
+      {/* Voraussetzungen der Aufnahme — als ERKLÄRUNG, nicht als Abfrage:
+          Wer plant, hat die Eignung der Aufnahme vorher geprüft
+          (Nutzerentscheid 16.09.2026). Dieselbe Liste wie die frühere
+          Checkliste, damit Anspruch und Dokumentation nicht auseinanderlaufen. */}
+      <details className="mt-1.5 border-t border-neutral-800 pt-1 text-[9px] leading-snug text-neutral-500">
+        <summary className="cursor-pointer select-none hover:text-neutral-300">
+          Voraussetzungen der Aufnahme für Dorr/CPAH
+        </summary>
+        <ul className="mt-0.5 list-inside list-disc">
+          {FEMUR_PROFILE_QUALITAETS_KRITERIEN.map((k) => (
+            <li key={k.feld}>{k.voraussetzung ?? k.frage}</li>
+          ))}
+        </ul>
+        <div className="mt-0.5">
+          Ärztlich vorab zu beurteilen — das Programm erkennt sie nicht selbst.
+        </div>
+      </details>
 
       <div className="mt-1.5 border-t border-neutral-800 pt-1 text-[9px] leading-snug text-neutral-500">
         Planungshinweis — keine autonome Implantatentscheidung.
@@ -350,7 +240,8 @@ function DorrBestaetigung({
 }: {
   id: string
   vorschlag: DorrType
-  quality: FemurProfileImageQuality
+  /** Gespeicherte Checkliste älterer Pläne — wird beim Speichern mitgeführt. */
+  quality?: FemurProfileImageQuality
   review?: FemurProfileReview
   veraltet: boolean
 }) {
@@ -365,7 +256,7 @@ function DorrBestaetigung({
 
   const speichern = () => {
     useHipStore.getState().setFemurProfileReview(id, {
-      imageQuality: quality,
+      ...(quality ? { imageQuality: quality } : {}),
       dorrSuggested: vorschlag,
       dorrFinal: wahl,
       ...(abweichend && grund !== '' ? { overrideReason: grund } : {}),
@@ -376,7 +267,7 @@ function DorrBestaetigung({
   }
 
   const zuruecknehmen = () => {
-    useHipStore.getState().setFemurProfileReview(id, { imageQuality: quality })
+    useHipStore.getState().setFemurProfileReview(id, quality ? { imageQuality: quality } : {})
     setWahl(vorschlag)
     setGrund('')
     setOffen(false)
@@ -492,13 +383,6 @@ function DorrBestaetigung({
       )}
     </div>
   )
-}
-
-/** Millimeter mit explizitem Vorzeichen — bei Deltas ist „+" die halbe
- *  Information (mehr Offset / Verlängerung). */
-function vorzeichenMm(v: number): string {
-  const text = Math.abs(v).toFixed(1).replace('.', ',')
-  return `${v < -0.05 ? '−' : '+'}${text} mm`
 }
 
 /** Zahl oder „—", damit ein fehlender Wert nicht als 0 gelesen wird. */

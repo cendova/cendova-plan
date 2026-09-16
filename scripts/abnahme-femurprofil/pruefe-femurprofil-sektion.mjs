@@ -73,14 +73,13 @@ await page.waitForTimeout(300)
 ok(await knopf.isEnabled(), 'Mit Kalibrierung ist der Start frei')
 await knopf.click()
 await page.waitForTimeout(500)
-// Seit dem Bildqualitaets-Gate (Task 5a) oeffnet der Knopf zuerst die
-// Checkliste; die Messung startet erst nach deren Bestaetigung.
+// Seit 16.09.2026 startet der Knopf die Messung DIREKT — die fruehere
+// Pflicht-Checkliste ist entfallen (Eignung der Aufnahme = aerztliche
+// Vorarbeit). Ein Dialog darf hier nicht mehr erscheinen.
 ok(
-  /Bildqualität für das Femurprofil/.test(await page.locator('body').innerText()),
-  'Start oeffnet zuerst die Bildqualitaets-Checkliste',
+  !/Bildqualität für das Femurprofil/.test(await page.locator('body').innerText()),
+  'Start oeffnet KEINE Checkliste mehr',
 )
-await page.locator('button', { hasText: 'Ohne Klassifikation messen' }).last().click()
-await page.waitForTimeout(500)
 const banner = await page.locator('body').innerText()
 ok(/Femurprofil · Schritt 1\/13/.test(banner), 'Schrittfuehrung startet bei 1/13')
 await page.screenshot({
