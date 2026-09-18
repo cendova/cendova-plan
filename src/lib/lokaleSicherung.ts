@@ -13,14 +13,24 @@ import { logDiagnostic } from './diagnostics'
 const BASIS = '/__cendova/sicherung/'
 
 /**
- * Sicherung nur im lokalen Betrieb (Dev-/Preview-Server auf localhost).
- * Auf öffentlichem Hosting (z. B. der GitHub-Pages-Demo) wird gar kein
- * Request versucht — die Endpunkte existieren dort ohnehin nicht, und so
- * verlässt auch kein Paket-/Profil-Byte den Browser.
+ * Sicherung nur dort, wo es die Endpunkte gibt: am Dev-/Preview-Server auf
+ * localhost ODER eingebettet in CendovaView (Pfad /plan/, der Server
+ * beantwortet dieselben Endpunkte). Auf öffentlichem Hosting (z. B. der
+ * GitHub-Pages-Demo, gebaut mit --base=/cendova-plan/) wird gar kein Request
+ * versucht — und so verlässt auch kein Paket-/Profil-Byte den Browser.
  */
 function lokalerBetrieb(): boolean {
   const h = window.location.hostname
-  return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1'
+  if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1') return true
+  // Eingebettet in CendovaView: Dort liefert der SERVER die App unter /plan/
+  // aus und beantwortet dieselben Endpunkte aus derselben Ablage. Im
+  // Netzbetrieb ist der Hostname aber der SERVERNAME, nicht localhost — ohne
+  // diese Zeile fragte kein Arbeitsplatz je nach dem Paket und der
+  // Planen-Knopf blieb dort ohne Schablonen (Realtest 18.09.2026).
+  // Die Pages-Demo baut mit --base=/cendova-plan/ und trifft das nie;
+  // Schreiben und Löschen lässt der CendovaView-Server ohnehin nur am
+  // Server-Rechner zu, der gemeinsame Stand ist also geschützt.
+  return window.location.pathname.startsWith('/plan/')
 }
 
 export type SicherungsName = 'paket' | 'profil' | 'traces'
