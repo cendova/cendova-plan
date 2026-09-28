@@ -10,6 +10,7 @@ import { computeWorkflowRaw, getKneeRecipe } from '../lib/knee/recipes'
 import { getShoulderRecipe } from '../lib/shoulder/recipes'
 import { useShoulderStore } from '../state/shoulderStore'
 import { computeCpak } from '../lib/knee/cpak'
+import { KneeDeformitaetKarte, KneeOsteotomieKarte } from './KneeOsteotomieKarten'
 import {
   extractWorkflowAxes,
   computePlannedCpak,
@@ -528,6 +529,8 @@ export function MeasurementPanel() {
               </div>
             )
           })}
+        {planningMode === 'knee' && <KneeDeformitaetKarte />}
+        {planningMode === 'knee' && <KneeOsteotomieKarte />}
       </div>
     </div>
   )

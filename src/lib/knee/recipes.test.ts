@@ -271,3 +271,79 @@ describe('computeWorkflowRaw — TRANSVERSALER Anker bei fast senkrechtem Schaft
     expect(raw.mMPTA).toBeCloseTo(90, 1)
   })
 })
+
+// ----------------------------------------------------------------------
+// Deformitätsanalyse-Erweiterung (Umstellungsosteotomie, Stufe 1):
+// Traglinie in % der Plateaubreite (WBL), Mikulicz-Gelenklinien-Winkel
+// (MJLA) und die zusätzlichen Paley-Winkel mLPFA/mLDTA.
+// ----------------------------------------------------------------------
+describe('computeWorkflowRaw — WBL-Prozent und MJLA', () => {
+  it('gerades Bein: Traglinie genau in Plateaumitte (50 %), MJLA 90°', () => {
+    const raw = computeWorkflowRaw(fixture(), 1)!
+    expect(raw.wblProzent).toBeCloseTo(50, 6)
+    expect(raw.mjla).toBeCloseTo(90, 6)
+  })
+  it('Varus (Sprunggelenk medialisiert): Traglinie medial der Mitte (24,375 %)', () => {
+    // Traglinie x = 100 − 40·(y−100)/800 → bei y = 510: x = 79,5;
+    // Plateau 60…140 (medial = Punkt 9 bei x = 60) → 19,5 / 80.
+    const raw = computeWorkflowRaw(fixture({ ankle: p(60, 900) }), 1)!
+    expect(raw.wblProzent).toBeCloseTo(24.375, 6)
+    expect(raw.plateauMedial).toEqual([60, 510, 0])
+  })
+  it('Valgus (Sprunggelenk lateralisiert): Traglinie lateral der Mitte (75,625 %)', () => {
+    const raw = computeWorkflowRaw(fixture({ ankle: p(140, 900) }), 1)!
+    expect(raw.wblProzent).toBeCloseTo(75.625, 6)
+  })
+  it('MJLA misst die Gelenklinie gegen die GESAMTE Beinachse', () => {
+    // Traglinie (100,100)→(60,900): Richtung (−40, 800); medial orientierte
+    // Plateaulinie (−1, 0) → cos = 40/√(40²+800²) → 87,138°.
+    const raw = computeWorkflowRaw(fixture({ ankle: p(60, 900) }), 1)!
+    expect(raw.mjla).toBeCloseTo((Math.acos(40 / Math.hypot(40, 800)) * 180) / Math.PI, 6)
+  })
+  it('WBL folgt der Anatomie, nicht der Klick-Reihenfolge der Plateaupunkte', () => {
+    // Femurschaft deutlich lateral (x = 130) → Anker greift; Plateaupunkte
+    // vertauscht gesetzt → Ergebnis darf sich nicht ändern.
+    const basis = fixture({ ankle: p(60, 900) })
+    for (const i of [3, 4]) basis[i] = [basis[i][0] + 30, basis[i][1], 0]
+    const vertauscht = [...basis]
+    vertauscht[9] = basis[10]
+    vertauscht[10] = basis[9]
+    const a = computeWorkflowRaw(basis, 1)!
+    const b = computeWorkflowRaw(vertauscht, 1)!
+    expect(b.wblProzent).toBeCloseTo(a.wblProzent!, 6)
+    expect(b.mjla).toBeCloseTo(a.mjla, 6)
+  })
+  it('Werteliste der Vollvermessung zeigt WBL und JLO', () => {
+    const { values } = getKneeRecipe('workflow')!.compute(fixture(), 1)
+    const labels = values.map((v) => v.label)
+    expect(labels).toContain('Traglinie (WBL)')
+    expect(labels).toContain('JLO (MJLA)')
+    expect(values.find((v) => v.label === 'Traglinie (WBL)')!.value).toBe('50.0 %')
+  })
+})
+
+describe('mLPFA / mLDTA (Paley-Ergänzung)', () => {
+  it('mLPFA: Trochanterspitze waagerecht lateral des Hüftkopfs → 90°', () => {
+    const r = getKneeRecipe('mLPFA')!
+    const { values } = r.compute(
+      [p(80, 100), p(100, 80), p(120, 100), p(150, 100), p(100, 500)],
+      1,
+    )
+    expect(values[0].value).toBe('90.0°')
+  })
+  it('mLPFA: tiefer stehende Trochanterspitze verkleinert den Winkel', () => {
+    const r = getKneeRecipe('mLPFA')!
+    const { values } = r.compute(
+      [p(80, 100), p(100, 80), p(120, 100), p(150, 120), p(100, 500)],
+      1,
+    )
+    // Winkel zwischen (0,400) und (50,20): atan(50/20) = 68,2°.
+    expect(values[0].value).toBe('68.2°')
+  })
+  it('mLDTA: waagerechter Plafond → 90°, lateral tiefer → > 90°', () => {
+    const r = getKneeRecipe('mLDTA')!
+    expect(r.compute([p(100, 500), p(80, 900), p(120, 900)], 1).values[0].value).toBe('90.0°')
+    const schraeg = r.compute([p(100, 500), p(80, 900), p(120, 905)], 1).values[0].value
+    expect(parseFloat(schraeg)).toBeGreaterThan(90)
+  })
+})

@@ -56,6 +56,9 @@ import {
 import { getShoulderRecipe } from '../shoulder/recipes'
 import { getKneeRecipe, computeWorkflowRaw } from '../knee/recipes'
 import { computeCpak } from '../knee/cpak'
+import { berechneOsteotomie } from '../../components/useOsteotomie'
+import { useKneeOsteotomieStore } from '../../state/kneeOsteotomieStore'
+import { deformitaetPdfZeilen, osteotomiePdfZeilen } from './osteotomieText'
 
 /**
  * Wendet die AMBER-Einfärbung der Schablonen-Bilder MANUELL an, vor dem
@@ -725,6 +728,20 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
         }
       }
       writeSection('Knie-Messungen', lines)
+    }
+
+    // Deformitätsanalyse + Umstellungsosteotomie (Knie) — dieselbe
+    // Berechnung wie Karte und Overlay (berechneOsteotomie).
+    {
+      const osteo = berechneOsteotomie(
+        kneeMeasurements,
+        useKneeOsteotomieStore.getState().plan,
+        factor,
+      )
+      if (osteo.plan || useViewerStore.getState().planningMode === 'knee') {
+        writeSection('Deformitätsanalyse (Paley)', deformitaetPdfZeilen(osteo))
+      }
+      writeSection('Umstellungsosteotomie', osteotomiePdfZeilen(osteo))
     }
 
     // Schulter-Messungen. Zwei bewusste Abweichungen vom Knie-Block:

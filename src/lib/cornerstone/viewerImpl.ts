@@ -38,6 +38,7 @@ import { useTemplateStore } from '../../state/templateStore'
 import { usePlanningStore } from '../../state/planningStore'
 import { useOsteophyteStore } from '../../state/osteophyteStore'
 import { useShaftFragmentStore } from '../../state/shaftFragmentStore'
+import { useKneeOsteotomieStore } from '../../state/kneeOsteotomieStore'
 import {
   useKneeTemplateStore,
   type KneeSide,
@@ -365,6 +366,7 @@ export function resetPlanning(): void {
   useTemplateStore.getState().reset()
   useOsteophyteStore.getState().reset()
   useShaftFragmentStore.getState().reset()
+  useKneeOsteotomieStore.getState().reset()
   usePlanningStore.getState().reset()
   const viewer = useViewerStore.getState()
   viewer.setMeasurements([])
@@ -393,6 +395,7 @@ function updateStoreForLoadedImage(
   useTemplateStore.getState().reset()
   useOsteophyteStore.getState().reset()
   useShaftFragmentStore.getState().reset()
+  useKneeOsteotomieStore.getState().reset()
   // Organisatorische Planungsdaten (OP-Termin, Klinik, Versicherung, Reha,
   // Allergien …) beim Laden eines NEUEN Bildes löschen — sonst bestünde
   // Verwechslungsgefahr mit dem vorherigen Patienten. Hinweis: Der Plan-

@@ -52,7 +52,8 @@ beforeEach(() => useHipStore.getState().reset())
 
 describe('Plan-Speicherung des Femurprofils', () => {
   it('schreibt Format-Version 10', () => {
-    expect(buildPlan().version).toBe(10)
+    // Exakte Version prüft der jüngste Format-Test (serializeOsteotomie).
+    expect(buildPlan().version).toBeGreaterThanOrEqual(10)
   })
 
   it('nimmt die Femurprofil-Messung ohne Beurteilung auf (Normalfall seit 16.09.2026)', () => {

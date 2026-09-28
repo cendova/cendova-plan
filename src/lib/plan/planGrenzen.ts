@@ -28,6 +28,37 @@ function istPunkt(q: unknown): boolean {
   )
 }
 
+const OSTEOTOMIE_TYPEN_ERLAUBT = [
+  'htoOeffnend',
+  'htoSchliessend',
+  'dfoOeffnend',
+  'dfoSchliessend',
+  'dlo',
+]
+
+/** Umstellungsosteotomie (v11): Typ aus der Liste, Zahlen endlich und
+ *  plausibel, Punkte als Zahlen-Tupel (istPunkt) oder null. */
+function pruefeOsteotomie(o: unknown): string | null {
+  if (o === undefined || o === null) return null
+  if (typeof o !== 'object') return 'Feld „kneeOsteotomie" ist kein Objekt'
+  const r = o as Record<string, unknown>
+  if (!OSTEOTOMIE_TYPEN_ERLAUBT.includes(r.typ as string))
+    return 'Umstellungsosteotomie: unbekannter Typ'
+  const zahl = (v: unknown, lo: number, hi: number) =>
+    typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi
+  if (!zahl(r.zielWblProzent, -100, 200)) return 'Umstellungsosteotomie: Zielwert unplausibel'
+  if (r.dloZielLdfa !== undefined && !zahl(r.dloZielLdfa, 60, 120))
+    return 'Umstellungsosteotomie: Ziel-mLDFA unplausibel'
+  if (r.deltaJlca !== undefined && r.deltaJlca !== null && !zahl(r.deltaJlca, 0, 45))
+    return 'Umstellungsosteotomie: ΔJLCA unplausibel'
+  for (const k of ['femurScharnier', 'femurStart', 'tibiaScharnier', 'tibiaStart']) {
+    const v = r[k]
+    if (v === undefined || v === null) continue
+    if (!istPunkt(v)) return `Umstellungsosteotomie: Punkt „${k}" ungültig`
+  }
+  return null
+}
+
 /**
  * Struktur-/Grenzen-Prüfung eines geparsten Plans, BEVOR irgendetwas in
  * Stores übernommen wird (Security-Report §8): richtige Grundtypen,
@@ -85,6 +116,9 @@ export function pruefePlanGrenzen(plan: PlanFile): string | null {
         return `Feld „${feld}" enthält einen ungültigen Punkt (keine endlichen Koordinaten)`
     }
   }
+
+  const osteoFehler = pruefeOsteotomie(plan.kneeOsteotomie)
+  if (osteoFehler) return osteoFehler
 
   // Kalibrierung: falls vorhanden, muss der Kernfaktor endlich + plausibel
   // sein — ein manipuliertes mmPerWorldUnit verfälscht JEDE Messung.

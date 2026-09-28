@@ -13,6 +13,7 @@ import {
   polygonSchwerpunkt,
   punktImPolygon,
 } from '../lib/shoulder/cropGeometry'
+import { fuelleLuecke, zeichneVersetzt } from './fragmentBild'
 
 /**
  * Overlay für ausgeschnittene Schaft-Fragmente (Osteotomie-Simulation
@@ -178,15 +179,7 @@ export function ShaftFragmentOverlay() {
     // Bewusst ein eigener Durchgang VOR dem Zeichnen: Sonst könnte die
     // Füllung eines später bearbeiteten Fragments ein bereits gezeichnetes
     // früheres wieder ausradieren.
-    for (const { quellPoly } of geometrie) {
-      ctx.save()
-      ctx.beginPath()
-      quellPoly.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])))
-      ctx.closePath()
-      ctx.fillStyle = '#000000'
-      ctx.fill()
-      ctx.restore()
-    }
+    for (const { quellPoly } of geometrie) fuelleLuecke(ctx, quellPoly)
 
     // DURCHGANG 2 — die Fragmente an ihrer neuen Lage zeichnen.
     for (const { f, quellPoly, zielPoly, zielWelt } of geometrie) {
@@ -195,38 +188,7 @@ export function ShaftFragmentOverlay() {
       // der Schnitt genau in dieses Polygon fällt.
       const qs = w2c(polygonSchwerpunkt(f.points))
       const zs = w2c(polygonSchwerpunkt(zielWelt))
-      ctx.save()
-      ctx.beginPath()
-      zielPoly.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])))
-      ctx.closePath()
-      ctx.clip()
-      // Canvas-Drehwinkel aus einem transformierten Referenzpunkt ableiten —
-      // so stimmt die Richtung auch, wenn der Viewport selbst gedreht oder
-      // gespiegelt ist. Genommen wird der Punkt mit dem GRÖSSTEN Abstand
-      // zum Schwerpunkt: Läge der Referenzpunkt nahe am Drehpunkt, würde
-      // schon Rundungsrauschen den Winkel beliebig ausschlagen lassen und
-      // das Fragment sichtbar verdrehen.
-      let refIdx = 0
-      let refDist = -1
-      for (let i = 0; i < quellPoly.length; i++) {
-        const d = Math.hypot(quellPoly[i][0] - qs[0], quellPoly[i][1] - qs[1])
-        if (d > refDist) {
-          refDist = d
-          refIdx = i
-        }
-      }
-      const a0 = quellPoly[refIdx]
-      const b0 = zielPoly[refIdx]
-      const winkel =
-        refDist < 1e-6
-          ? 0
-          : Math.atan2(b0[1] - zs[1], b0[0] - zs[0]) -
-            Math.atan2(a0[1] - qs[1], a0[0] - qs[0])
-      ctx.translate(zs[0], zs[1])
-      ctx.rotate(winkel)
-      ctx.translate(-qs[0], -qs[1])
-      ctx.drawImage(quelle, 0, 0, quelle.width, quelle.height, 0, 0, breite, hoehe)
-      ctx.restore()
+      zeichneVersetzt(ctx, quelle, breite, hoehe, quellPoly, zielPoly, qs, zs)
 
       // Umrisse: Ziel durchgezogen, Ursprung gestrichelt (umrandet die
       // entstandene Lücke und zeigt, woher das Stück kommt).

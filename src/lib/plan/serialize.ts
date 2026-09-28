@@ -77,6 +77,10 @@ import {
   loadDicomBytesToPane2,
 } from '../cornerstone/viewer2'
 import { useKneePanesStore } from '../../state/kneePanesStore'
+import {
+  useKneeOsteotomieStore,
+  type OsteotomiePlan,
+} from '../../state/kneeOsteotomieStore'
 import { pruefePlanGrenzen } from './planGrenzen'
 
 /**
@@ -100,7 +104,8 @@ export function setEmbeddedSaveHook(hook: (() => void) | null): void {
 // Version 8: + Schulter-Schablonen (gingen vorher beim Speichern verloren)
 // Version 9: + Schaft-Fragmente (Osteotomie-Simulation am Humerus)
 // Version 10: + Femurprofil-Review (Bildqualitaet, Dorr-Bestaetigung/Override)
-const PLAN_FORMAT_VERSION = 10
+// Version 11: + Umstellungsosteotomie am Knie (Typ, Ziel, Scharnier/Start)
+const PLAN_FORMAT_VERSION = 11
 
 export interface PlanFile {
   /** Schema-Version. Beim Laden prüfen und ggf. migrieren. */
@@ -163,9 +168,29 @@ export interface PlanFile {
   osteophytes?: OsteophyteRegion[]
   /** Ausgeschnittene Schaft-Fragmente. Optional (Pläne < v9 ohne Feld). */
   shaftFragments?: ShaftFragment[]
+  /** Umstellungsosteotomie am Knie — nur die Eingaben, die Ergebnisse
+   *  werden beim Laden neu gerechnet. Optional (Pläne < v11 ohne Feld). */
+  kneeOsteotomie?: OsteotomiePlan | null
   /** Organisatorische/klinische Planungsdaten (OP-Termin, Klinik,
    *  Versicherung, Reha …). Optional (alte Pläne ohne Feld). */
   planning?: PlanningData
+}
+
+/** Füllt fehlende Optionsfelder eines geladenen Osteotomie-Plans mit den
+ *  Vorgaben auf (Typ/Punkte sind vorher in pruefePlanGrenzen geprüft). */
+export function normalisiereOsteotomiePlan(p: OsteotomiePlan): OsteotomiePlan {
+  return {
+    typ: p.typ,
+    zielWblProzent: p.zielWblProzent,
+    dloZielLdfa: p.dloZielLdfa ?? 88,
+    deltaJlca: p.deltaJlca ?? null,
+    bildSimulation: p.bildSimulation ?? true,
+    sichtbar: p.sichtbar ?? true,
+    femurScharnier: p.femurScharnier ?? null,
+    femurStart: p.femurStart ?? null,
+    tibiaScharnier: p.tibiaScharnier ?? null,
+    tibiaStart: p.tibiaStart ?? null,
+  }
 }
 
 /** ArrayBuffer → base64-String (chunked, vermeidet Stack-Overflow bei
@@ -258,6 +283,7 @@ export function buildPlan(): PlanFile {
     clinicalBld: useViewerStore.getState().clinicalBld,
     osteophytes: useOsteophyteStore.getState().regions,
     shaftFragments: useShaftFragmentStore.getState().fragments,
+    kneeOsteotomie: useKneeOsteotomieStore.getState().plan,
     planning,
   }
 }
@@ -379,6 +405,7 @@ export async function applyPlan(plan: PlanFile): Promise<
   useNoteStore.getState().reset()
   useOsteophyteStore.getState().reset()
   useShaftFragmentStore.getState().reset()
+  useKneeOsteotomieStore.getState().reset()
 
   // Neue Daten setzen. Bei Zustand reicht setState direkt — keine
   // Add-Funktion-Schleifen nötig, die Add-Side-Effects auslösen würden.
@@ -441,6 +468,12 @@ export async function applyPlan(plan: PlanFile): Promise<
     draftPoints: [],
     placing: false,
     selectedId: null,
+  })
+  // Umstellungsosteotomie (v11+): Typen/Werte sind in pruefePlanGrenzen
+  // bereits geprüft; fehlende Optionen alter Einträge defaulten.
+  useKneeOsteotomieStore.setState({
+    plan: plan.kneeOsteotomie ? normalisiereOsteotomiePlan(plan.kneeOsteotomie) : null,
+    setzen: null,
   })
   // Freie Längen-/Winkelmessungen (v6+): ersetzt vorhandene Annotationen;
   // alte Pläne ohne Feld räumen sie nur ab (konsistent zum Reset oben).
@@ -527,6 +560,7 @@ export async function applyPlan(plan: PlanFile): Promise<
       `${plan.osteophytes.length} Osteophyten-Fläche(n)`,
     (plan.shaftFragments?.length ?? 0) > 0 &&
       `${plan.shaftFragments!.length} Schaft-Fragment(e)`,
+    plan.kneeOsteotomie && 'Umstellungsosteotomie',
   ].filter(Boolean) as string[]
   const prefix = imageLoaded
     ? rightImageLoaded
