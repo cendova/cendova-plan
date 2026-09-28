@@ -1,7 +1,7 @@
 # Abnahme-Skripte Femurprofil
 
 Sieben Playwright-Skripte, die den Femurprofil-Workflow im echten Browser
-gegen einen laufenden **Dev-Server** prüfen — zusammen 96 Einzelprüfungen.
+gegen einen laufenden **Dev-Server** prüfen — zusammen 99 Einzelprüfungen.
 
 Sie ergänzen die Unit-Tests um das, was diese prinzipiell nicht sehen:
 ob etwas tatsächlich im DOM landet, ob der Klickweg funktioniert und ob
@@ -38,7 +38,7 @@ die fehlgeschlagenen Prüfungen. Screenshots landen unter
 
 | Skript | Gegenstand |
 |---|---|
-| `pruefe-hilfslinie` | 10-cm-Linie während der Platzierung: erscheint ab Punkt 7, bleibt ohne Kalibrierung aus, verschwindet nach Abschluss |
+| `pruefe-hilfslinie` | Führungslinien während der Platzierung: 10 cm ab Punkt 7, Trochanter-minor-Höhe ab Punkt 11, keine ohne Kalibrierung, nach Abschluss nicht doppelt |
 | `pruefe-femurprofil-sektion` | Reihenfolge und Nummerierung der Sektionen, Statuspunkt-Doktrin, Kalibrier-Sperre, Klickweg |
 | `pruefe-karte` | Ergebnis-Karte und CPAH-Matrix, Unterdrückung der Klasse bei gespeicherter Checkliste älterer Pläne, verbotene Formulierungen, Dorr-C-Warnung |
 | `pruefe-bestaetigung` | Ärztliche Bestätigung/Override samt Pflichtgrund, Undo, Erkennung veralteter Bestätigungen |

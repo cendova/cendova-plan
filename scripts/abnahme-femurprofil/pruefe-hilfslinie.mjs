@@ -4,7 +4,8 @@
 //
 // Geprueft wird, was die Unit-Tests NICHT sehen koennen: dass die Linie
 // tatsaechlich im DOM landet, erst ab Punkt 7 erscheint, ohne
-// Kalibrierung ausbleibt und nach Abschluss der Messung verschwindet.
+// Kalibrierung ausbleibt, ab Punkt 11 von der Trochanter-minor-Linie
+// ergaenzt wird und nach Abschluss nicht doppelt steht.
 import { chromium } from 'playwright-core'
 
 const fehler = []
@@ -76,12 +77,27 @@ await page.screenshot({
 await aufbau(false, 7)
 ok((await linien()).length === 0, 'Ohne Kalibrierung keine Hilfslinie')
 
-// 4) Nach Abschluss der Messung verschwindet die Fuehrung wieder
-//    (die fertige Messung zeichnet ihre eigene Linie).
+// 4) Ab Punkt 11 (Kanalraender) kommt die zweite Fuehrungslinie AUF
+//    Hoehe des Trochanter minor dazu (Realtest-Wunsch 29.08.2026).
+//    Achse vertikal, TM bei y=40 -> zweite Linie waagerecht, 100 mm ueber
+//    der 10-cm-Linie.
+await aufbau(true, 11)
+const l11 = await linien()
+ok(l11.length === 2, `Ab Punkt 11 genau zwei Hilfslinien (gefunden: ${l11.length})`)
+if (l11.length === 2) {
+  const [oben, unten] = [...l11].sort((a, b) => a.y1 - b.y1)
+  ok(Math.abs(oben.y1 - oben.y2) < 1.5, 'TM-Linie steht senkrecht auf der Achse (waagerecht)')
+  ok(unten.y1 - oben.y1 > 20, 'TM-Linie liegt proximal der 10-cm-Linie')
+}
+
+// 5) Nach Abschluss der Messung verschwindet die Fuehrung wieder — die
+//    fertige Messung zeichnet ihre eigenen ZWEI Referenzlinien (10 cm und
+//    Trochanter-minor-Hoehe) an exakt derselben Stelle; mehr darf es nicht
+//    werden (sonst doppelte Fuehrung + Ergebnis).
 await aufbau(true, 13)
 await page.waitForTimeout(500)
 const nachher = await linien()
-ok(nachher.length <= 1, `Nach Abschluss hoechstens die Mess-Linie (gefunden: ${nachher.length})`)
+ok(nachher.length <= 2, `Nach Abschluss hoechstens die zwei Mess-Linien (gefunden: ${nachher.length})`)
 
 await b.close()
 console.log(fehler.length ? `\n${fehler.length} FEHLER: ${fehler.join(' | ')}` : '\nAlle Pruefungen bestanden')

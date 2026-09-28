@@ -253,7 +253,7 @@ zwischen Messungen und Schablonen. Patienten-DICOMs bleiben lokal.
     übernommene Achse zum gewählten Femur gehört (sonst Schaft löschen
     und ohne Femurprofil neu anlegen oder Rotation per Alt+Pfeil richten).
 > **Vorab automatisiert prüfbar:** Die Schritte 3–15 sind als
-> Playwright-Skripte hinterlegt (`scripts/abnahme-femurprofil/`, 96
+> Playwright-Skripte hinterlegt (`scripts/abnahme-femurprofil/`, 99
 > Prüfungen gegen einen laufenden `npm run dev`). Sie ersetzen den Test
 > mit echtem DICOM nicht — sie fahren nur synthetische Geometrie —,
 > nehmen ihm aber die stumpfe Arbeit ab. Details im README dort.
