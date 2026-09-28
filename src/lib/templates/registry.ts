@@ -48,6 +48,7 @@ import {
   type TemplatePackageManifest,
 } from './packageFormat'
 import { useTemplatePackageStore } from '../../state/templatePackageStore'
+import { sha256HexJs } from './sha256'
 import { logDiagnostic } from '../diagnostics'
 import {
   persistentenSpeicherAnfordern,
@@ -488,7 +489,11 @@ async function paketSichern(): Promise<void> {
 /** SHA-256 als Hex — null, wenn WebCrypto fehlt (dann kein Abgleich). */
 async function sha256Hex(bytes: Uint8Array): Promise<string | null> {
   try {
-    if (!globalThis.crypto?.subtle) return null
+    // Web-Crypto fehlt in unsicheren Kontexten — genau der Klinik-
+    // Netzbetrieb (http://<Servername>/plan/). Ohne Hash brach der Abgleich
+    // still ab, und Paket-Updates am Server erreichten die Arbeitsplätze
+    // nie. Die JS-Rückfallebene liefert bitgleiche Werte (sha256.test.ts).
+    if (!globalThis.crypto?.subtle) return await sha256HexJs(bytes)
     const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes as BufferSource)
     return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
   } catch {
