@@ -60,6 +60,7 @@ describe('osteotomieText', () => {
     expect(text).toMatch(/Tibia: Korrektur \d+,\d° \| Öffnung/)
     expect(text).toContain('Traglinie: 26,0 % -> 95,0 %')
     expect(text).toContain('(!) Geplanter mMPTA')
+    expect(text).toMatch(/CPAK: Typ [IVX]+ -> Typ [IVX]+/)
     // Keine Zeichen außerhalb von WinAnsi-typischem Latin-1 (+ ° · Umlaute).
     expect(text).not.toMatch(/[→≥≤⅓Δ—–]/)
   })

@@ -126,16 +126,24 @@ export interface SimulationsSchritt {
 export function simulierePunkte(
   punkte: P[],
   schnitte: AngewandterSchnitt[],
-): { punkte: P[]; schritte: SimulationsSchritt[] } {
+): { punkte: P[]; schritte: SimulationsSchritt[]; punktSchritte: number[][] } {
   let aktuell = [...punkte]
   let offen = schnitte.map((s) => ({ ...s, schnitt: { ...s.schnitt } }))
   const schritte: SimulationsSchritt[] = []
+  // Je Punkt: welche Schritte ihn bewegt haben — Grundlage der exakten
+  // Hin- und Rückrechnung für die Anzeige (zeigePunkt/speicherePunkt).
+  const punktSchritte: number[][] = punkte.map(() => [])
   while (offen.length > 0) {
     const [jetzt, ...rest] = offen
     const { scharnier, start } = jetzt.schnitt
     const referenz = aktuell[SPRUNGGELENK]
     const distal = (p: P) => gleicheSeite(p, referenz, start, scharnier)
-    aktuell = aktuell.map((p) => (distal(p) ? rotiere(p, scharnier, jetzt.grad) : p))
+    const k = schritte.length
+    aktuell = aktuell.map((p, i) => {
+      if (!distal(p)) return p
+      punktSchritte[i].push(k)
+      return rotiere(p, scharnier, jetzt.grad)
+    })
     offen = rest.map((r) => ({
       ...r,
       schnitt: {
@@ -149,7 +157,33 @@ export function simulierePunkte(
     }))
     schritte.push({ schnitt: jetzt.schnitt, grad: jetzt.grad, referenz })
   }
-  return { punkte: aktuell, schritte }
+  return { punkte: aktuell, schritte, punktSchritte }
+}
+
+/**
+ * Anzeige-Transformation der Vollvermessung während der Bildsimulation:
+ * Die Landmarken distal des Schnitts werden dort gezeichnet, wo das
+ * gedrehte Bildfragment sie hinträgt. Gespeichert bleiben die ORIGINAL-
+ * Punkte (Messung prä-OP) — `speicherePunkt` rechnet einen gezogenen
+ * Anzeigepunkt exakt zurück.
+ */
+export interface AnzeigeTransformation {
+  schritte: { scharnier: P; grad: number }[]
+  /** Je Punkt-Index der Vollvermessung die Schritte, die ihn bewegen. */
+  punktSchritte: number[][]
+}
+
+export function zeigePunkt(t: AnzeigeTransformation, index: number, p: P): P {
+  return (t.punktSchritte[index] ?? []).reduce(
+    (q, k) => rotiere(q, t.schritte[k].scharnier, t.schritte[k].grad),
+    p,
+  )
+}
+
+export function speicherePunkt(t: AnzeigeTransformation, index: number, p: P): P {
+  return [...(t.punktSchritte[index] ?? [])]
+    .reverse()
+    .reduce((q, k) => rotiere(q, t.schritte[k].scharnier, -t.schritte[k].grad), p)
 }
 
 /**
@@ -255,6 +289,8 @@ export interface OsteotomieErgebnis {
   richtung: 'valgisierend' | 'varisierend'
   hinweise: OsteotomieHinweis[]
   fragmente: Fragment[]
+  /** Hin-/Rückrechnung der Vollvermessungspunkte für die Anzeige. */
+  anzeige: AnzeigeTransformation
 }
 
 export interface OsteotomieFehler {
@@ -424,6 +460,10 @@ export function planeOsteotomie(e: OsteotomieEingabe): OsteotomieErgebnis | Oste
     richtung,
     hinweise,
     fragmente,
+    anzeige: {
+      schritte: sim.schritte.map((s) => ({ scharnier: s.schnitt.scharnier, grad: s.grad })),
+      punktSchritte: sim.punktSchritte,
+    },
   }
 }
 

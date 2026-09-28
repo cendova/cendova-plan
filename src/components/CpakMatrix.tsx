@@ -239,7 +239,8 @@ export function CpakMatrix({
             </span>
             <span className="flex items-center gap-1">
               <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
-              geplant · {planned.cpak.alignment}
+              {planned.quelle === 'osteotomie' ? 'nach Osteotomie' : 'geplant'} ·{' '}
+              {planned.cpak.alignment}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 tabular-nums">
@@ -250,7 +251,7 @@ export function CpakMatrix({
               {planned.ldfa.toFixed(1)}° / {planned.mpta.toFixed(1)}°
             </span>
           </div>
-          {(!planned.femPlaced || !planned.tibPlaced) && (
+          {planned.quelle !== 'osteotomie' && (!planned.femPlaced || !planned.tibPlaced) && (
             <div className="mt-1 text-[9px] text-neutral-500">
               {!planned.femPlaced
                 ? 'Nur Tibia geplant — LDFA = gemessen.'

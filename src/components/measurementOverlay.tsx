@@ -90,6 +90,12 @@ export interface InteractionConfig<M extends OverlayMeasurement> {
   onEmptyClick(): void
   /** Escape-Taste (Tool abbrechen + seitenspezifisches Aufräumen). */
   onEscape(): void
+  /** Optional: Wo ein gespeicherter Punkt GEZEICHNET wird, wenn die
+   *  Anzeige vom Speicherstand abweicht (Knie: Punkte folgen der
+   *  Osteotomie-Bildsimulation). Fehlt sie, gilt Anzeige = Speicher. */
+  anzeigePunkt?(messungId: string, index: number, p: P): P
+  /** Umkehrung zu `anzeigePunkt`: gezogener Anzeigepunkt → Speicherstand. */
+  speicherPunkt?(messungId: string, index: number, p: P): P
 }
 
 /**
@@ -118,7 +124,20 @@ export function useMeasurementInteraction<M extends OverlayMeasurement>(
     function setPoint(ref: PointRef, p: P) {
       const store = cfgRef.current.getState()
       if (ref.source === 'draft') store.updateDraftPoint(ref.index, p)
-      else store.updateMeasurementPoint(ref.source, ref.index, p)
+      else {
+        const zurueck = cfgRef.current.speicherPunkt
+        store.updateMeasurementPoint(
+          ref.source,
+          ref.index,
+          zurueck ? zurueck(ref.source, ref.index, p) : p,
+        )
+      }
+    }
+
+    /** Anzeigelage eines gespeicherten Punktes (siehe anzeigePunkt). */
+    function anzeige(mId: string, index: number, p: P): P {
+      const hin = cfgRef.current.anzeigePunkt
+      return hin ? hin(mId, index, p) : p
     }
 
     /** Abstand eines Punktes zum Segment a–b (Canvas-Pixel). */
@@ -144,7 +163,7 @@ export function useMeasurementInteraction<M extends OverlayMeasurement>(
       // 1) Endpunkt-Griffe — folgen dem Cursor.
       for (const m of ms) {
         for (let i = 0; i < m.points.length; i++) {
-          if (near(m.points[i])) {
+          if (near(anzeige(m.id, i, m.points[i]))) {
             return { kind: 'point', ref: { source: m.id, index: i } }
           }
         }
@@ -160,9 +179,9 @@ export function useMeasurementInteraction<M extends OverlayMeasurement>(
         const recipe = cfgRef.current.getRecipe(m.kind)
         if (!recipe) continue
         for (const [gi, gj] of recipe.lineGroups) {
-          const a = m.points[gi]
-          const b = m.points[gj]
-          if (!a || !b) continue
+          if (!m.points[gi] || !m.points[gj]) continue
+          const a = anzeige(m.id, gi, m.points[gi])
+          const b = anzeige(m.id, gj, m.points[gj])
           const ca = vp.worldToCanvas(a)
           const cb = vp.worldToCanvas(b)
           if (distToSegment(cp, ca, cb) <= LINE_HIT) {

@@ -11,6 +11,7 @@
  */
 import type { OsteotomieDaten } from '../../components/useOsteotomie'
 import { osteotomieTyp } from '../knee/osteotomie'
+import { computeCpak } from '../knee/cpak'
 
 const BREITE = 100
 
@@ -101,6 +102,13 @@ export function osteotomiePdfZeilen(d: OsteotomieDaten): string[] {
   zeilen.push(vn('mMPTA', `${f1(vorher.mMPTA)}°`, `${f1(nachher.mMPTA)}°`))
   zeilen.push(vn('JLCA', `${f1(vorher.JLCA)}°`, `${f1(nachher.JLCA)}°`))
   zeilen.push(vn('JLO (MJLA)', `${f1(vorher.mjla)}°`, `${f1(nachher.mjla)}°`))
+  zeilen.push(
+    vn(
+      'CPAK',
+      `Typ ${computeCpak(vorher.mLDFA, vorher.mMPTA).type}`,
+      `Typ ${computeCpak(nachher.mLDFA, nachher.mMPTA).type}`,
+    ),
+  )
   zeilen.push(
     `- Beinlänge ${ergebnis.beinlaengeDeltaMm >= 0 ? '+' : '-'}${f1(Math.abs(ergebnis.beinlaengeDeltaMm))} mm`,
   )

@@ -12,6 +12,8 @@ import {
 } from '../lib/knee/resection'
 import { useKneeTemplateStore } from '../state/kneeTemplateStore'
 import { DraggableImageBox, type BoxLine } from './DraggableImageBox'
+import { findeVollvermessung, useOsteotomie } from './useOsteotomie'
+import { speicherePunkt, zeigePunkt } from '../lib/knee/osteotomie'
 import {
   MeasurementSvg,
   OverlayLabels,
@@ -52,7 +54,21 @@ export function KneeOverlay() {
   const calibration = useViewerStore((s) => s.calibration)
   const factor = calibration?.mmPerWorldUnit ?? 1
 
+  // Umstellungsosteotomie: Solange die Bildsimulation läuft, folgen die
+  // Landmarken der Vollvermessung distal des Schnitts dem gedrehten
+  // Bildfragment — sonst lägen Punkte und Achsen neben dem Knochen.
+  // Gespeichert bleiben die prä-OP-Punkte; nur die ANZEIGE wandert, und
+  // gezogene Punkte werden exakt zurückgerechnet.
+  const { plan: osteoPlan, ergebnis: osteo } = useOsteotomie()
+  const osteoGeplant = !!osteoPlan?.sichtbar && osteo?.ok === true ? osteo : null
+  const osteoAnzeige =
+    osteoGeplant && osteoPlan?.bildSimulation ? osteoGeplant.anzeige : null
+  const wfId = findeVollvermessung(measurements)?.id ?? null
+  const folgtOsteotomie = (id: string) => osteoAnzeige != null && id === wfId
+
   useMeasurementInteraction({
+    anzeigePunkt: (id, i, p) => (folgtOsteotomie(id) ? zeigePunkt(osteoAnzeige!, i, p) : p),
+    speicherPunkt: (id, i, p) => (folgtOsteotomie(id) ? speicherePunkt(osteoAnzeige!, i, p) : p),
     getState: () => useKneeStore.getState(),
     getRecipe: (kind) => getKneeRecipe(kind as KneeKind),
     // Leerer Klick: nur eigene Knie-Label-Auswahl aufheben (Hüft-,
@@ -64,8 +80,13 @@ export function KneeOverlay() {
   const vp = getViewport()
   if (!vp) return null
 
+  const anzeigeMessungen = measurements.map((m) =>
+    folgtOsteotomie(m.id)
+      ? { ...m, points: m.points.map((p, i) => zeigePunkt(osteoAnzeige!, i, p)) }
+      : m,
+  )
   const computed = computeVisible(
-    measurements,
+    anzeigeMessungen,
     (kind) => getKneeRecipe(kind as KneeKind),
     factor,
   )
@@ -100,7 +121,15 @@ export function KneeOverlay() {
     )
     const fem = pickComponent(apLeft, 'Femur')
     const tib = pickComponent(apLeft, 'Tibia')
-    if (axes && (fem || tib)) {
+    // Geplante Achse aus der Umstellungsosteotomie hat Vorrang — beide
+    // Planungen zugleich sind klinisch kein Szenario.
+    if (osteoGeplant) {
+      const n = osteoGeplant.nachher
+      lines.push({
+        text: alignText(n.hkaDeviationSigned, Math.abs(n.deviationFrom180)),
+        color: '#4ade80',
+      })
+    } else if (axes && (fem || tib)) {
       const planned = computePlannedCpak(axes, raw.mLDFA, raw.mMPTA, fem, tib)
       lines.push({
         text: alignText(planned.cpak.aHKA, Math.abs(planned.cpak.aHKA)),

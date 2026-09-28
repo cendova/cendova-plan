@@ -11,6 +11,7 @@ import { getShoulderRecipe } from '../lib/shoulder/recipes'
 import { useShoulderStore } from '../state/shoulderStore'
 import { computeCpak } from '../lib/knee/cpak'
 import { KneeDeformitaetKarte, KneeOsteotomieKarte } from './KneeOsteotomieKarten'
+import { useOsteotomie } from './useOsteotomie'
 import {
   extractWorkflowAxes,
   computePlannedCpak,
@@ -45,6 +46,18 @@ export function MeasurementPanel() {
   const measurements = useViewerStore((s) => s.measurements)
   const calibration = useViewerStore((s) => s.calibration)
   const planningMode = useViewerStore((s) => s.planningMode)
+  const { plan: osteoPlan, ergebnis: osteo } = useOsteotomie()
+  const osteoCpak =
+    osteoPlan?.sichtbar && osteo?.ok
+      ? {
+          cpak: computeCpak(osteo.nachher.mLDFA, osteo.nachher.mMPTA),
+          ldfa: osteo.nachher.mLDFA,
+          mpta: osteo.nachher.mMPTA,
+          femPlaced: true,
+          tibPlaced: true,
+          quelle: 'osteotomie' as const,
+        }
+      : null
   const hipMeasurements = useHipStore((s) => s.measurements)
   const removeHip = useHipStore((s) => s.removeMeasurement)
   const removeAllHip = useHipStore((s) => s.removeAll)
@@ -519,8 +532,12 @@ export function MeasurementPanel() {
             )
             const fem = pickComponent(apLeft, 'Femur')
             const tib = pickComponent(apLeft, 'Tibia')
-            const planned =
-              axes && (fem || tib)
+            // Umstellungsosteotomie hat Vorrang vor Implantaten (beides
+            // zugleich ist kein klinisches Szenario) — „prä-OP → nach
+            // Osteotomie" wie bei der Prothesenplanung.
+            const planned = osteoCpak
+              ? osteoCpak
+              : axes && (fem || tib)
                 ? computePlannedCpak(axes, raw.mLDFA, raw.mMPTA, fem, tib)
                 : null
             return (
@@ -553,7 +570,10 @@ function Row({
 }) {
   return (
     <li className="group flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-neutral-800">
-      <span className={`w-7 shrink-0 text-xs font-semibold ${badgeColor}`}>
+      <span
+        className={`w-7 shrink-0 text-xs font-semibold ${badgeColor}`}
+        title={BADGE_TITEL[badge] ?? undefined}
+      >
         {badge}
       </span>
       <span
@@ -580,6 +600,13 @@ function Row({
       </button>
     </li>
   )
+}
+
+/** Klartext der Modul-Kürzel vor jeder Messung (Tooltip). */
+const BADGE_TITEL: Record<string, string> = {
+  H: 'Hüft-Messung',
+  K: 'Knie-Messung',
+  S: 'Schulter-Messung',
 }
 
 function EyeIcon({ off }: { off: boolean }) {

@@ -11,6 +11,8 @@ import {
   rotiere,
   scharnierHinweis,
   simulierePunkte,
+  speicherePunkt,
+  zeigePunkt,
   type OsteotomieEingabe,
   type OsteotomieErgebnis,
 } from './osteotomie'
@@ -281,5 +283,35 @@ describe('scharnierHinweis', () => {
   })
   it('öffnende varisierende DFO → Scharnier medial', () => {
     expect(scharnierHinweis('Femur', 'oeffnend', 'varisierend')).toMatch(/^Scharnier medial/)
+  })
+})
+
+describe('Anzeige-Transformation (Punkte folgen der Bildsimulation)', () => {
+  const punkte = varusBein({ ldfaMed: p(-38, 417), ldfaLat: p(38, 423) })
+  const r = ok(
+    eingabe({
+      punkte,
+      typ: 'dlo',
+      femur: { scharnier: p(-30, 385), start: p(32, 375) },
+      tibia: HTO_SCHNITT,
+    }),
+  )
+  it('Hinrechnung liefert exakt die simulierten Punkte', () => {
+    punkte.forEach((q, i) => {
+      const z = zeigePunkt(r.anzeige, i, q)
+      expect(z[0]).toBeCloseTo(r.punkteNachher[i][0], 9)
+      expect(z[1]).toBeCloseTo(r.punkteNachher[i][1], 9)
+    })
+  })
+  it('Rückrechnung ist die exakte Umkehrung (auch über zwei Schnitte)', () => {
+    punkte.forEach((q, i) => {
+      const zurueck = speicherePunkt(r.anzeige, i, zeigePunkt(r.anzeige, i, q))
+      expect(zurueck[0]).toBeCloseTo(q[0], 9)
+      expect(zurueck[1]).toBeCloseTo(q[1], 9)
+    })
+  })
+  it('Hüfte bleibt stehen, Sprunggelenk wird von beiden Schnitten bewegt', () => {
+    expect(r.anzeige.punktSchritte[0]).toEqual([])
+    expect(r.anzeige.punktSchritte[16]).toEqual([0, 1])
   })
 })

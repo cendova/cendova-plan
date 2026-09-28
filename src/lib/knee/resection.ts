@@ -210,6 +210,8 @@ export interface PlannedCpak {
   mpta: number
   femPlaced: boolean
   tibPlaced: boolean
+  /** Herkunft des geplanten Punkts; ohne Angabe = Implantate. */
+  quelle?: 'osteotomie'
 }
 
 /**

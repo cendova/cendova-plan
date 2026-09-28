@@ -318,7 +318,7 @@ describe('computeWorkflowRaw — WBL-Prozent und MJLA', () => {
     const labels = values.map((v) => v.label)
     expect(labels).toContain('Traglinie (WBL)')
     expect(labels).toContain('JLO (MJLA)')
-    expect(values.find((v) => v.label === 'Traglinie (WBL)')!.value).toBe('50.0 %')
+    expect(values.find((v) => v.label === 'Traglinie (WBL)')!.value).toBe('50.0 %')
   })
 })
 

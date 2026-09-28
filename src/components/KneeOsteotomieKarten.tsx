@@ -1,4 +1,5 @@
 import type { WorkflowRaw } from '../lib/knee/recipes'
+import { computeCpak } from '../lib/knee/cpak'
 import { osteotomieTyp, type OsteotomieHinweis } from '../lib/knee/osteotomie'
 import { useOsteotomie } from './useOsteotomie'
 
@@ -67,6 +68,7 @@ export function KneeOsteotomieKarte() {
     ['mMPTA', (r) => `${fmt(r.mMPTA)}°`],
     ['JLCA', (r) => `${fmt(r.JLCA)}°`],
     ['JLO (MJLA)', (r) => `${fmt(r.mjla)}°`],
+    ['CPAK-Typ', (r) => `Typ ${computeCpak(r.mLDFA, r.mMPTA).type}`],
   ]
   return (
     <div className="mt-2 rounded border border-neutral-800 bg-neutral-950 p-2">

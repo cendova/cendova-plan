@@ -84,7 +84,9 @@ function deg(v: number): string {
 
 /** Prozentwert mit einer Nachkommastelle ("62.5 %"). */
 function pct(v: number): string {
-  return `${v.toFixed(1)} %`
+  // Geschütztes Leerzeichen: sonst bricht die schmale Werteliste
+  // zwischen Zahl und Prozentzeichen um.
+  return `${v.toFixed(1)} %`
 }
 
 /** Signed mm mit explizitem Vorzeichen ("+4,2 mm" / "−1,8 mm"). */
