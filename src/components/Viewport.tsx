@@ -21,6 +21,7 @@ import { ShoulderTemplateOverlay } from './ShoulderTemplateOverlay'
 import { TemplateOverlay } from './TemplateOverlay'
 import { OsteophyteOverlay } from './OsteophyteOverlay'
 import { ShaftFragmentOverlay } from './ShaftFragmentOverlay'
+import { KneeOsteotomieOverlay } from './KneeOsteotomieOverlay'
 import { useOsteophyteStore } from '../state/osteophyteStore'
 import { KneePane2 } from './KneePane2'
 import { StackImagePicker } from './StackImagePicker'
@@ -323,6 +324,11 @@ export function Viewport() {
           bleiben — sonst verdeckte ein verschobenes Fragment die
           Schablone, die man gerade danach ausrichtet. */}
       {hasImage && <ShaftFragmentOverlay />}
+      {/* Umstellungsosteotomie: VOR dem KneeOverlay — ihr window-Listener
+          muss zuerst registriert sein, damit Setz-Klicks und die Scharnier-
+          griffe Vorrang vor den Vollvermessungspunkten haben. Die Bild-
+          simulation liegt damit auch unter allen Messungen. */}
+      {hasImage && <KneeOsteotomieOverlay />}
       {hasImage && <HipOverlay />}
       {hasImage && <KneeOverlay />}
       {hasImage && <ShoulderOverlay />}

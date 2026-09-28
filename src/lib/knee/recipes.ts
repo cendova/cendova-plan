@@ -3,6 +3,7 @@ import {
   acuteAngleBetweenLines,
   add,
   angleBetweenVectors,
+  jointLineAngle,
   circleFrom3Points,
   closestPointOnLine,
   dist,
@@ -35,6 +36,8 @@ export type KneeKind =
   | 'hka'
   | 'mLDFA'
   | 'mMPTA'
+  | 'mLPFA'
+  | 'mLDTA'
   | 'tibialSlope'
 
 /** Renderdaten einer Messung in Weltkoordinaten (identisch zur Hüft-Form). */
@@ -78,6 +81,11 @@ function deg(v: number): string {
 
 // (kein generischer mm-Formatter aktuell genutzt — alle Werte verwenden
 // `signedMm` für Pre/Post-Vergleich. Bei Bedarf hier ergänzen.)
+
+/** Prozentwert mit einer Nachkommastelle ("62.5 %"). */
+function pct(v: number): string {
+  return `${v.toFixed(1)} %`
+}
 
 /** Signed mm mit explizitem Vorzeichen ("+4,2 mm" / "−1,8 mm"). */
 function signedMm(v: number): string {
@@ -220,6 +228,92 @@ const mMPTA: KneeRecipe = {
 }
 
 // ----------------------------------------------------------------------
+// mLPFA — mechanischer lateraler proximaler Femurwinkel (Paley).
+//
+// Winkel am Hüftkopfzentrum zwischen der mechanischen Femurachse (Hüft-
+// kopf → Kniezentrum) und der Linie zur Trochanter-major-Spitze.
+// Normbereich nach Paley 85–95°. Gebraucht für die vollständige
+// Deformitätsanalyse vor einer Umstellungsosteotomie (Lokalisation der
+// Fehlstellung proximal vs. distal).
+// ----------------------------------------------------------------------
+/** mLPFA-Zahl aus den 5 Rezept-Punkten (auch für die Deformitätsanalyse). */
+export function mlpfaAusPunkten(points: P[]): number | null {
+  if (points.length < 5) return null
+  const [c1, c2, c3, troch, knee] = points
+  const { center: hip } = circleFrom3Points(c1, c2, c3)
+  return angleBetweenVectors(sub(knee, hip), sub(troch, hip))
+}
+
+/** mLDTA-Zahl aus den 3 Rezept-Punkten (auch für die Deformitätsanalyse). */
+export function mldtaAusPunkten(points: P[]): number | null {
+  if (points.length < 3) return null
+  const [knee, plafMed, plafLat] = points
+  const ankleMid = midpoint(plafMed, plafLat)
+  return jointLineAngle(ankleMid, knee, plafMed, plafLat, plafMed, plafLat)
+}
+
+const mLPFA: KneeRecipe = {
+  kind: 'mLPFA',
+  label: 'mLPFA',
+  needsCalibration: false,
+  steps: [...HEAD_CONTOUR, 'Trochanter-major-Spitze', 'Kniezentrum'],
+  lineGroups: [],
+  compute: (points) => {
+    const [c1, c2, c3, troch, knee] = points
+    const { center: hip, radius } = circleFrom3Points(c1, c2, c3)
+    const angle = mlpfaAusPunkten(points)!
+    return {
+      values: [{ label: 'mLPFA', value: deg(angle) }],
+      geometry: {
+        lines: [
+          { from: hip, to: knee },
+          { from: hip, to: troch },
+        ],
+        circles: [{ center: hip, radius }],
+        labels: [{ at: troch, text: `mLPFA ${deg(angle)}` }],
+      },
+    }
+  },
+}
+
+// ----------------------------------------------------------------------
+// mLDTA — mechanischer lateraler distaler Tibiawinkel (Paley).
+//
+// Tibia-Mechanik vom Kniezentrum zur Plafond-Mitte; Winkel zwischen der
+// nach PROXIMAL zeigenden Achse und der zur LATERALEN Seite orientierten
+// Plafondlinie (wie mLDFA am Femur). Normbereich nach Paley 86–92°.
+// Die Seite kommt aus der Klick-Reihenfolge (medial, dann lateral) —
+// ohne Femurschaft gibt es hier keinen anatomischen Anker.
+// ----------------------------------------------------------------------
+const mLDTA: KneeRecipe = {
+  kind: 'mLDTA',
+  label: 'mLDTA',
+  needsCalibration: false,
+  steps: [
+    'Kniezentrum (Tibiaplateau-Mitte)',
+    'Sprunggelenk-Plafond — medialer Rand',
+    'Sprunggelenk-Plafond — lateraler Rand',
+  ],
+  lineGroups: [[1, 2]],
+  compute: (points) => {
+    const [knee, plafMed, plafLat] = points
+    const ankleMid = midpoint(plafMed, plafLat)
+    const angle = mldtaAusPunkten(points)!
+    return {
+      values: [{ label: 'mLDTA', value: deg(angle) }],
+      geometry: {
+        lines: [
+          { from: knee, to: ankleMid },
+          { from: plafMed, to: plafLat },
+        ],
+        circles: [],
+        labels: [{ at: ankleMid, text: `mLDTA ${deg(angle)}` }],
+      },
+    }
+  },
+}
+
+// ----------------------------------------------------------------------
 // Tibialer Slope (laterale Aufnahme).
 //
 // 2 Punkte für die Tibia-Schaftachse (proximal → distal) + 2 Punkte
@@ -333,8 +427,10 @@ const workflow: KneeRecipe = {
     'Femur-Kondylen-Tangente — medial',
     'Femur-Kondylen-Tangente — lateral',
     // MPTA-Tangente (9,10)
-    'Tibia-Plateau-Tangente — medial',
-    'Tibia-Plateau-Tangente — lateral',
+    // Am Plateau-RAND setzen: die beiden Punkte definieren zugleich die
+    // Plateaubreite, auf die sich die Traglinie in % bezieht (WBL).
+    'Tibia-Plateau-Tangente — medial (am Plateaurand)',
+    'Tibia-Plateau-Tangente — lateral (am Plateaurand)',
     // Kniezentrum (11)
     'Anatomisches Kniezentrum (Eminentia-Mitte)',
     // Tibia-Schaftachse (12–15)
@@ -417,6 +513,10 @@ const workflow: KneeRecipe = {
         { label: 'mHKA', value: deg(raw.mHKA) },
         { label: alignmentLabel, value: deg(Math.abs(raw.deviationFrom180)) },
         { label: 'Mikulicz-Abstand', value: signedMm(raw.mikuliczMm) },
+        ...(raw.wblProzent != null
+          ? [{ label: 'Traglinie (WBL)', value: pct(raw.wblProzent) }]
+          : []),
+        { label: 'JLO (MJLA)', value: deg(raw.mjla) },
         { label: 'mLDFA', value: deg(raw.mLDFA) },
         { label: 'mMPTA', value: deg(raw.mMPTA) },
         { label: 'JLCA', value: deg(raw.JLCA) },
@@ -456,6 +556,8 @@ export const KNEE_RECIPES: Record<KneeKind, KneeRecipe> = {
   hka,
   mLDFA,
   mMPTA,
+  mLPFA,
+  mLDTA,
   tibialSlope,
 }
 
@@ -464,6 +566,8 @@ export const AVAILABLE_KNEE_RECIPES: KneeRecipe[] = [
   hka,
   mLDFA,
   mMPTA,
+  mLPFA,
+  mLDTA,
   tibialSlope,
 ]
 
@@ -499,6 +603,21 @@ export interface WorkflowRaw {
   /** aHKA = mMPTA − mLDFA (CPAK-Eingang) — hier, damit Label-Logik und
    *  Matrix garantiert vom selben Wert leben. */
   aHKA: number
+  /** Traglinie Hüfte→Sprunggelenk als Prozent der Plateaubreite,
+   *  0 % = medialer, 100 % = lateraler Plateaurand (Punkte 9/10). Werte
+   *  außerhalb 0–100 möglich (Traglinie läuft am Plateau vorbei); null,
+   *  wenn Traglinie und Plateau parallel sind. Zielgröße der HTO. */
+  wblProzent: number | null
+  /** Mikulicz-Gelenklinien-Winkel (MJLA): medialer Winkel zwischen der
+   *  nach distal zeigenden Traglinie Hüfte→Sprunggelenk und der Plateau-
+   *  linie — wie der mMPTA, aber gegen die GESAMTE Beinachse statt gegen
+   *  die Tibiaachse. 90° = Gelenklinie senkrecht zur Traglinie; > 90° =
+   *  medial höher. Maß für die Gelenklinienschräge (JLO). */
+  mjla: number
+  /** Plateaupunkte anatomisch sortiert (unabhängig von Klick-Reihenfolge
+   *  und Seite), Grundlage der WBL-Prozente. */
+  plateauMedial: P
+  plateauLateral: P
   /** Hüftkopf-Punkte (fast) kollinear → alle Werte unzuverlässig
    *  (Befund D15; Anzeige warnt, blockiert nicht). */
   hipDegenerate?: true
@@ -585,6 +704,20 @@ export function computeWorkflowRaw(
     : mMPTA - mLDFA < 0
   const hkaDeviationSigned = isVarus ? -dev : dev
   const JLCA = acuteAngleBetweenLines(ldfaMed, ldfaLat, mptaMed, mptaLat)
+  // Plateaupunkte ANATOMISCH sortieren (towardMed zeigt nach medial) —
+  // die Klick-Labels sind nicht verlässlich, die Anatomie schon.
+  const plateauMedialIstMed =
+    dot(sub(mptaMed, mptaLat), towardMed) >= 0
+  const plateauMedial = plateauMedialIstMed ? mptaMed : mptaLat
+  const plateauLateral = plateauMedialIstMed ? mptaLat : mptaMed
+  const wblSchnitt = lineLineIntersection2D(hip, ankle, plateauMedial, plateauLateral)
+  const plateauVec = sub(plateauLateral, plateauMedial)
+  const plateauL2 = dot(plateauVec, plateauVec)
+  const wblProzent =
+    wblSchnitt && plateauL2 > 0
+      ? (dot(sub(wblSchnitt, plateauMedial), plateauVec) / plateauL2) * 100
+      : null
+  const mjla = jointLineAngleVec(hip, ankle, towardMed, mptaMed, mptaLat)
   const betaAngle = acuteAngleBetweenLines(
     femAnatProx, femAnatDist,
     hip, kneeFemMid,
@@ -599,6 +732,10 @@ export function computeWorkflowRaw(
     JLCA,
     betaAngle,
     aHKA: mMPTA - mLDFA,
+    wblProzent,
+    mjla,
+    plateauMedial,
+    plateauLateral,
     ...(hipDegenerate ? { hipDegenerate: true as const } : {}),
     hip,
     hipRadius,

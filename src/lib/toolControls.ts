@@ -17,6 +17,7 @@ import { useShoulderStore } from '../state/shoulderStore'
 import { useNoteStore } from '../state/noteStore'
 import { useOsteophyteStore } from '../state/osteophyteStore'
 import { useShaftFragmentStore } from '../state/shaftFragmentStore'
+import { useKneeOsteotomieStore } from '../state/kneeOsteotomieStore'
 import { useTemplateStore } from '../state/templateStore'
 import type { HipKind } from './hip/recipes'
 import type { ShoulderKind } from './shoulder/recipes'
@@ -76,12 +77,13 @@ function brichFremdeWerkzeugeAb(ausser?: PlanningMode) {
  * Zusatzwerkzeug wäre das Vergessen einer Stelle ein stiller Fehler —
  * zwei scharfe Werkzeuge nähmen denselben Klick an.
  */
-type Zusatzwerkzeug = 'note' | 'osteophyte' | 'fragment'
+type Zusatzwerkzeug = 'note' | 'osteophyte' | 'fragment' | 'osteotomie'
 
 function brichZusatzWerkzeugeAb(ausser?: Zusatzwerkzeug) {
   if (ausser !== 'note') useNoteStore.getState().setPlacing(false)
   if (ausser !== 'osteophyte') useOsteophyteStore.getState().setPlacing(false)
   if (ausser !== 'fragment') useShaftFragmentStore.getState().setPlacing(false)
+  if (ausser !== 'osteotomie') useKneeOsteotomieStore.getState().abbrechenSetzen()
 }
 
 /** Aktiviert ein Hüft-Mess-Werkzeug (Toggle). */
@@ -127,6 +129,18 @@ export function toggleOsteophyteTool() {
     useTemplateStore.getState().cancelPlacement()
   }
   useOsteophyteStore.getState().setPlacing(next)
+}
+
+/**
+ * Macht den Weg frei für das Setzen von Scharnier-/Startpunkten der
+ * Umstellungsosteotomie (Knie): alle anderen Werkzeuge abbrechen, damit
+ * der nächste Klick eindeutig dem Osteotomie-Planer gehört. Danach setzt
+ * der Aufrufer den Setz-Modus im Store (starte / punkteNeu).
+ */
+export function bereiteOsteotomieSetzenVor() {
+  brichFremdeWerkzeugeAb()
+  brichZusatzWerkzeugeAb('osteotomie')
+  useTemplateStore.getState().cancelPlacement()
 }
 
 /** Toggelt das Schaft-Schneidewerkzeug (Osteotomie-Simulation). */

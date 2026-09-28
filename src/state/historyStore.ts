@@ -23,6 +23,10 @@ import {
   type StemTemplate,
 } from './templateStore'
 import { useNoteStore, type TextNote } from './noteStore'
+import {
+  useKneeOsteotomieStore,
+  type OsteotomiePlan,
+} from './kneeOsteotomieStore'
 import type { Types } from '@cornerstonejs/core'
 
 /**
@@ -54,6 +58,9 @@ interface Snapshot {
    *  bliebe das Verschieben/Drehen eines Fragments außerhalb der
    *  Undo-History. */
   shaftFragments: ShaftFragment[]
+  /** Umstellungsosteotomie (Knie) — Punkte ziehen und Ziel ändern sollen
+   *  rückgängig machbar sein wie jede andere Planungsänderung. */
+  kneeOsteotomie: OsteotomiePlan | null
 }
 
 const MAX_HISTORY = 50
@@ -72,6 +79,7 @@ function takeSnapshot(): Snapshot {
     referenceLine: useTemplateStore.getState().referenceLine,
     notes: useNoteStore.getState().notes,
     shaftFragments: useShaftFragmentStore.getState().fragments,
+    kneeOsteotomie: useKneeOsteotomieStore.getState().plan,
   }
 }
 
@@ -86,6 +94,7 @@ function snapsEqual(a: Snapshot, b: Snapshot): boolean {
     a.kneeTemplates === b.kneeTemplates &&
     a.shoulderTemplates === b.shoulderTemplates &&
     a.shaftFragments === b.shaftFragments &&
+    a.kneeOsteotomie === b.kneeOsteotomie &&
     a.templates === b.templates &&
     a.stems === b.stems &&
     a.referenceLine === b.referenceLine &&
@@ -115,6 +124,7 @@ function restore(snap: Snapshot) {
     useShoulderTemplateStore.setState({ templates: snap.shoulderTemplates })
     useNoteStore.setState({ notes: snap.notes })
     useShaftFragmentStore.setState({ fragments: snap.shaftFragments })
+    useKneeOsteotomieStore.setState({ plan: snap.kneeOsteotomie, setzen: null })
   } finally {
     isRestoring = false
   }
@@ -200,6 +210,7 @@ const unsubShoulderTpl = useShoulderTemplateStore.subscribe(scheduleCapture)
 const unsubTemplate = useTemplateStore.subscribe(scheduleCapture)
 const unsubNote = useNoteStore.subscribe(scheduleCapture)
 const unsubFragment = useShaftFragmentStore.subscribe(scheduleCapture)
+const unsubOsteotomie = useKneeOsteotomieStore.subscribe(scheduleCapture)
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
@@ -212,5 +223,6 @@ if (import.meta.hot) {
     unsubTemplate()
     unsubNote()
     unsubFragment()
+    unsubOsteotomie()
   })
 }

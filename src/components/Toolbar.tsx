@@ -34,6 +34,8 @@ import {
 } from '../state/templateStore'
 import { AVAILABLE_RECIPES } from '../lib/hip/recipes'
 import { AVAILABLE_KNEE_RECIPES, computeWorkflowRaw } from '../lib/knee/recipes'
+import { KneeOsteotomieSteuerung } from './KneeOsteotomieSteuerung'
+import { benoetigteSlots, useKneeOsteotomieStore } from '../state/kneeOsteotomieStore'
 import {
   extractWorkflowAxes,
   computePlannedCpak,
@@ -753,6 +755,11 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
   const hatEinzelmessung = useKneeStore((s) =>
     s.measurements.some((m) => m.kind !== 'workflow'),
   )
+  // Umstellungsosteotomie (Abschnitt 6): erledigt, sobald alle Punkte des
+  // gewählten Typs gesetzt sind.
+  const osteotomieKomplett = useKneeOsteotomieStore(
+    (s) => !!s.plan && benoetigteSlots(s.plan.typ).every((slot) => s.plan![slot] != null),
+  )
   // ≥ 2 Implantat-Komponenten (Femur + Tibia; ein Klick platziert
   // AP + seitlich als EINE Gruppe) → Schablonen erledigt.
   const kneeComponentCount = useKneeTemplateStore(
@@ -963,6 +970,18 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
           mit einer Trennlinie, unter der nichts mehr kam. Regel: Trenner nur
           ZWISCHEN Sektionen, nie am Ende. */}
       <SelectedKneeTemplatePanel />
+      <Divider />
+      {/* OPTIONALER Schritt wie Osteotomie/Osteophyten der Hüfte: Punkt
+          emerald, sobald ein Plan vollständig ist, sonst keiner. Der Name
+          grenzt ihn vom Hüft-„Osteotomie-Planer" (Schenkelhals) ab. */}
+      <CollapsibleSection
+        id="knee-osteotomie"
+        title="6 · Umstellungsosteotomie"
+        defaultCollapsed={!hasWorkflow}
+        statusDot={osteotomieKomplett ? 'bg-emerald-500' : undefined}
+      >
+        <KneeOsteotomieSteuerung hasImage={hasImage} />
+      </CollapsibleSection>
     </>
   )
 }
