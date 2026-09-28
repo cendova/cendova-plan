@@ -19,6 +19,15 @@ import {
   MIN_MM_PER_UNIT,
 } from '../importGrenzen'
 
+/** Ein Punkt ist ein Tupel aus 2–3 endlichen Zahlen ([x, y] bzw. [x, y, z]). */
+function istPunkt(q: unknown): boolean {
+  return (
+    Array.isArray(q) &&
+    (q.length === 2 || q.length === 3) &&
+    q.every((v) => typeof v === 'number' && Number.isFinite(v))
+  )
+}
+
 /**
  * Struktur-/Grenzen-Prüfung eines geparsten Plans, BEVOR irgendetwas in
  * Stores übernommen wird (Security-Report §8): richtige Grundtypen,
@@ -50,6 +59,32 @@ export function pruefePlanGrenzen(plan: PlanFile): string | null {
   ]
   const arrFehler = checks.find((c) => c !== null)
   if (arrFehler) return arrFehler
+
+  // Messpunkte: JSON kennt kein NaN/Infinity — ein solcher Wert wird beim
+  // Speichern STILL zu `null`. Ein einziger solcher Punkt ließ beim Laden
+  // jeden Rechenkern werfen (alle Hüft-Rezepte nachgewiesen), und ohne
+  // Fehlergrenze stand dann die ganze Oberfläche (Befund Release-Check
+  // 28.09.2026). Darum: VORHANDENE Punkte müssen Zahlen-Tupel sein. Ein
+  // fehlendes `points` bleibt toleriert (Grundsatz dieses Moduls).
+  for (const [name, liste] of [
+    ['hipMeasurements', plan.hipMeasurements],
+    ['kneeMeasurements', plan.kneeMeasurements],
+    ['shoulderMeasurements', plan.shoulderMeasurements],
+  ] as const) {
+    const ms = (liste ?? []) as unknown[]
+    for (let i = 0; i < ms.length; i++) {
+      const m = ms[i]
+      if (m === null || typeof m !== 'object') return `Feld „${name}[${i}]" ist kein Objekt`
+      const pts = (m as { points?: unknown }).points
+      if (pts === undefined) continue
+      const feld = `${name}[${i}].points`
+      if (!Array.isArray(pts)) return `Feld „${feld}" ist kein Array`
+      if (pts.length > MAX_PLAN_ARRAY)
+        return `Feld „${feld}" ist zu groß (${pts.length} > ${MAX_PLAN_ARRAY} Einträge)`
+      if (!pts.every(istPunkt))
+        return `Feld „${feld}" enthält einen ungültigen Punkt (keine endlichen Koordinaten)`
+    }
+  }
 
   // Kalibrierung: falls vorhanden, muss der Kernfaktor endlich + plausibel
   // sein — ein manipuliertes mmPerWorldUnit verfälscht JEDE Messung.

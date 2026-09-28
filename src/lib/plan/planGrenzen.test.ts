@@ -58,3 +58,47 @@ describe('pruefePlanGrenzen — Schulter-Feld', () => {
     expect(fehler).toContain('kein Array')
   })
 })
+
+describe('pruefePlanGrenzen — Messpunkte', () => {
+  const messung = (points: unknown) => ({ id: 'hip-1', kind: 'ccd', points }) as never
+  const gut = [
+    [0, 0, 0],
+    [1, 2, 0],
+    [3, 4, 0],
+  ]
+
+  it('akzeptiert gültige Punkte in allen drei Mess-Listen', () => {
+    expect(pruefePlanGrenzen(basisPlan({ hipMeasurements: [messung(gut)] }))).toBeNull()
+    expect(pruefePlanGrenzen(basisPlan({ kneeMeasurements: [messung(gut)] }))).toBeNull()
+    expect(pruefePlanGrenzen(basisPlan({ shoulderMeasurements: [messung(gut)] }))).toBeNull()
+  })
+
+  it('weist einen Plan ab, dessen NaN-Punkt beim Speichern zu null wurde', () => {
+    // Der reale Fehlerweg: JSON.stringify macht aus NaN still `null`.
+    const gespeichert = JSON.parse(
+      JSON.stringify(basisPlan({ hipMeasurements: [messung([[0, 0, 0], [NaN, 1, 0]])] })),
+    ) as PlanFile
+    const fehler = pruefePlanGrenzen(gespeichert)
+    expect(fehler).toContain('hipMeasurements[0].points')
+    expect(fehler).toContain('ungültigen Punkt')
+  })
+
+  it('weist falsch typisierte Punkte und Punktlisten ab', () => {
+    for (const kaputt of [[null], [['0', '1', 0]], [[Infinity, 1, 0]], [[1]], [[1, 2, 3, 4]], 'x']) {
+      expect(
+        pruefePlanGrenzen(basisPlan({ kneeMeasurements: [messung(kaputt)] })),
+        JSON.stringify(kaputt),
+      ).toContain('kneeMeasurements[0].points')
+    }
+  })
+
+  it('weist Nicht-Objekte als Messung ab', () => {
+    expect(pruefePlanGrenzen(basisPlan({ hipMeasurements: [null as never] }))).toContain(
+      'hipMeasurements[0]',
+    )
+  })
+
+  it('toleriert eine Messung ohne points-Feld (Grundsatz: Fehlendes laden)', () => {
+    expect(pruefePlanGrenzen(basisPlan({ shoulderMeasurements: [{} as never] }))).toBeNull()
+  })
+})
