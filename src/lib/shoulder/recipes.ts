@@ -34,16 +34,13 @@ import { beurteileCsa } from './csa'
 import { beurteileAcromionIndex } from './acromionIndex'
 import { beurteileAhd } from './ahd'
 import { beurteileDti } from './dti'
+import { grad, mm as mmFormat, verhaeltnis } from '../zahlFormat'
 
 type P = Types.Point3
 
-function deg(v: number): string {
-  return `${v.toFixed(1)}°`
-}
-
-function mm(v: number): string {
-  return `${v.toFixed(1)} mm`
-}
+// Zahlschreibweise zentral (lib/zahlFormat.ts) — identisch in allen Modulen.
+const deg = (v: number) => grad(v)
+const mm = (v: number) => mmFormat(v)
 
 /**
  * Alle Schulter-Messtypen. Der Typ ist bereits vollständig deklariert,
@@ -222,7 +219,7 @@ const acromionIndex: ShoulderRecipe = {
 
     return {
       values: [
-        { label: 'Akromion-Index', value: ai.toFixed(2).replace('.', ',') },
+        { label: 'Akromion-Index', value: verhaeltnis(ai) },
         { label: 'Beurteilung', value: befund.hinweis },
       ],
       geometry: {
@@ -235,7 +232,7 @@ const acromionIndex: ShoulderRecipe = {
         ],
         circles: [],
         labels: [
-          { at: akromion, text: `AI ${ai.toFixed(2).replace('.', ',')}` },
+          { at: akromion, text: `AI ${verhaeltnis(ai)}` },
         ],
       },
     }
@@ -608,7 +605,7 @@ const dti: ShoulderRecipe = {
     const befund = beurteileDti(wert)
     return {
       values: [
-        { label: 'DTI', value: wert.toFixed(2).replace('.', ',') },
+        { label: 'DTI', value: verhaeltnis(wert) },
         { label: 'Beurteilung', value: befund.hinweis },
       ],
       geometry: {
@@ -620,7 +617,7 @@ const dti: ShoulderRecipe = {
         labels: [
           {
             at: midpoint(aussenLat, aussenMed),
-            text: `DTI ${wert.toFixed(2).replace('.', ',')}`,
+            text: `DTI ${verhaeltnis(wert)}`,
           },
         ],
       },

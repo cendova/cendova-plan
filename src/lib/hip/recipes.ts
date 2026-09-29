@@ -16,6 +16,7 @@ import {
   scale,
   sub,
 } from './geometry'
+import { cm as cmFormat, grad, mm as mmFormat, verhaeltnis } from '../zahlFormat'
 
 type P = Types.Point3
 
@@ -104,18 +105,11 @@ const HEAD_CONTOUR = [
   'Hüftkopfkontur — Punkt 3',
 ]
 
-function deg(v: number): string {
-  return `${v.toFixed(1)}°`
-}
-
-function mm(v: number): string {
-  return `${v.toFixed(1)} mm`
-}
-
-/** Formatiert einen Millimeterwert als Zentimeter mit Komma. */
-function cm(valueMm: number): string {
-  return `${(valueMm / 10).toFixed(2).replace('.', ',')} cm`
-}
+// Zahlschreibweise zentral (lib/zahlFormat.ts): Komma, echtes Minus,
+// geschütztes Leerzeichen vor der Einheit — identisch in allen Modulen.
+const deg = (v: number) => grad(v)
+const mm = (v: number) => mmFormat(v)
+const cm = (valueMm: number) => cmFormat(valueMm)
 
 // ----------------------------------------------------------------------
 // 4-Punkt-Winkel: zwei unabhängige Linien, Winkel dazwischen.
@@ -418,9 +412,7 @@ const osteotomy: Recipe = {
 
 /** Ratio mit deutschem Komma, zwei Nachkommastellen (wie die Anzeige
  *  „CI 0,54 · CCR 0,60" der Ergebnis-Karte). */
-function ratio2(v: number): string {
-  return v.toFixed(2).replace('.', ',')
-}
+const ratio2 = (v: number) => verhaeltnis(v)
 
 const NICHT_BESTIMMBAR = 'nicht zuverlässig bestimmbar'
 

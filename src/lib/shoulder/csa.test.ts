@@ -42,7 +42,7 @@ describe('CSA-Rezept', () => {
     // 45°: Akromion diagonal lateral-kranial zum Scheitel.
     const r = rezept.compute([GLENOID_OBEN, GLENOID_UNTEN, p(100, -100)], 1)
     expect(r.values[0].label).toBe('CSA')
-    expect(r.values[0].value).toBe('45.0°')
+    expect(r.values[0].value).toBe('45,0°')
   })
 
   it('liefert bekannte Winkel exakt', () => {

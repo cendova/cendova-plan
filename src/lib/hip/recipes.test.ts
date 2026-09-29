@@ -14,9 +14,9 @@ describe('osteotomy (Resektionshöhe → Trochanter minor)', () => {
   it('misst die Kalkar→TM-Distanz (gestrichelte Strecke), nicht die rote Linie', () => {
     // TM-Spitze im Ursprung; Kalkar-Ende 34.3 WU darüber; rote Linie 19.3 WU.
     const r = recipe.compute([p(0, 0), p(-19.3, -34.3), p(0, -34.3)], 1)
-    expect(r.values[0].value).toBe('3,43 cm') // Screenshot-Reproduktion
+    expect(r.values[0].value).toBe('3,43\u00a0cm') // Screenshot-Reproduktion
     // Label trägt jetzt den Kontext „→ TM" und sitzt auf der Mess-Strecke.
-    expect(r.geometry.labels[0].text).toBe('→ TM 3,43 cm')
+    expect(r.geometry.labels[0].text).toBe('→ TM 3,43\u00a0cm')
     expect(r.geometry.labels[0].at).toEqual([0, -17.15, 0])
   })
 
@@ -29,7 +29,7 @@ describe('osteotomy (Resektionshöhe → Trochanter minor)', () => {
   it('wendet mmPerWorldUnit genau einmal an', () => {
     // dist(calcar (3,−4) → TM (0,0)) = 5 WU · factor 2 = 10 mm = 1,00 cm.
     const r = recipe.compute([p(0, 0), p(-5, -4), p(3, -4)], 2)
-    expect(r.values[0].value).toBe('1,00 cm')
+    expect(r.values[0].value).toBe('1,00\u00a0cm')
   })
 })
 
@@ -100,8 +100,8 @@ describe('femurProfile (geführte 13-Punkt-Messung)', () => {
     expect(wert('Dorr-Vorschlag')).toBe('B (Grenzbereich B/C)')
     expect(wert('Cortical Index')).toBe('0,50')
     expect(wert('Canal-Calcar Ratio')).toBe('0,50')
-    expect(wert('NSA (CCD)')).toBe('135.0°')
-    expect(wert('Femorales Offset')).toBe('64.0 mm')
+    expect(wert('NSA (CCD)')).toBe('135,0°')
+    expect(wert('Femorales Offset')).toBe('64,0\u00a0mm')
     expect(wert('Femoral Offset Ratio')).toBe('1,60')
     expect(wert('CPAH')).toBe('5H')
   })

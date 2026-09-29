@@ -19,6 +19,7 @@ import {
 } from '../hip/femurProfile'
 import type { FemurProfileReview } from '../../state/hipStore'
 import type { Types } from '@cornerstonejs/core'
+import { pdfSicher as pdfSicherZentral } from './pdfText'
 
 /** Klartext der Override-Gründe. Bewusst hier gespiegelt statt aus dem
  *  Store importiert — der Formatter soll ohne Store-Kette laufen. */
@@ -45,14 +46,7 @@ const GRUND_TEXT: Record<string, string> = {
  * Warntexte aus der Geometrie laufen hier durch, und die enthalten
  * Gedankenstriche.
  */
-function pdfSicher(s: string): string {
-  return s
-    .replace(/[—–]/g, '-')
-    .replace(/[•▪]/g, '-')
-    .replace(/[„“”]/g, '"')
-    .replace(/[‚‘’]/g, "'")
-    .replace(/…/g, '...')
-}
+const pdfSicher = (s: string) => pdfSicherZentral(s)
 
 function zahl(v: number | null, nachkomma: number, einheit = ''): string {
   if (v == null) return '—'

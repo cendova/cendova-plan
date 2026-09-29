@@ -59,6 +59,7 @@ import { computeCpak } from '../knee/cpak'
 import { berechneOsteotomie } from '../../components/useOsteotomie'
 import { useKneeOsteotomieStore } from '../../state/kneeOsteotomieStore'
 import { deformitaetPdfZeilen, osteotomiePdfZeilen } from './osteotomieText'
+import { pdfSicher } from './pdfText'
 
 /**
  * Wendet die AMBER-Einfärbung der Schablonen-Bilder MANUELL an, vor dem
@@ -618,7 +619,9 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
       pdf.setTextColor(15, 25, 40)
       pdf.setFont('helvetica', 'bold')
       pdf.setFontSize(11)
-      pdf.text(title, 14, y)
+      // Zentrale Zeichenabsicherung (pdfText.ts): ohne sie machte schon ein
+      // echtes Minus oder ein „β" die ganze Zeile unlesbar.
+      pdf.text(pdfSicher(title), 14, y)
       y += 5.5
       pdf.setFont('helvetica', 'normal')
       pdf.setFontSize(9.5)
@@ -628,7 +631,7 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
           pdf.addPage('a4', 'portrait')
           y = 18
         }
-        pdf.text(line, 14, y)
+        pdf.text(pdfSicher(line), 14, y)
         y += 5
       }
       y += 3

@@ -96,7 +96,8 @@ describe('computeWorkflowRaw — Sprunggelenk 40 medialisiert = VARUS-Konfigurat
 
 describe('workflow.compute (String-Engine) — Konsistenz mit Raw (Befund D1)', () => {
   const recipe = getKneeRecipe('workflow')!
-  const num = (s: string) => parseFloat(s.replace(',', '.'))
+  // Deutsche Schreibweise (Komma, echtes Minus) zurück in eine Zahl.
+  const num = (s: string) => parseFloat(s.replace(',', '.').replace('\u2212', '-'))
 
   it('gerades Bein: gleiche Zahlen in beiden Engines', () => {
     const pts = fixture()
@@ -318,7 +319,7 @@ describe('computeWorkflowRaw — WBL-Prozent und MJLA', () => {
     const labels = values.map((v) => v.label)
     expect(labels).toContain('Traglinie (WBL)')
     expect(labels).toContain('JLO (MJLA)')
-    expect(values.find((v) => v.label === 'Traglinie (WBL)')!.value).toBe('50.0 %')
+    expect(values.find((v) => v.label === 'Traglinie (WBL)')!.value).toBe('50,0\u00a0%')
   })
 })
 
@@ -329,7 +330,7 @@ describe('mLPFA / mLDTA (Paley-Ergänzung)', () => {
       [p(80, 100), p(100, 80), p(120, 100), p(150, 100), p(100, 500)],
       1,
     )
-    expect(values[0].value).toBe('90.0°')
+    expect(values[0].value).toBe('90,0°')
   })
   it('mLPFA: tiefer stehende Trochanterspitze verkleinert den Winkel', () => {
     const r = getKneeRecipe('mLPFA')!
@@ -338,12 +339,12 @@ describe('mLPFA / mLDTA (Paley-Ergänzung)', () => {
       1,
     )
     // Winkel zwischen (0,400) und (50,20): atan(50/20) = 68,2°.
-    expect(values[0].value).toBe('68.2°')
+    expect(values[0].value).toBe('68,2°')
   })
   it('mLDTA: waagerechter Plafond → 90°, lateral tiefer → > 90°', () => {
     const r = getKneeRecipe('mLDTA')!
-    expect(r.compute([p(100, 500), p(80, 900), p(120, 900)], 1).values[0].value).toBe('90.0°')
+    expect(r.compute([p(100, 500), p(80, 900), p(120, 900)], 1).values[0].value).toBe('90,0°')
     const schraeg = r.compute([p(100, 500), p(80, 900), p(120, 905)], 1).values[0].value
-    expect(parseFloat(schraeg)).toBeGreaterThan(90)
+    expect(parseFloat(schraeg.replace(',', '.'))).toBeGreaterThan(90)
   })
 })

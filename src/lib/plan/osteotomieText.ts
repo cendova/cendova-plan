@@ -12,20 +12,12 @@
 import type { OsteotomieDaten } from '../../components/useOsteotomie'
 import { osteotomieTyp } from '../knee/osteotomie'
 import { computeCpak } from '../knee/cpak'
+import { pdfSicher } from './pdfText'
 
 const BREITE = 100
 
-export function pdfSicherOsteotomie(s: string): string {
-  return s
-    .replace(/[—–]/g, '-')
-    .replace(/→/g, '->')
-    .replace(/≥/g, '>=')
-    .replace(/≤/g, '<=')
-    .replace(/⅓/g, '1/3')
-    .replace(/Δ/g, 'Delta ')
-    .replace(/[„“”]/g, '"')
-    .replace(/[‚‘’]/g, "'")
-}
+/** Delegiert an die zentrale Absicherung (pdfText.ts) — eine Liste für alle Module. */
+export const pdfSicherOsteotomie = (s: string) => pdfSicher(s)
 
 /** Wortumbruch auf `BREITE` Zeichen; Folgezeilen eingerückt. */
 export function umbrechen(text: string, einzug = '   '): string[] {

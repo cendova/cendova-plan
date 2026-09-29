@@ -19,6 +19,7 @@ import {
   sub,
 } from './geometry'
 import { classifyAlignment } from './cpak'
+import { grad, mmMitVorzeichen, prozent } from '../zahlFormat'
 
 type P = Types.Point3
 
@@ -75,25 +76,17 @@ const HEAD_CONTOUR = [
   'Hüftkopfkontur — Punkt 3',
 ]
 
-function deg(v: number): string {
-  return `${v.toFixed(1)}°`
-}
+// Zahlschreibweise zentral (lib/zahlFormat.ts) — identisch in allen Modulen.
+const deg = (v: number) => grad(v)
 
 // (kein generischer mm-Formatter aktuell genutzt — alle Werte verwenden
 // `signedMm` für Pre/Post-Vergleich. Bei Bedarf hier ergänzen.)
 
-/** Prozentwert mit einer Nachkommastelle ("62.5 %"). */
-function pct(v: number): string {
-  // Geschütztes Leerzeichen: sonst bricht die schmale Werteliste
-  // zwischen Zahl und Prozentzeichen um.
-  return `${v.toFixed(1)} %`
-}
+/** Prozentwert mit einer Nachkommastelle („62,5 %"), nicht umbrechend. */
+const pct = (v: number) => prozent(v)
 
-/** Signed mm mit explizitem Vorzeichen ("+4,2 mm" / "−1,8 mm"). */
-function signedMm(v: number): string {
-  const s = v >= 0 ? '+' : '−'
-  return `${s}${Math.abs(v).toFixed(1)} mm`
-}
+/** Millimeter mit explizitem Vorzeichen („+4,2 mm" / „−1,8 mm"). */
+const signedMm = (v: number) => mmMitVorzeichen(v)
 
 // ----------------------------------------------------------------------
 // HKA — Hip-Knee-Ankle / Mikulicz-Linie.

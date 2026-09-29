@@ -7,7 +7,9 @@ import { beurteileAhd, AHD_SCHWELLE_MM } from './ahd'
 import type { Types } from '@cornerstonejs/core'
 
 const p = (x: number, y: number): Types.Point3 => [x, y, 0]
-const zahl = (s: string) => Number(s.replace(' mm', '').replace(',', '.'))
+// Deutsche Schreibweise (Komma, geschütztes Leerzeichen, echtes Minus) zurück in eine Zahl.
+const zahl = (s: string) =>
+  Number(s.replace(/[\s\u00a0]mm$/, '').replace(',', '.').replace('\u2212', '-'))
 
 describe('AHD (akromiohumeraler Abstand)', () => {
   const rez = getShoulderRecipe('ahd')!
@@ -22,13 +24,13 @@ describe('AHD (akromiohumeraler Abstand)', () => {
     // 8 Welteinheiten bei Faktor 1 → 8,0 mm
     const r = rez.compute([p(0, 0), p(0, 8)], 1)
     expect(r.values[0].label).toBe('AHD')
-    expect(r.values[0].value).toBe('8.0 mm')
+    expect(r.values[0].value).toBe('8,0\u00a0mm')
   })
 
   it('wendet mmPerWorldUnit genau EINMAL an', () => {
     // 4 WU · Faktor 2 = 8 mm. Doppelte Anwendung ergäbe 16 mm.
     const r = rez.compute([p(0, 0), p(0, 4)], 2)
-    expect(r.values[0].value).toBe('8.0 mm')
+    expect(r.values[0].value).toBe('8,0\u00a0mm')
   })
 
   it('misst schräge Strecken korrekt (3-4-5-Dreieck)', () => {
@@ -49,7 +51,7 @@ describe('AHD (akromiohumeraler Abstand)', () => {
 
   it('zeigt den Messwert auch unkalibriert an', () => {
     const r = rez.compute([p(0, 0), p(0, 42)], 1)
-    expect(r.values[0].value).toBe('42.0 mm')
+    expect(r.values[0].value).toBe('42,0\u00a0mm')
   })
 
   it('ordnet an der 6-mm-Schwelle ein', () => {
