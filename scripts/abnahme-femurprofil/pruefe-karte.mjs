@@ -54,14 +54,18 @@ async function messung(bestanden, punkte = PUNKTE) {
 
 // --- 1) Bestandene Qualitaet: Klasse + Matrix ------------------------
 await messung(true)
-const karte = page.locator('div.rounded.border').filter({ hasText: 'Morphologie & Fixation' }).last()
+const karte = page.locator('section.rounded.border').filter({ hasText: 'Morphologie & Fixation' }).last()
 ok(await karte.isVisible(), 'Ergebnis-Karte erscheint')
 const text = await karte.innerText()
-ok(/Dorr-Vorschlag\s+B/.test(text), 'Dorr-Vorschlag B wird gezeigt')
+ok(/Dorr-Vorschlag(\s+Grenzbereich \S+)?\s+B\b/.test(text), 'Dorr-Vorschlag B wird gezeigt')
 ok(/Grenzbereich B\/C/.test(text), 'Grenzbereich B/C wird als solcher benannt')
-ok(/5H · Dorr B · coxa norma · High-offset/.test(text), 'CPAH-Klartextzeile stimmt')
-ok(/Cortical Index:\s*0,50/.test(text), 'CI 0,50 im Rohwert-Block')
-ok(/Canal-Calcar Ratio:\s*0,50/.test(text), 'CCR 0,50 im Rohwert-Block')
+// Seit 29.09.2026 ohne eigene Klartextzeile („5H · Dorr B · coxa norma ·
+// High-offset"): Sie wiederholte nur den Code aus dem Kartenkopf; was er
+// bedeutet, zeigt das Schaubild.
+ok(/CPAH 5H/.test(text), 'Kartenkopf nennt CPAH 5H')
+ok((text.match(/5H/g) || []).length === 1, 'CPAH-Code steht genau einmal in der Karte')
+ok(/Cortical Index\s+0,50/.test(text), 'CI 0,50 im Rohwert-Block')
+ok(/Canal-Calcar Ratio\s+0,50/.test(text), 'CCR 0,50 im Rohwert-Block')
 ok(/Planungshinweis — keine autonome Implantatentscheidung/.test(text), 'Planungshinweis steht darunter')
 // Verbotene Formulierungen
 for (const verboten of ['Implantat X verwenden', 'zementfrei kontraindiziert', 'Osteoporose diagnostiziert']) {
@@ -74,9 +78,10 @@ ok(
   (panelOk.match(/Cortical Index/g) || []).length === 1,
   `Cortical Index steht genau einmal im Panel (gefunden: ${(panelOk.match(/Cortical Index/g) || []).length}x)`,
 )
-ok(/Ergebnisse siehe/.test(panelOk), 'Messzeile verweist auf die Karte')
-ok(await page.locator('text=CPAH-Klassifikation').isVisible(), 'CPAH-Matrix wird gezeichnet')
-ok(/Typ 5H/.test(await page.locator('text=CPAH-Klassifikation').locator('..').innerText()), 'Matrix nennt Typ 5H')
+ok(/siehe „Morphologie & Fixation"/.test(panelOk), 'Messzeile verweist auf die Karte')
+const matrix = page.locator('[aria-label^="CPAH-Schaubild"]')
+ok(await matrix.isVisible(), 'CPAH-Matrix wird gezeichnet')
+ok((await matrix.getAttribute('aria-label')) === 'CPAH-Schaubild, Typ 5H', 'Matrix steht fuer Typ 5H')
 
 // Die aktive Zelle muss die 5 sein: fettgedruckte Zahl im SVG suchen.
 const aktiv = await page.$$eval('svg text[font-weight="700"]', (ts) => ts.map((t) => t.textContent))
@@ -88,12 +93,12 @@ await page.screenshot({
 
 // --- 2) Aelterer Plan mit nicht bestandener Checkliste: keine Klasse ---
 await messung(false)
-const text2 = await page.locator('div.rounded.border').filter({ hasText: 'Morphologie & Fixation' }).last().innerText()
+const text2 = await page.locator('section.rounded.border').filter({ hasText: 'Morphologie & Fixation' }).last().innerText()
 ok(/nicht zuverlässig bestimmbar/.test(text2), 'Ohne Bestaetigung: „nicht zuverlaessig bestimmbar"')
 ok(/Rotation nicht vertretbar/.test(text2), 'Der konkrete Ausschlussgrund wird genannt')
-ok(!/5H · Dorr B/.test(text2), 'Keine CPAH-Klartextzeile ohne Bestaetigung')
-ok(!(await page.locator('text=CPAH-Klassifikation').isVisible()), 'KEINE Matrix ohne Bestaetigung')
-ok(/Cortical Index:\s*0,50/.test(text2), 'Rohwerte bleiben trotzdem sichtbar')
+ok(!/5H/.test(text2), 'Kein CPAH-Code ohne Bestaetigung')
+ok((await page.locator('[aria-label^="CPAH-Schaubild"]').count()) === 0, 'KEINE Matrix ohne Bestaetigung')
+ok(/Cortical Index\s+0,50/.test(text2), 'Rohwerte bleiben trotzdem sichtbar')
 
 // Entscheidend: das GANZE Panel darf keine Klasse zeigen. Die Messliste
 // oberhalb der Karte kommt aus recipe.compute und kennt das Gate NICHT —
@@ -101,7 +106,7 @@ ok(/Cortical Index:\s*0,50/.test(text2), 'Rohwerte bleiben trotzdem sichtbar')
 // sich selbst.
 const panelGesperrt = await page.locator('aside').last().innerText()
 ok(!/Dorr-Vorschlag:?\s*B/.test(panelGesperrt), 'Kein Dorr-Vorschlag IRGENDWO im Panel')
-ok(!/CPAH:\s*5H/.test(panelGesperrt), 'Kein CPAH-Code IRGENDWO im Panel')
+ok(!/CPAH:?\s*5H/.test(panelGesperrt), 'Kein CPAH-Code IRGENDWO im Panel')
 ok(/nicht zuverlässig bestimmbar/.test(panelGesperrt), 'Panel nennt stattdessen die Unbestimmbarkeit')
 
 await page.screenshot({
@@ -114,8 +119,8 @@ const dorrC = PUNKTE.map((p) => [...p])
 dorrC[8] = [-17, 140, 0]
 dorrC[9] = [17, 140, 0]
 await messung(true, dorrC)
-const text3 = await page.locator('div.rounded.border').filter({ hasText: 'Morphologie & Fixation' }).last().innerText()
-ok(/Dorr-Vorschlag\s+C/.test(text3), 'Dorr C wird erkannt')
+const text3 = await page.locator('section.rounded.border').filter({ hasText: 'Morphologie & Fixation' }).last().innerText()
+ok(/Dorr-Vorschlag(\s+Grenzbereich \S+)?\s+C\b/.test(text3), 'Dorr C wird erkannt')
 ok(
   /zementierte Fixation\/Alternative aktiv prüfen/.test(text3),
   'Fixationswarnung bei Dorr C',

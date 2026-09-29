@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   cm,
+  cmMitVorzeichen,
   grad,
   gradMitVorzeichen,
   mm,
@@ -29,6 +30,7 @@ describe('zahlFormat — eine Schreibweise für alles', () => {
     expect(zahlMitVorzeichen(-1.8)).toBe('−1,8')
     expect(gradMitVorzeichen(3.25)).toBe('+3,3°')
     expect(mmMitVorzeichen(-4.2)).toBe('−4,2 mm')
+    expect(cmMitVorzeichen(6)).toBe('+0,60 cm')
   })
 
   it('klebt Einheiten mit geschütztem Leerzeichen an — kein Umbruch', () => {

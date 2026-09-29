@@ -1,7 +1,7 @@
 # Abnahme-Skripte Femurprofil
 
 Sieben Playwright-Skripte, die den Femurprofil-Workflow im echten Browser
-gegen einen laufenden **Dev-Server** prüfen — zusammen 99 Einzelprüfungen.
+gegen einen laufenden **Dev-Server** prüfen — zusammen 107 Einzelprüfungen.
 
 Sie ergänzen die Unit-Tests um das, was diese prinzipiell nicht sehen:
 ob etwas tatsächlich im DOM landet, ob der Klickweg funktioniert und ob

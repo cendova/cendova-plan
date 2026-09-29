@@ -38,6 +38,8 @@ export const mm = (v: number, nachkomma = 1) => `${zahl(v, nachkomma)}${NBSP}mm`
 export const mmMitVorzeichen = (v: number, nachkomma = 1) =>
   `${zahlMitVorzeichen(v, nachkomma)}${NBSP}mm`
 export const cm = (vMm: number) => `${zahl(vMm / 10, 2)}${NBSP}cm`
+/** Beinlängen-Änderung in cm (Eingabe in mm) — Vorzeichen = Richtung. */
+export const cmMitVorzeichen = (vMm: number) => `${zahlMitVorzeichen(vMm / 10, 2)}${NBSP}cm`
 export const prozent = (v: number, nachkomma = 1) => `${zahl(v, nachkomma)}${NBSP}%`
 /** Verhältniszahlen (CI, CCR, FOR) — zwei Nachkommastellen. */
 export const verhaeltnis = (v: number) => zahl(v, 2)

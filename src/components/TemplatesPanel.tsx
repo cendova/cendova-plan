@@ -24,6 +24,7 @@ import {
   stemCatalogEntries,
 } from '../lib/hip/templates'
 import { sizeLabelFor } from '../lib/knee/templates'
+import { mm, mmMitVorzeichen } from '../lib/zahlFormat'
 import {
   KNEE_IMPLANT_FAMILIES,
   ohneTibiaVariantenZusatz,
@@ -168,7 +169,7 @@ export function TemplatesPanel() {
         )}
 
         {hasAny && (
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-0.5">
             {cups.map((cup) => {
               const entry = cupEntries[cup.catalogIndex]
               const diameter = cupDiameterMm(cup.catalogIndex, cup.sizeIndex)
@@ -178,7 +179,7 @@ export function TemplatesPanel() {
                   id={cup.id}
                   badge={`P${cup.id.replace(/[^0-9]/g, '')}`}
                   title={`${entry?.family ?? 'Pfanne'} · ${cup.side === 'R' ? 'rechts' : 'links'}`}
-                  subtitle={`⌀ ${diameter} mm`}
+                  subtitle={`⌀ ${mm(diameter, 0)}`}
                   selected={cup.id === selectedId}
                   visible={cup.visible !== false}
                   onSelect={waehleHueft}
@@ -191,14 +192,13 @@ export function TemplatesPanel() {
               const entry = stemEntries[stem.catalogIndex]
               const size = entry?.sizes[stem.sizeIndex]
               const offset = headOffsetMm(stem.headOffsetIndex)
-              const offsetTxt = offset >= 0 ? `+${offset}` : `${offset}`
               return (
                 <TemplateRow
                   key={stem.id}
                   id={stem.id}
                   badge={`S${stem.id.replace(/[^0-9]/g, '')}`}
                   title={`${entry?.family ?? 'Schaft'} ${entry?.variant ?? ''} · ${stem.side === 'R' ? 'rechts' : 'links'}`}
-                  subtitle={`Gr. ${size?.size ?? '?'} · Kopf ${offsetTxt} mm`}
+                  subtitle={`Gr. ${size?.size ?? '?'} · Kopf ${mmMitVorzeichen(offset, 0)}`}
                   selected={stem.id === selectedId}
                   visible={stem.visible !== false}
                   onSelect={waehleHueft}
@@ -226,7 +226,7 @@ export function TemplatesPanel() {
                   badge={`${kuerzel}${haupt.id.replace(/[^0-9]/g, '')}`}
                   title={`${familie ? ohneTibiaVariantenZusatz(familie.label) : 'Schablone'} · ${haupt.side === 'R' ? 'rechts' : 'links'}`}
                   subtitle={`Gr. ${sizeLabelFor(haupt.kind, haupt.sizeIndex) || '?'}${
-                    inlay != null ? ` · Inlay ${inlay} mm` : ''
+                    inlay != null ? ` · Inlay ${mm(inlay, Number.isInteger(inlay) ? 0 : 1)}` : ''
                   }`}
                   selected={ausgewaehlt}
                   visible={sichtbar}
@@ -289,30 +289,33 @@ function TemplateRow({
     <li
       onClick={() => onSelect(id)}
       className={[
-        'group flex items-center gap-2 rounded px-2 py-1.5 text-sm transition',
+        // Gleiches Zeilenbild wie die Messliste darüber (MeasurementPanel).
+        'group flex items-start gap-2 rounded px-2 py-1 transition',
         selected
           ? 'bg-sky-900/40 ring-1 ring-sky-700'
-          : 'hover:bg-neutral-800',
+          : 'hover:bg-neutral-800/70',
       ].join(' ')}
     >
-      <span className="w-7 shrink-0 text-xs font-semibold text-sky-400">
+      <span className="w-7 shrink-0 text-[11px] font-semibold leading-5 text-sky-400">
         {badge}
       </span>
       <div
         className={[
-          'flex flex-1 flex-col leading-tight',
-          visible ? 'text-neutral-200' : 'text-neutral-500',
+          'flex min-w-0 flex-1 flex-col',
+          visible ? '' : 'opacity-50',
         ].join(' ')}
       >
-        <span className="text-[11px] text-neutral-400">{title}</span>
-        <span className="tabular-nums">{subtitle}</span>
+        <span className="truncate text-[11px] leading-5 text-neutral-300" title={title}>
+          {title}
+        </span>
+        <span className="text-xs tabular-nums text-neutral-100">{subtitle}</span>
       </div>
       <button
         onClick={(e) => {
           e.stopPropagation()
           onToggleVisible(id, !visible)
         }}
-        className="shrink-0 text-neutral-500 transition hover:text-sky-300"
+        className="mt-0.5 shrink-0 text-neutral-500 transition hover:text-sky-300"
         title={visible ? 'Im Bild ausblenden' : 'Im Bild einblenden'}
       >
         <EyeIcon off={!visible} />
@@ -322,7 +325,7 @@ function TemplateRow({
           e.stopPropagation()
           onRemove(id)
         }}
-        className="shrink-0 text-xs text-neutral-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
+        className="shrink-0 text-xs leading-5 text-neutral-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
         title="Schablone entfernen"
       >
         ✕

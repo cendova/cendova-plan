@@ -54,11 +54,11 @@ describe('findPreopLLD', () => {
 
 describe('formatSignedLLD (klinischer Berichtstext)', () => {
   it('R-Perspektive: −6 → „Rechts -6.0 mm (kürzer)", +5 → „Rechts +5.0 mm (länger)"', () => {
-    expect(formatSignedLLD(-6, 'R')).toBe('Rechts -6.0 mm (kürzer)')
-    expect(formatSignedLLD(5, 'R')).toBe('Rechts +5.0 mm (länger)')
+    expect(formatSignedLLD(-6, 'R')).toBe('Rechts \u22126,0\u00a0mm (kürzer)')
+    expect(formatSignedLLD(5, 'R')).toBe('Rechts +5,0\u00a0mm (länger)')
   })
   it('L-Perspektive spiegelt das Vorzeichen: −6 → „Links +6.0 mm (länger)"', () => {
-    expect(formatSignedLLD(-6, 'L')).toBe('Links +6.0 mm (länger)')
+    expect(formatSignedLLD(-6, 'L')).toBe('Links +6,0\u00a0mm (länger)')
   })
   it('unterhalb 0.05 mm → „Ausgeglichen"', () => {
     expect(formatSignedLLD(0.02)).toBe('Ausgeglichen')

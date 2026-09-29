@@ -21,6 +21,7 @@ import { useViewerStore } from './state/viewerStore'
 import { useHistoryStore } from './state/historyStore'
 import { useKneePanesStore } from './state/kneePanesStore'
 import { captureDiagnostics } from './lib/diagnostics'
+import { zahl } from './lib/zahlFormat'
 
 function App() {
   const status = useViewerStore((s) => s.status)
@@ -174,24 +175,24 @@ function App() {
           <div className="border-b border-neutral-700 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
             Bildinformationen{paneSuffix}
           </div>
-          <div className="space-y-2 p-3 text-xs">
+          <div className="space-y-0.5 px-3 py-2">
             {activeImageMeta ? (
               <>
                 <InfoRow
                   label="Größe"
-                  value={`${activeImageMeta.columns} × ${activeImageMeta.rows} px`}
+                  value={`${activeImageMeta.columns} × ${activeImageMeta.rows}\u00a0px`}
                 />
                 <InfoRow
                   label="Pixelabstand"
                   value={
                     activeImageMeta.pixelSpacing
-                      ? `${activeImageMeta.pixelSpacing.toFixed(4)} mm/px`
+                      ? `${zahl(activeImageMeta.pixelSpacing, 4)}\u00a0mm/px`
                       : 'nicht im DICOM hinterlegt'
                   }
                 />
               </>
             ) : (
-              <p className="text-neutral-500">Noch kein Bild geladen.</p>
+              <p className="text-xs text-neutral-500">Noch kein Bild geladen.</p>
             )}
           </div>
 
@@ -250,9 +251,10 @@ function App() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-2">
-      <span className="text-neutral-500">{label}</span>
-      <span className="text-right text-neutral-300">{value}</span>
+    // Zeilenbild wie die Kennwerte der Ergebnis-Karten (Ergebnis.tsx).
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[11px] text-neutral-400">{label}</span>
+      <span className="text-right text-xs tabular-nums text-neutral-100">{value}</span>
     </div>
   )
 }

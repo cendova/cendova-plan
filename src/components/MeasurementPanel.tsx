@@ -1,23 +1,24 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useViewerStore } from '../state/viewerStore'
 import { Hint } from './Hint'
 import { ConfirmDialog } from './ConfirmDialog'
 import { useHipStore } from '../state/hipStore'
-import { useKneeStore } from '../state/kneeStore'
+import { useKneeStore, type KneeMeasurement } from '../state/kneeStore'
 import { useTemplateStore } from '../state/templateStore'
 import { getRecipe } from '../lib/hip/recipes'
 import { computeWorkflowRaw, getKneeRecipe } from '../lib/knee/recipes'
 import { getShoulderRecipe } from '../lib/shoulder/recipes'
 import { useShoulderStore } from '../state/shoulderStore'
 import { computeCpak } from '../lib/knee/cpak'
-import { KneeDeformitaetKarte, KneeOsteotomieKarte } from './KneeOsteotomieKarten'
-import { useOsteotomie } from './useOsteotomie'
+import { KneeBeinachseKarte, KneeOsteotomieKarte } from './KneeOsteotomieKarten'
+import { findeVollvermessung, useOsteotomie } from './useOsteotomie'
 import {
   extractWorkflowAxes,
   computePlannedCpak,
   pickComponent,
+  type PlannedCpak,
 } from '../lib/knee/resection'
-import { useKneeTemplateStore } from '../state/kneeTemplateStore'
+import { useKneeTemplateStore, type KneeTemplate } from '../state/kneeTemplateStore'
 import {
   computePlanningDelta,
   stemAxisAlignment,
@@ -25,7 +26,7 @@ import {
 } from '../lib/hip/templates'
 import { getViewport } from '../lib/cornerstone/viewer'
 import {
-  findPreopLLD,
+  findPreopLLDMessung,
   computeImplantLLDCorrection,
   buildLldBalance,
 } from '../lib/hip/lldCalculation'
@@ -41,23 +42,56 @@ import {
   removeRightMeasurement,
   setRightMeasurementVisible,
 } from '../lib/cornerstone/viewer2'
+import { cmMitVorzeichen, grad, mm, mmMitVorzeichen } from '../lib/zahlFormat'
+import { Abschnitt, Karte, Kennwerte, type KennwertZeile } from './Ergebnis'
+
+/**
+ * Rechte Spalte: oben die MESSLISTE, darunter die AUSWERTUNG.
+ *
+ * Grundsatz (Realtest 29.09.2026, „sehr voll und uneinheitlich"): Jeder
+ * Wert steht genau EINMAL da. Eine Messung, deren Ergebnis eine Karte
+ * zeigt, bleibt in der Liste nur als Griff (Name, Auge, Löschen) mit einem
+ * Verweis auf die Karte. Messungen ohne Karte zeigen ihre Werte direkt in
+ * der Zeile — im selben Tabellenformat wie die Karten (Ergebnis.tsx).
+ *
+ * Die Karten hängen nur an den Daten, nicht am Modus oder aneinander:
+ * Prothesen-Schablonen und Umstellungsosteotomie funktionieren je für sich
+ * und teilen sich nur die Anzeige der Beinachse.
+ */
+
+type Werte = { label: string; value: string }[]
+
+/** Ein einzelner Wert mit dem Namen der Messung wandert in die Kopfzeile. */
+function aufteilen(label: string, values: Werte) {
+  if (values.length === 1 && values[0].label === label) {
+    return { wert: values[0].value, zeilen: [] as KennwertZeile[] }
+  }
+  return {
+    wert: undefined,
+    zeilen: values.map((v): KennwertZeile => ({ label: v.label, werte: [v.value] })),
+  }
+}
+
+/** Geplante Knie-Achse aus den platzierten AP-Komponenten (Haupt-Pane). */
+function implantatPlan(
+  m: KneeMeasurement,
+  templates: KneeTemplate[],
+  mmPerWorldUnit: number,
+): PlannedCpak | null {
+  const raw = computeWorkflowRaw(m.points, mmPerWorldUnit)
+  const axes = extractWorkflowAxes(m.points)
+  if (!raw || !axes) return null
+  const apLeft = templates.filter((t) => (t.pane ?? 'left') === 'left' && t.view === 'AP')
+  const fem = pickComponent(apLeft, 'Femur')
+  const tib = pickComponent(apLeft, 'Tibia')
+  return fem || tib ? computePlannedCpak(axes, raw.mLDFA, raw.mMPTA, fem, tib) : null
+}
 
 export function MeasurementPanel() {
   const measurements = useViewerStore((s) => s.measurements)
   const calibration = useViewerStore((s) => s.calibration)
   const planningMode = useViewerStore((s) => s.planningMode)
   const { plan: osteoPlan, ergebnis: osteo } = useOsteotomie()
-  const osteoCpak =
-    osteoPlan?.sichtbar && osteo?.ok
-      ? {
-          cpak: computeCpak(osteo.nachher.mLDFA, osteo.nachher.mMPTA),
-          ldfa: osteo.nachher.mLDFA,
-          mpta: osteo.nachher.mMPTA,
-          femPlaced: true,
-          tibPlaced: true,
-          quelle: 'osteotomie' as const,
-        }
-      : null
   const hipMeasurements = useHipStore((s) => s.measurements)
   const removeHip = useHipStore((s) => s.removeMeasurement)
   const removeAllHip = useHipStore((s) => s.removeAll)
@@ -70,7 +104,7 @@ export function MeasurementPanel() {
   const removeShoulder = useShoulderStore((s) => s.removeMeasurement)
   const removeAllShoulder = useShoulderStore((s) => s.removeAll)
   const setShoulderVisible = useShoulderStore((s) => s.setVisible)
-  // Platzierte Knie-Schablonen — für die „geplante" (post-OP) CPAK aus der
+  // Platzierte Knie-Schablonen — für die „geplante" (post-OP) Achse aus der
   // Implantat-Position. Reaktiv, damit der geplante Punkt live mitwandert.
   const kneeTemplates = useKneeTemplateStore((s) => s.templates)
   const stems = useTemplateStore((s) => s.stems)
@@ -113,38 +147,57 @@ export function MeasurementPanel() {
     ]
   })
 
-  // Beinlängen-Bilanz: prä-OP + Implantat-Korrektur = post-OP.
-  // Nur sinnvoll, wenn es eine LLD-Messung UND mindestens eine Pfanne-
-  // Schaft-Kombination gibt (sonst null, dann wird der Block nicht
-  // gezeigt).
-  const preopLLD = findPreopLLD(hipMeasurements, factor)
+  // Beinlängen-Bilanz: prä-OP + Implantat-Korrektur = post-OP. Erscheint
+  // ab der LLD-Messung; Korrektur + Post-OP kommen dazu, sobald Pfanne +
+  // Schaft der operierten Seite stehen.
+  const preop = findPreopLLDMessung(hipMeasurements, factor)
   const lldCorrection = computeImplantLLDCorrection(
     cups,
     stems,
     referenceLine,
     factor,
   )
-  // Bilanz erscheint, sobald eine LLD-Messung vorliegt (Prä-OP); Korrektur +
-  // Post-OP kommen dazu, sobald Pfanne + Schaft der operierten Seite stehen.
-  const bal = preopLLD != null ? buildLldBalance(preopLLD, lldCorrection) : null
-  const showLldBalance = bal != null
+  const bal = preop ? buildLldBalance(preop.lldMm, lldCorrection) : null
+
+  // Knie: die maßgebliche Vollvermessung trägt Beinachse + Osteotomie.
+  const massgeblich = findeVollvermessung(kneeMeasurements)
+  const osteoCpak: PlannedCpak | null =
+    osteoPlan?.sichtbar && osteo?.ok
+      ? {
+          cpak: computeCpak(osteo.nachher.mLDFA, osteo.nachher.mMPTA),
+          ldfa: osteo.nachher.mLDFA,
+          mpta: osteo.nachher.mMPTA,
+          femPlaced: true,
+          tibPlaced: true,
+          quelle: 'osteotomie',
+        }
+      : null
+  // Die mLPFA/mLDTA, die in die Paley-Analyse der Beinachse eingehen: je
+  // die jüngste sichtbare Einzelmessung (dieselbe Regel wie useOsteotomie).
+  const paleyIds = new Set(
+    massgeblich
+      ? (['mLPFA', 'mLDTA'] as const).flatMap((k) => {
+          const m = [...kneeMeasurements].reverse().find((x) => x.kind === k && x.visible)
+          return m ? [m.id] : []
+        })
+      : [],
+  )
+
   // „Alle löschen" umfasst nur, was sich damit auch löschen lässt —
-  // Messungen. Die Δ-Zeilen und die Beinlängen-Bilanz sind ABLEITUNGEN
-  // aus platzierten Schablonen: sie verschwinden mit den Schablonen (Panel
-  // darunter), nicht mit den Messungen. Vorher zählten sie hier mit — der
-  // Dialog versprach „Alle Messungen beider Bilder werden entfernt", und
-  // nach dem Klick stand exakt derselbe Inhalt wieder da. Messungen des
-  // rechten Panes zählen nur, solange die Zwei-Bild-Ansicht sie zeigt.
+  // Messungen. Die Hüft-Planungswerte sind ABLEITUNGEN aus platzierten
+  // Schablonen: sie verschwinden mit den Schablonen (Panel darunter),
+  // nicht mit den Messungen. Messungen des rechten Panes zählen nur,
+  // solange die Zwei-Bild-Ansicht sie zeigt.
   const hatLoeschbareMessungen =
     measurements.length > 0 ||
     hipMeasurements.length > 0 ||
     kneeMeasurements.length > 0 ||
     shoulderMeasurements.length > 0 ||
     (splitView && rightMeasurements.length > 0)
+  const hatHuefteKarte = bal != null || deltas.length > 0
   // Der Leerzustands-Hinweis verschwindet dagegen, sobald IRGENDETWAS in
-  // der Liste steht — auch eine abgeleitete Zeile.
-  const zeigtInhalt =
-    hatLoeschbareMessungen || deltas.length > 0 || showLldBalance
+  // der Spalte steht — auch eine abgeleitete Karte.
+  const zeigtInhalt = hatLoeschbareMessungen || hatHuefteKarte
 
   function clearAll() {
     removeAllMeasurements()
@@ -156,6 +209,67 @@ export function MeasurementPanel() {
   // Bestätigung vor dem Sammel-Löschen (UX-Befund P1-5: Länge/Winkel und
   // rechte Messungen sind nicht undo-fähig).
   const [confirmClear, setConfirmClear] = useState(false)
+
+  const unkalibriert = (noetig: boolean) =>
+    noetig && !calibration ? <span className="text-amber-500"> · unkalibriert</span> : null
+
+  // --- Auswertung (Karten) ------------------------------------------------
+  const karten: ReactNode[] = []
+  if (hatHuefteKarte) {
+    karten.push(
+      <HuefteBilanzKarte
+        key="huefte"
+        kalibriert={calibration != null}
+        tm={
+          preop
+            ? (getRecipe('lld')
+                ?.compute(preop.messung.points, factor)
+                .values.filter((v) => v.label.startsWith('TM ')) ?? [])
+            : []
+        }
+        bal={bal}
+        deltas={deltas}
+      />,
+    )
+  }
+  for (const m of hipMeasurements) {
+    if (m.kind !== 'femurProfile' || !m.visible) continue
+    karten.push(
+      <FemurProfileCard
+        key={`fp-${m.id}`}
+        id={m.id}
+        points={m.points}
+        mmPerWorldUnit={factor}
+        review={m.femurProfileReview}
+      />,
+    )
+  }
+  if (massgeblich) {
+    karten.push(
+      <KneeBeinachseKarte
+        key="beinachse"
+        implantat={implantatPlan(massgeblich, kneeTemplates, factor)}
+      />,
+    )
+  }
+  // CPAK pro sichtbarer Vollvermessung; die Osteotomie gehört zur
+  // maßgeblichen und hat dort Vorrang vor Implantaten (beides zugleich ist
+  // kein klinisches Szenario).
+  for (const m of kneeMeasurements) {
+    if (m.kind !== 'workflow' || !m.visible) continue
+    const raw = computeWorkflowRaw(m.points, factor)
+    if (!raw) continue
+    const planned =
+      (m === massgeblich ? osteoCpak : null) ?? implantatPlan(m, kneeTemplates, factor)
+    karten.push(
+      <CpakMatrix
+        key={`cpak-${m.id}`}
+        result={computeCpak(raw.mLDFA, raw.mMPTA)}
+        planned={planned}
+      />,
+    )
+  }
+  if (massgeblich) karten.push(<KneeOsteotomieKarte key="osteotomie" />)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -191,9 +305,7 @@ export function MeasurementPanel() {
           <Hint>
             {/* Nennt wie das Schablonen-Panel die Werkzeuge des AKTIVEN
                 Modus samt Ort. Die generischen Länge-/Winkel-Werkzeuge
-                liegen in der Kopfzeile, nicht in der linken Leiste — die
-                alte Sammelformel „ein Mess-, Hüft-, Knie- oder
-                Schulter-Werkzeug" warf beide Orte in einen Topf. */}
+                liegen in der Kopfzeile, nicht in der linken Leiste. */}
             <p className="px-1 py-1 text-xs text-neutral-500">
               {planningMode === 'hip' &&
                 'Noch keine Messungen. Ein Hüft-Werkzeug in der linken Leiste wählen — oder Länge/Winkel in der Kopfzeile.'}
@@ -205,395 +317,327 @@ export function MeasurementPanel() {
           </Hint>
         )}
 
-        {measurements.length > 0 && (
-          <ul className="flex flex-col gap-1">
+        {hatLoeschbareMessungen && (
+          <ul className="flex flex-col gap-0.5">
             {measurements.map((m) => (
               <Row
                 key={m.id}
                 badge={m.label}
-                badgeColor={
-                  m.kind === 'length' ? 'text-sky-400' : 'text-sky-300'
-                }
-                visible={m.visible}
-                onToggleVisible={() => setMeasurementVisible(m.id, !m.visible)}
-                onDelete={() => removeMeasurement(m.id)}
-                main={
+                badgeColor="text-sky-300"
+                titel={
                   <>
-                    {m.value.toFixed(1)} {m.unit}
+                    {m.kind === 'length' ? 'Länge' : 'Winkel'}
                     {m.kind === 'length' && !m.calibrated && (
-                      <span className="ml-1 text-[10px] text-amber-500">
-                        unkal.
-                      </span>
+                      <span className="text-amber-500"> · unkalibriert</span>
                     )}
                   </>
                 }
+                wert={m.unit === '°' ? grad(m.value) : mm(m.value)}
+                visible={m.visible}
+                onToggleVisible={() => setMeasurementVisible(m.id, !m.visible)}
+                onDelete={() => removeMeasurement(m.id)}
               />
             ))}
-          </ul>
-        )}
 
-        {splitView && rightMeasurements.length > 0 && (
-          <div className="mt-1">
-            <div className="px-1 pb-0.5 pt-1 text-[10px] font-medium uppercase tracking-wider text-neutral-500">
-              Seitliches Bild
-            </div>
-            <ul className="flex flex-col gap-1">
-              {rightMeasurements.map((m) => (
-                <Row
-                  key={m.id}
-                  badge={m.label}
-                  badgeColor={m.kind === 'length' ? 'text-sky-400' : 'text-sky-300'}
-                  visible={m.visible}
-                  onToggleVisible={() =>
-                    setRightMeasurementVisible(m.id, !m.visible)
-                  }
-                  onDelete={() => removeRightMeasurement(m.id)}
-                  main={
-                    <>
-                      {m.value.toFixed(1)} {m.unit}
-                      {m.kind === 'length' && !m.calibrated && (
-                        <span className="ml-1 text-[10px] text-amber-500">
-                          unkal.
-                        </span>
-                      )}
-                    </>
-                  }
-                />
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {showLldBalance && bal && (
-          <div className="mb-2 mt-1 rounded border border-amber-700/50 bg-amber-950/30 px-2.5 py-2 text-sm">
-            <div className="mb-1 flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-300">
-                Beinlängen-Bilanz
-              </span>
-              {!calibration && (
-                <span className="text-[10px] text-amber-500">unkalibriert</span>
-              )}
-            </div>
-            <LldRow label="Prä-OP" value={bal.preopText} />
-            {bal.hasImplants &&
-              lldCorrection.perSide.map((c) => (
-                <LldCorrectionRow key={c.side} side={c.side} mm={c.mm} />
-              ))}
-            {bal.hasImplants && bal.postopText && (
-              <div className="mt-1 border-t border-amber-700/40 pt-1">
-                <LldRow label="Post-OP" value={bal.postopText} bold />
-              </div>
-            )}
-            {!bal.hasImplants && (
-              <Hint>
-                <div className="mt-0.5 text-[10px] text-neutral-500">
-                  Pfanne + Schaft planen für die Post-OP-Bilanz.
-                </div>
-              </Hint>
-            )}
-          </div>
-        )}
-
-        {deltas.length > 0 && (
-          <ul className="mt-1 flex flex-col gap-1">
-            {deltas.map(({ side, lldMm, offsetMm, stemRotationDeg, referenceAngleDeg }) => {
-              const sign = (v: number) =>
-                v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)
-              const longer = lldMm > 0
-              // offsetMm < 0 = Kopf weiter lateral (= globales Offset
-              // kleiner). Der beschreibende Text folgt der Kopf-Lage.
-              const lat = offsetMm < 0
-              const align = stemAxisAlignment(
-                stemRotationDeg,
-                side,
-                referenceAngleDeg,
-              )
-              return (
-                <li
-                  key={side}
-                  className="flex items-start gap-2 rounded px-2 py-1.5 text-sm hover:bg-neutral-800"
-                >
-                  <span className="w-7 shrink-0 text-xs font-semibold text-amber-300">
-                    Δ{side}
-                  </span>
-                  <div className="flex flex-1 flex-col leading-tight">
-                    <span className="text-[11px] text-neutral-400">
-                      Plan-Änderung · {side === 'R' ? 'rechts' : 'links'}
-                      {!calibration && (
-                        <span className="ml-1 text-amber-500">· unkalibriert</span>
-                      )}
-                    </span>
-                    <span className="tabular-nums">
-                      <span className="text-neutral-500">Länge: </span>
-                      {sign(lldMm)} mm
-                      <span className="ml-1 text-[10px] text-neutral-500">
-                        ({longer ? 'länger' : 'kürzer'})
-                      </span>
-                    </span>
-                    <span className="tabular-nums">
-                      <span className="text-neutral-500">Offset: </span>
-                      {sign(offsetMm)} mm
-                      <span className="ml-1 text-[10px] text-neutral-500">
-                        ({lat ? 'mehr lateral' : 'medialer'})
-                      </span>
-                    </span>
-                    <span className="tabular-nums">
-                      <span className="text-neutral-500">Schaft-Achse: </span>
-                      {align.label === 'Neutral'
-                        ? 'neutral (0°)'
-                        : `${align.degrees.toFixed(1)}° ${align.label}`}
-                    </span>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-
-        {hipMeasurements.length > 0 && (
-          <ul className="mt-1 flex flex-col gap-1">
             {hipMeasurements.map((m) => {
               const recipe = getRecipe(m.kind)
               if (!recipe) return null
-              // Das Femurprofil zeigt seine Werte AUSSCHLIESSLICH in der
-              // eigenen Karte. Die Zeile bleibt als Griff (Sichtbarkeit,
-              // Löschen), trägt aber keine Werte mehr.
-              //
-              // Sonst stünde die Klassifikation zweimal da — und zwar
-              // ungleich: `compute` ist rein und kennt das Bildqualitäts-
-              // Gate nicht, hätte hier also „Dorr-Vorschlag B" gezeigt,
-              // während die Karte direkt darunter „nicht zuverlässig
-              // bestimmbar" meldet. Das Gate wäre damit ausgehebelt.
+              // Femurprofil und die Bilanz-LLD zeigen ihre Werte
+              // AUSSCHLIESSLICH in der eigenen Karte; die Zeile bleibt Griff.
+              // Beim Femurprofil wäre eine zweite Anzeige zudem UNGLEICH:
+              // `compute` ist rein und kennt die gespeicherte Checkliste
+              // älterer Pläne nicht, zeigte also eine Klasse, die die Karte
+              // unterdrückt.
               const istFemurprofil = m.kind === 'femurProfile'
-              const { values } = istFemurprofil
-                ? { values: [] }
-                : recipe.compute(m.points, factor)
+              const inBilanz = preop?.messung.id === m.id
+              const { wert, zeilen } =
+                istFemurprofil || inBilanz
+                  ? { wert: undefined, zeilen: [] }
+                  : aufteilen(recipe.label, recipe.compute(m.points, factor).values)
               return (
                 <Row
                   key={m.id}
                   badge="H"
                   badgeColor="text-sky-200"
+                  titel={
+                    <>
+                      {recipe.label}
+                      {unkalibriert(recipe.needsCalibration === true)}
+                    </>
+                  }
+                  wert={wert}
+                  zeilen={zeilen}
+                  verweis={
+                    istFemurprofil
+                      ? m.visible
+                        ? 'siehe „Morphologie & Fixation"'
+                        : 'Karte erscheint beim Einblenden'
+                      : inBilanz
+                        ? 'siehe „Beinlänge & Offset"'
+                        : undefined
+                  }
                   visible={m.visible}
                   onToggleVisible={() => setHipVisible(m.id, !m.visible)}
                   onDelete={() => removeHip(m.id)}
-                  main={
-                    <div className="flex flex-col">
-                      <span className="text-[11px] text-neutral-400">
-                        {recipe.label}
-                        {recipe.needsCalibration && !calibration && (
-                          <span className="ml-1 text-amber-500">
-                            · unkalibriert
-                          </span>
-                        )}
-                      </span>
-                      {istFemurprofil && (
-                        <span className="text-[10px] text-neutral-500">
-                          Ergebnisse siehe „Morphologie &amp; Fixation"
-                        </span>
-                      )}
-                      {values.map((v, i) => (
-                        <span key={i} className="tabular-nums">
-                          {values.length > 1 && (
-                            <span className="text-neutral-500">
-                              {v.label}:{' '}
-                            </span>
-                          )}
-                          {v.value}
-                        </span>
-                      ))}
-                    </div>
-                  }
                 />
               )
             })}
-          </ul>
-        )}
 
-        {kneeMeasurements.length > 0 && (
-          <ul className="mt-1 flex flex-col gap-1">
             {kneeMeasurements.map((m) => {
               const recipe = getKneeRecipe(m.kind)
               if (!recipe) return null
-              const { values } = recipe.compute(m.points, factor)
+              const verweis =
+                m === massgeblich
+                  ? 'siehe „Beinachse" und „CPAK"'
+                  : paleyIds.has(m.id)
+                    ? 'siehe „Beinachse"'
+                    : undefined
+              const { wert, zeilen } = verweis
+                ? { wert: undefined, zeilen: [] }
+                : aufteilen(recipe.label, recipe.compute(m.points, factor).values)
               return (
                 <Row
                   key={m.id}
                   badge="K"
                   badgeColor="text-violet-300"
+                  titel={
+                    <>
+                      {recipe.label}
+                      {unkalibriert(recipe.needsCalibration === true)}
+                    </>
+                  }
+                  wert={wert}
+                  zeilen={zeilen}
+                  verweis={verweis}
                   visible={m.visible}
                   onToggleVisible={() => setKneeVisible(m.id, !m.visible)}
                   onDelete={() => removeKnee(m.id)}
-                  main={
-                    <div className="flex flex-col">
-                      <span className="text-[11px] text-neutral-400">
-                        {recipe.label}
-                        {recipe.needsCalibration && !calibration && (
-                          <span className="ml-1 text-amber-500">
-                            · unkalibriert
-                          </span>
-                        )}
-                      </span>
-                      {values.map((v, i) => (
-                        <span key={i} className="tabular-nums">
-                          {values.length > 1 && (
-                            <span className="text-neutral-500">
-                              {v.label}:{' '}
-                            </span>
-                          )}
-                          {v.value}
-                        </span>
-                      ))}
-                    </div>
-                  }
                 />
               )
             })}
-          </ul>
-        )}
 
-        {/* Schulter-Messungen. Zeigt zusaetzlich die SEITE, weil sie pro
-            Messung eingefroren wird: Ein spaeteres Umschalten in der
-            Toolbar deutet bestehende Messungen bewusst nicht um, also
-            muss am Wert ablesbar sein, fuer welche Schulter er gilt. */}
-        {shoulderMeasurements.length > 0 && (
-          <ul className="mt-1 flex flex-col gap-1">
+            {/* Schulter: zusätzlich die SEITE, weil sie pro Messung
+                eingefroren wird — ein späteres Umschalten in der Toolbar
+                deutet bestehende Messungen bewusst nicht um. */}
             {shoulderMeasurements.map((m) => {
               const recipe = getShoulderRecipe(m.kind)
               if (!recipe) return null
-              const { values } = recipe.compute(m.points, factor)
+              const { wert, zeilen } = aufteilen(
+                recipe.label,
+                recipe.compute(m.points, factor).values,
+              )
               return (
                 <Row
                   key={m.id}
                   badge="S"
                   badgeColor="text-emerald-300"
+                  titel={
+                    <>
+                      {recipe.label}
+                      <span className="text-neutral-500">
+                        {' '}
+                        · {m.side === 'R' ? 'rechts' : 'links'}
+                      </span>
+                      {unkalibriert(recipe.needsCalibration === true)}
+                    </>
+                  }
+                  wert={wert}
+                  zeilen={zeilen}
                   visible={m.visible}
                   onToggleVisible={() => setShoulderVisible(m.id, !m.visible)}
                   onDelete={() => removeShoulder(m.id)}
-                  main={
-                    <div className="flex flex-col">
-                      <span className="text-[11px] text-neutral-400">
-                        {recipe.label}
-                        <span className="ml-1 text-neutral-500">
-                          · {m.side === 'R' ? 'rechts' : 'links'}
-                        </span>
-                        {recipe.needsCalibration && !calibration && (
-                          <span className="ml-1 text-amber-500">
-                            · unkalibriert
-                          </span>
-                        )}
-                      </span>
-                      {values.map((v, i) => (
-                        <span key={i} className="tabular-nums">
-                          {values.length > 1 && (
-                            <span className="text-neutral-500">
-                              {v.label}:{' '}
-                            </span>
-                          )}
-                          {v.value}
-                        </span>
-                      ))}
-                    </div>
-                  }
                 />
               )
             })}
+
+            {splitView && rightMeasurements.length > 0 && (
+              <li className="px-2 pb-0.5 pt-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral-500">
+                Seitliches Bild
+              </li>
+            )}
+            {splitView &&
+              rightMeasurements.map((m) => (
+                <Row
+                  key={m.id}
+                  badge={m.label}
+                  badgeColor="text-sky-300"
+                  titel={
+                    <>
+                      {m.kind === 'length' ? 'Länge' : 'Winkel'}
+                      {m.kind === 'length' && !m.calibrated && (
+                        <span className="text-amber-500"> · unkalibriert</span>
+                      )}
+                    </>
+                  }
+                  wert={m.unit === '°' ? grad(m.value) : mm(m.value)}
+                  visible={m.visible}
+                  onToggleVisible={() => setRightMeasurementVisible(m.id, !m.visible)}
+                  onDelete={() => removeRightMeasurement(m.id)}
+                />
+              ))}
           </ul>
         )}
 
-        {/* Ergebnis-Karte pro Femurprofil-Messung — wie das CPAK-Schaubild
-            unter der Liste, weil sie sich vollständig aus den Punkten
-            ableitet. Die Klasse hängt an der bestätigten Bildqualität, die
-            an der Messung selbst hängt. */}
-        {hipMeasurements
-          .filter((m) => m.kind === 'femurProfile' && m.visible)
-          .map((m) => (
-            <div key={`fp-${m.id}`} className="mt-2">
-              <FemurProfileCard
-                id={m.id}
-                points={m.points}
-                mmPerWorldUnit={factor}
-                review={m.femurProfileReview}
-              />
+        {karten.length > 0 && (
+          <>
+            <div className="px-2 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-neutral-500">
+              Auswertung
             </div>
-          ))}
-
-        {/* CPAK-Schaubild pro Workflow-Messung — leitet sich direkt aus den
-            17 Punkten ab und braucht keine eigene Mess-Aktion. */}
-        {kneeMeasurements
-          .filter((m) => m.kind === 'workflow' && m.visible)
-          .map((m) => {
-            const raw = computeWorkflowRaw(m.points, factor)
-            if (!raw) return null
-            const cpak = computeCpak(raw.mLDFA, raw.mMPTA)
-            // „Geplante" CPAK aus den platzierten AP-Komponenten (Haupt-Pane).
-            const axes = extractWorkflowAxes(m.points)
-            const apLeft = kneeTemplates.filter(
-              (t) => (t.pane ?? 'left') === 'left' && t.view === 'AP',
-            )
-            const fem = pickComponent(apLeft, 'Femur')
-            const tib = pickComponent(apLeft, 'Tibia')
-            // Umstellungsosteotomie hat Vorrang vor Implantaten (beides
-            // zugleich ist kein klinisches Szenario) — „prä-OP → nach
-            // Osteotomie" wie bei der Prothesenplanung.
-            const planned = osteoCpak
-              ? osteoCpak
-              : axes && (fem || tib)
-                ? computePlannedCpak(axes, raw.mLDFA, raw.mMPTA, fem, tib)
-                : null
-            return (
-              <div key={`cpak-${m.id}`} className="mt-2">
-                <CpakMatrix result={cpak} planned={planned} />
-              </div>
-            )
-          })}
-        {planningMode === 'knee' && <KneeDeformitaetKarte />}
-        {planningMode === 'knee' && <KneeOsteotomieKarte />}
+            <div className="flex flex-col gap-2">{karten}</div>
+          </>
+        )}
       </div>
     </div>
   )
 }
 
+/**
+ * Hüfte: Beinlängen-Bilanz UND Planungsänderung in EINER Karte. Vorher
+ * standen die Implantat-Korrektur zweimal da (Bilanz in cm, „Δ"-Zeile in
+ * mm) und die TM-Abstände zusätzlich in der Messliste.
+ */
+function HuefteBilanzKarte({
+  kalibriert,
+  tm,
+  bal,
+  deltas,
+}: {
+  kalibriert: boolean
+  /** TM-Abstände der Bilanz-LLD-Messung (bereits formatiert). */
+  tm: Werte
+  bal: ReturnType<typeof buildLldBalance> | null
+  deltas: {
+    side: 'R' | 'L'
+    lldMm: number
+    offsetMm: number
+    stemRotationDeg: number
+    referenceAngleDeg?: number
+  }[]
+}) {
+  const seite = (s: 'R' | 'L') => (s === 'R' ? 'rechts' : 'links')
+  const achse = (d: (typeof deltas)[number]) => {
+    const a = stemAxisAlignment(d.stemRotationDeg, d.side, d.referenceAngleDeg)
+    return a.label === 'Neutral' ? 'neutral' : `${grad(a.degrees)} ${a.label}`
+  }
+  return (
+    <Karte
+      titel="Beinlänge & Offset"
+      kennung={kalibriert ? undefined : <span className="text-amber-500">unkalibriert</span>}
+      fuss={
+        deltas.length > 0
+          ? 'Planung = Verschiebung Pfannenzentrum → Schaftkopf relativ zur Beckenlinie.'
+          : undefined
+      }
+    >
+      {bal && (
+        <Kennwerte
+          zeilen={[
+            ...tm.map((v): KennwertZeile => ({ label: v.label, werte: [v.value] })),
+            {
+              label: 'Differenz prä-OP',
+              werte: [bal.preopText],
+              titel: 'Bezug: operierte Seite, ohne Planung die längere',
+            },
+          ]}
+        />
+      )}
+      {deltas.length > 0 && (
+        <MaybeAbschnitt trennen={bal != null}>
+          <Kennwerte
+            spalten={deltas.map((d) => `Plan ${seite(d.side)}`)}
+            zeilen={[
+              {
+                label: 'Beinlänge',
+                norm: '+ länger',
+                werte: deltas.map((d) => cmMitVorzeichen(d.lldMm)),
+              },
+              {
+                label: 'Offset',
+                norm: '− lateral',
+                titel: 'Negativ = Kopf weiter lateral, positiv = medialer',
+                werte: deltas.map((d) => mmMitVorzeichen(d.offsetMm)),
+              },
+              { label: 'Schaftachse', werte: deltas.map(achse) },
+            ]}
+          />
+        </MaybeAbschnitt>
+      )}
+      {bal?.hasImplants && bal.postopText && (
+        <Abschnitt>
+          <Kennwerte zeilen={[{ label: 'Differenz post-OP', werte: [bal.postopText], betont: true }]} />
+        </Abschnitt>
+      )}
+      {bal && !bal.hasImplants && (
+        <Hint>
+          <div className="mt-1 text-[10px] text-neutral-500">
+            Pfanne + Schaft planen für die Post-OP-Bilanz.
+          </div>
+        </Hint>
+      )}
+    </Karte>
+  )
+}
+
+function MaybeAbschnitt({ trennen, children }: { trennen: boolean; children: ReactNode }) {
+  return trennen ? <Abschnitt>{children}</Abschnitt> : <>{children}</>
+}
+
+/**
+ * Eine Zeile der Messliste. Einzelwert rechts in der Kopfzeile, mehrere
+ * Werte als Kennwert-Tabelle darunter — oder nur ein Verweis, wenn eine
+ * Karte die Werte zeigt.
+ */
 function Row({
   badge,
   badgeColor,
-  main,
+  titel,
+  wert,
+  zeilen,
+  verweis,
   visible,
   onToggleVisible,
   onDelete,
 }: {
   badge: string
   badgeColor: string
-  main: React.ReactNode
+  titel: ReactNode
+  wert?: string
+  zeilen?: KennwertZeile[]
+  verweis?: string
   visible: boolean
   onToggleVisible: () => void
   onDelete: () => void
 }) {
   return (
-    <li className="group flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-neutral-800">
+    <li className="group flex items-start gap-2 rounded px-2 py-1 hover:bg-neutral-800/70">
       <span
-        className={`w-7 shrink-0 text-xs font-semibold ${badgeColor}`}
+        className={`w-7 shrink-0 text-[11px] font-semibold leading-5 ${badgeColor}`}
         title={BADGE_TITEL[badge] ?? undefined}
       >
         {badge}
       </span>
-      <span
-        className={[
-          'flex-1',
-          visible ? 'text-neutral-200' : 'text-neutral-500',
-        ].join(' ')}
-      >
-        {main}
-      </span>
+      <div className={['min-w-0 flex-1', visible ? '' : 'opacity-50'].join(' ')}>
+        <div className="flex items-baseline justify-between gap-2 leading-5">
+          <span className="min-w-0 truncate text-[11px] text-neutral-300">{titel}</span>
+          {wert != null && (
+            <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-neutral-100">
+              {wert}
+            </span>
+          )}
+        </div>
+        {zeilen && zeilen.length > 0 && <Kennwerte zeilen={zeilen} />}
+        {verweis && <div className="text-[10px] leading-snug text-neutral-500">{verweis}</div>}
+      </div>
       <button
         onClick={onToggleVisible}
-        className="shrink-0 text-neutral-500 transition hover:text-sky-300"
+        className="mt-0.5 shrink-0 text-neutral-500 transition hover:text-sky-300"
         title={visible ? 'Im Bild ausblenden' : 'Im Bild einblenden'}
       >
         <EyeIcon off={!visible} />
       </button>
       <button
         onClick={onDelete}
-        className="shrink-0 text-xs text-neutral-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
+        className="shrink-0 text-xs leading-5 text-neutral-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
         title="Messung löschen"
       >
         ✕
@@ -624,57 +668,5 @@ function EyeIcon({ off }: { off: boolean }) {
       <circle cx="7" cy="7" r="1.8" />
       {off && <line x1="1.5" y1="1.5" x2="12.5" y2="12.5" />}
     </svg>
-  )
-}
-
-/** Eine Zeile der Beinlängen-Bilanz: Label + fertig formatierter Wert
- *  (der Wert kommt aus buildLldBalance, immer relativ zur Bezugsseite). */
-function LldRow({
-  label,
-  value,
-  bold,
-}: {
-  label: string
-  value: string
-  bold?: boolean
-}) {
-  return (
-    <div className="flex items-baseline justify-between gap-2 leading-tight">
-      <span
-        className={
-          bold
-            ? 'text-[11px] font-semibold text-amber-100'
-            : 'text-[11px] text-neutral-400'
-        }
-      >
-        {label}
-      </span>
-      <span
-        className={
-          bold
-            ? 'tabular-nums text-sm font-semibold text-amber-100'
-            : 'tabular-nums text-sm text-neutral-200'
-        }
-      >
-        {value}
-      </span>
-    </div>
-  )
-}
-
-/** Zeile für die Implantat-bedingte Korrektur pro Seite. Positiv =
- *  operiertes Bein wird länger. */
-function LldCorrectionRow({ side, mm }: { side: 'R' | 'L'; mm: number }) {
-  const sign = mm > 0 ? '+' : ''
-  return (
-    <div className="flex items-baseline justify-between gap-2 leading-tight">
-      <span className="text-[11px] text-neutral-400">
-        Korrektur {side === 'R' ? 'rechts' : 'links'}
-      </span>
-      <span className="tabular-nums text-sm text-neutral-200">
-        {sign}
-        {(mm / 10).toFixed(2).replace('.', ',')} cm
-      </span>
-    </div>
   )
 }

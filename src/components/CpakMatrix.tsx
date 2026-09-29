@@ -14,6 +14,11 @@
 import type { CpakResult } from '../lib/knee/cpak'
 import { CPAK_AHKA_THRESHOLDS, CPAK_JLO_THRESHOLDS } from '../lib/knee/cpak'
 import type { PlannedCpak } from '../lib/knee/resection'
+import { grad, gradMitVorzeichen } from '../lib/zahlFormat'
+import { Karte, Kennwerte } from './Ergebnis'
+
+/** Geplanter Punkt: dieselbe Farbe wie die Spalte „geplant" (Ergebnis.tsx). */
+const GEPLANT = '#34d399'
 
 const W = 220
 const H = 200
@@ -97,24 +102,41 @@ export function CpakMatrix({
     (yApexProxBorder + (PAD_TOP + PLOT_H)) / 2,
   ]
 
+  /** Werte-Spalten: gemessen, und nur mit Planung zusätzlich geplant. */
+  const spalte = (gemessen: string, geplant: string | null | undefined) =>
+    planned ? [gemessen, geplant ?? null] : [gemessen]
+
   const pointX = xOf(result.aHKA)
   const pointY = yOf(result.JLO)
   const plannedX = planned ? xOf(planned.cpak.aHKA) : null
   const plannedY = planned ? yOf(planned.cpak.JLO) : null
 
   return (
-    <div className="rounded border border-neutral-800 bg-neutral-950 p-2">
-      <div className="mb-1 flex items-baseline justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
-          CPAK-Klassifikation
-        </span>
-        <span className="text-[11px] text-violet-300">
+    <Karte
+      titel="CPAK-Klassifikation"
+      kennung={
+        <>
           Typ {result.type}
           {planned && planned.cpak.type !== result.type && (
-            <span className="text-amber-300"> → {planned.cpak.type}</span>
+            <span className="text-emerald-300"> → {planned.cpak.type}</span>
           )}
-        </span>
-      </div>
+        </>
+      }
+      fuss={
+        planned ? (
+          <span className="flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2 w-2 rounded-full border border-amber-500 bg-slate-900" />
+              gemessen
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+              {planned.quelle === 'osteotomie' ? 'nach Osteotomie' : 'geplant (Implantate)'}
+            </span>
+          </span>
+        ) : undefined
+      }
+    >
 
       <svg width={W} height={H} className="block">
         {/* Plot-Hintergrund */}
@@ -192,7 +214,7 @@ export function CpakMatrix({
             y1={pointY}
             x2={plannedX}
             y2={plannedY}
-            stroke="#f59e0b"
+            stroke={GEPLANT}
             strokeWidth={1}
             strokeDasharray="3 3"
           />
@@ -206,68 +228,44 @@ export function CpakMatrix({
           stroke="#f59e0b"
           strokeWidth={1.5}
         />
-        {/* Geplanter (post-OP) Punkt: gefüllt Amber. */}
+        {/* Geplanter (post-OP) Punkt: gefüllt grün. */}
         {planned && plannedX != null && plannedY != null && (
           <circle
             cx={plannedX}
             cy={plannedY}
             r={5}
-            fill="#f59e0b"
-            stroke="#fff7ed"
+            fill={GEPLANT}
+            stroke="#ecfdf5"
             strokeWidth={1.5}
           />
         )}
       </svg>
 
-      <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] tabular-nums text-neutral-400">
-        <span>aHKA:</span>
-        <span className="text-right text-neutral-200">{formatAhka(result.aHKA)}</span>
-        <span>JLO:</span>
-        <span className="text-right text-neutral-200">{result.JLO.toFixed(1)}°</span>
-        <span>Ausrichtung:</span>
-        <span className="text-right text-neutral-200">{result.alignment}</span>
-        <span>Gelenklinie:</span>
-        <span className="text-right text-neutral-200">{result.jlo}</span>
+      {/* Nur die aus mLDFA/mMPTA ABGELEITETEN Größen — die beiden Winkel
+          selbst stehen in der Karte „Beinachse" (gemessen und geplant). */}
+      <div className="mt-1">
+        <Kennwerte
+          spalten={
+            planned
+              ? ['gemessen', 'geplant']
+              : undefined
+          }
+          zeilen={[
+            {
+              label: 'aHKA',
+              titel: 'arithmetische HKA: mMPTA − mLDFA (MacDessi 2021)',
+              werte: spalte(gradMitVorzeichen(result.aHKA), planned && gradMitVorzeichen(planned.cpak.aHKA)),
+            },
+            {
+              label: 'JLO',
+              titel: 'Gelenklinien-Obliquität: mLDFA + mMPTA (MacDessi 2021)',
+              werte: spalte(grad(result.JLO), planned && grad(planned.cpak.JLO)),
+            },
+            { label: 'Ausrichtung', werte: spalte(result.alignment, planned && planned.cpak.alignment) },
+            { label: 'Gelenklinie', werte: spalte(result.jlo, planned && planned.cpak.jlo) },
+          ]}
+        />
       </div>
-
-      {planned && (
-        <div className="mt-1.5 border-t border-neutral-800 pt-1.5 text-[10px] text-neutral-400">
-          <div className="mb-1 flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full border border-amber-500 bg-slate-900" />
-              prä-OP
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
-              {planned.quelle === 'osteotomie' ? 'nach Osteotomie' : 'geplant'} ·{' '}
-              {planned.cpak.alignment}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 tabular-nums">
-            <span>aHKA (geplant):</span>
-            <span className="text-right text-amber-200">{formatAhka(planned.cpak.aHKA)}</span>
-            <span>LDFA / MPTA:</span>
-            <span className="text-right text-amber-200">
-              {planned.ldfa.toFixed(1)}° / {planned.mpta.toFixed(1)}°
-            </span>
-          </div>
-          {planned.quelle !== 'osteotomie' && (!planned.femPlaced || !planned.tibPlaced) && (
-            <div className="mt-1 text-[9px] text-neutral-500">
-              {!planned.femPlaced
-                ? 'Nur Tibia geplant — LDFA = gemessen.'
-                : 'Nur Femur geplant — MPTA = gemessen.'}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+    </Karte>
   )
-}
-
-/** „+5.1°" / „−1.8°" / „0.0°" — Vorzeichen explizit, damit Varus/Valgus
- *  auf einen Blick erkennbar bleibt. */
-function formatAhka(v: number): string {
-  if (v > 0) return `+${v.toFixed(1)}°`
-  if (v < 0) return `−${Math.abs(v).toFixed(1)}°`
-  return '0.0°'
 }

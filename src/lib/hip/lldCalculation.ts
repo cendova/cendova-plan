@@ -25,6 +25,7 @@ import type { HipMeasurement } from '../../state/hipStore'
 import type { CupTemplate, StemTemplate } from '../../state/templateStore'
 import { computePlanningDelta } from './templates'
 import { caudalDistance } from './geometry'
+import { cmMitVorzeichen, mmMitVorzeichen } from '../zahlFormat'
 
 type P = Types.Point3
 
@@ -56,6 +57,18 @@ export function findPreopLLD(
   hipMeasurements: HipMeasurement[],
   mmPerWorldUnit: number,
 ): number | null {
+  return findPreopLLDMessung(hipMeasurements, mmPerWorldUnit)?.lldMm ?? null
+}
+
+/**
+ * Wie `findPreopLLD`, liefert aber zusätzlich die Messung selbst — die
+ * rechte Spalte zeigt deren Werte in der Bilanz-Karte statt ein zweites
+ * Mal in der Messliste.
+ */
+export function findPreopLLDMessung(
+  hipMeasurements: HipMeasurement[],
+  mmPerWorldUnit: number,
+): { messung: HipMeasurement; lldMm: number } | null {
   // Bei mehreren LLD-Messungen: nimm die jüngste (= zuletzt hinzugefügt).
   // Reihenfolge der Liste entspricht Reihenfolge des Hinzufügens, daher
   // von hinten suchen.
@@ -63,7 +76,7 @@ export function findPreopLLD(
     const m = hipMeasurements[i]
     if (m.kind === 'lld' && m.visible !== false) {
       const v = computePreopLLDSigned(m, mmPerWorldUnit)
-      if (v != null) return v
+      if (v != null) return { messung: m, lldMm: v }
     }
   }
   return null
@@ -107,7 +120,7 @@ export function computeImplantLLDCorrection(
 
 /**
  * Wandelt einen signierten LLD-Wert in den klinischen Text-String um.
- * Beispiel: -6 → „Rechts -6.0 mm (kürzer)", +5 → „Rechts +5.0 mm (länger)".
+ * Beispiel: -6 → „Rechts −6,0 mm (kürzer)", +5 → „Rechts +5,0 mm (länger)".
  * Bei 0 ± Toleranz → „Ausgeglichen".
  */
 export function formatSignedLLD(
@@ -118,10 +131,9 @@ export function formatSignedLLD(
   // Für die Anzeige bezogen auf die genannte Seite. Default = R (typisches
   // Berichtsformat: alles relativ zur rechten Seite).
   const valueForSide = side === 'R' ? signedMm : -signedMm
-  const sign = valueForSide >= 0 ? '+' : ''
   const longerShorter = valueForSide >= 0 ? 'länger' : 'kürzer'
   const sideLabel = side === 'R' ? 'Rechts' : 'Links'
-  return `${sideLabel} ${sign}${valueForSide.toFixed(1)} mm (${longerShorter})`
+  return `${sideLabel} ${mmMitVorzeichen(valueForSide)} (${longerShorter})`
 }
 
 /** Operierte Seite = Seite mit Pfanne+Schaft (aus der Korrektur). Bei
@@ -142,8 +154,8 @@ export function formatLldForSide(signedMm: number, side: 'R' | 'L'): string {
   if (Math.abs(signedMm) < 0.05) return 'ausgeglichen'
   const v = side === 'R' ? signedMm : -signedMm
   const sideLabel = side === 'R' ? 'Rechts' : 'Links'
-  // Beinlänge einheitlich in cm (wie die BLD-Messung), Komma als Dezimaltrenner.
-  return `${sideLabel} ${v >= 0 ? '+' : ''}${(v / 10).toFixed(2).replace('.', ',')} cm`
+  // Beinlänge einheitlich in cm (wie die BLD-Messung), Schreibweise zentral.
+  return `${sideLabel} ${cmMitVorzeichen(v)}`
 }
 
 /** Anzeige-Daten der Beinlaengen-Bilanz (geteilt von Sidebar + Bild-Kasten). */
@@ -189,7 +201,7 @@ export function buildLldBalance(
     hasImplants,
     preopText: formatLldForSide(preopLLD, opSide),
     correctionText: hasImplants
-      ? `${corrMm >= 0 ? '+' : ''}${(corrMm / 10).toFixed(2).replace('.', ',')} cm`
+      ? cmMitVorzeichen(corrMm)
       : null,
     postopText: hasImplants ? formatLldForSide(postop, opSide) : null,
     resultText: hasImplants

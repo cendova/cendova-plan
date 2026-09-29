@@ -113,15 +113,10 @@ export function CpahMatrix({
   const xHigh = xForOf(FOR_HIGH_AT)
 
   return (
-    <div className="rounded border border-neutral-800 bg-neutral-950 p-2">
-      <div className="mb-1 flex items-baseline justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
-          CPAH-Klassifikation
-        </span>
-        <span className="text-[11px] text-violet-300">Typ {cpah.code}</span>
-      </div>
-
-      <svg width={W} height={H} className="block">
+    // Ohne eigenen Kartenrahmen und Titel: Das Schaubild sitzt IN der Karte
+    // „Morphologie & Fixation", deren Kopf den Typ bereits nennt.
+    <div>
+      <svg width={W} height={H} className="block" role="img" aria-label={`CPAH-Schaubild, Typ ${cpah.code}`}>
         <rect
           x={PAD_LEFT}
           y={PAD_TOP}

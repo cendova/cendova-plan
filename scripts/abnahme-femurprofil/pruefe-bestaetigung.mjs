@@ -30,11 +30,11 @@ await page.evaluate((punkte) => {
 }, PUNKTE)
 await page.waitForTimeout(600)
 
-const karte = () => page.locator('div.rounded.border').filter({ hasText: 'Morphologie & Fixation' }).last()
+const karte = () => page.locator('section.rounded.border').filter({ hasText: 'Morphologie & Fixation' }).last()
 const review = () => page.evaluate(() => window.__stores.hip.getState().measurements[0].femurProfileReview)
 
 // --- 1) Ausgangszustand: Vorschlag, nicht bestaetigt ------------------
-ok(/Dorr-Vorschlag\s+B/.test(await karte().innerText()), 'Zeigt zunaechst den Vorschlag')
+ok(/Dorr-Vorschlag(\s+Grenzbereich \S+)?\s+B\b/.test(await karte().innerText()), 'Zeigt zunaechst den Vorschlag')
 ok(/Noch nicht ärztlich bestätigt/.test(await karte().innerText()), 'Weist auf fehlende Bestaetigung hin')
 
 // --- 2) Identische Bestaetigung ---------------------------------------
@@ -74,7 +74,7 @@ ok(r?.dorrFinal === 'C', 'Abweichende Klasse C gespeichert')
 ok(r?.overrideReason === 'gesamtmorphologie', 'Grund gespeichert')
 ok(r?.dorrSuggested === 'B', 'Vorschlag B bleibt daneben erhalten')
 const txt = await karte().innerText()
-ok(/Dorr \(ärztlich\)\s+C/.test(txt), 'Anzeige nennt die aerztliche Klasse')
+ok(/Dorr \(ärztlich\)(\s+Vorschlag war B)?\s+C\b/.test(txt), 'Anzeige nennt die aerztliche Klasse')
 ok(/Vorschlag war B/.test(txt), 'Anzeige nennt den urspruenglichen Vorschlag')
 ok(/Gesamtmorphologie spricht dagegen/.test(txt), 'Grund im Klartext sichtbar')
 

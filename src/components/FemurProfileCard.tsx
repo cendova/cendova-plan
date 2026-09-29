@@ -15,6 +15,8 @@ import {
   useHipStore,
 } from '../state/hipStore'
 import { CpahMatrix } from './CpahMatrix'
+import { Abschnitt, Hinweis, Karte, Kennwerte, type KennwertZeile } from './Ergebnis'
+import { grad, mm, verhaeltnis } from '../lib/zahlFormat'
 
 /**
  * Ergebnis-Karte „Morphologie & Fixation" zu einer Femurprofil-Messung.
@@ -69,68 +71,74 @@ export function FemurProfileCard({
 
   if (!raw) return null
 
-  return (
-    <div className="rounded border border-neutral-800 bg-neutral-950 p-2">
-      <div className="mb-1 flex items-baseline justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
-          Morphologie &amp; Fixation
-        </span>
-        <span className="text-[11px] text-violet-300">
-          {cpah ? `CPAH ${cpah.code}` : '—'}
-        </span>
-      </div>
+  const v2 = (v: number | null) => (v == null ? null : verhaeltnis(v))
+  // Die Klasse steht als eigene Zeile über den Rohwerten (eigene Tabelle,
+  // damit ihr Zusatz nicht mit der Wertspalte der Rohwerte um Platz
+  // ringt). Was der CPAH-Code bedeutet (coxa, Offset-Typ), zeigt das
+  // Schaubild — eine Klartextzeile wiederholte den Code aus dem Kopf nur.
+  const dorrZeile: KennwertZeile | null = dorr
+    ? {
+        label: bestaetigt ? (abweichend ? 'Dorr (ärztlich)' : 'Dorr bestätigt') : 'Dorr-Vorschlag',
+        werte: [bestaetigt ? final : dorr.suggested],
+        betont: true,
+        norm: abweichend ? (
+          `Vorschlag war ${review?.dorrSuggested}`
+        ) : !bestaetigt && dorr.borderline ? (
+          <span className="text-amber-400">Grenzbereich {dorr.borderline}</span>
+        ) : undefined,
+      }
+    : null
+  const rohwerte: KennwertZeile[] = [
+    { label: 'Cortical Index', werte: [v2(raw.corticalIndex)] },
+    { label: 'Canal-Calcar Ratio', werte: [v2(raw.canalCalcarRatio)] },
+    { label: 'NSA (CCD)', werte: [raw.nsaDeg == null ? null : grad(raw.nsaDeg)] },
+    {
+      label: 'Femorales Offset',
+      werte: [raw.femoralOffsetMm == null ? null : mm(raw.femoralOffsetMm)],
+    },
+    { label: 'Femoral Offset Ratio', werte: [v2(raw.femoralOffsetRatio)] },
+  ]
 
-      {/* Klasse — oder die Begründung, warum es keine gibt. Nach der
-          ärztlichen Bestätigung tritt diese an die Stelle des Vorschlags;
-          der Vorschlag bleibt daneben sichtbar, wenn er abwich. */}
-      {dorr ? (
-        bestaetigt ? (
-          <div className="text-xs text-neutral-200">
-            {abweichend ? 'Dorr (ärztlich)' : 'Dorr bestätigt'}{' '}
-            <span className="font-semibold">{final}</span>
-            {abweichend && (
-              <span className="ml-1 text-neutral-400">
-                · Vorschlag war {review?.dorrSuggested}
-              </span>
-            )}
-          </div>
-        ) : (
-          <div className="text-xs text-neutral-200">
-            Dorr-Vorschlag <span className="font-semibold">{dorr.suggested}</span>
-            {dorr.borderline && (
-              <span className="ml-1 text-amber-400">
-                · Grenzbereich {dorr.borderline}
-              </span>
-            )}
-          </div>
-        )
+  return (
+    <Karte
+      titel="Morphologie & Fixation"
+      kennung={cpah ? `CPAH ${cpah.code}` : undefined}
+      fuss={
+        <>
+          {/* Voraussetzungen der Aufnahme — als ERKLÄRUNG, nicht als
+              Abfrage: Wer plant, hat die Eignung der Aufnahme vorher
+              geprüft (Nutzerentscheid 16.09.2026). Dieselbe Liste wie die
+              frühere Checkliste, damit Anspruch und Dokumentation nicht
+              auseinanderlaufen. */}
+          <details>
+            <summary className="cursor-pointer select-none hover:text-neutral-300">
+              Voraussetzungen der Aufnahme für Dorr/CPAH
+            </summary>
+            <ul className="mt-0.5 list-inside list-disc">
+              {FEMUR_PROFILE_QUALITAETS_KRITERIEN.map((k) => (
+                <li key={k.feld}>{k.voraussetzung ?? k.frage}</li>
+              ))}
+            </ul>
+            <div className="mt-0.5">
+              Ärztlich vorab zu beurteilen — das Programm erkennt sie nicht selbst.
+            </div>
+          </details>
+          <div className="mt-0.5">Planungshinweis — keine autonome Implantatentscheidung.</div>
+        </>
+      }
+    >
+      {/* Ohne Klasse steht die Begründung vor den Rohwerten — diese bleiben
+          immer sichtbar, sie sind das, was tatsächlich gemessen wurde. */}
+      {dorrZeile ? (
+        <div className="mb-1">
+          <Kennwerte zeilen={[dorrZeile]} />
+        </div>
       ) : (
-        <div className="text-xs text-neutral-400">
+        <div className="mb-1 text-[11px] text-neutral-400">
           Dorr/CPAH: nicht zuverlässig bestimmbar
         </div>
       )}
-
-      {cpah && (
-        <div className="text-[11px] text-neutral-400">
-          {cpah.code} · Dorr {dorr?.suggested} · coxa {raw.nsaClass} ·{' '}
-          {cpah.offsetSubtype === 'H' ? 'High-offset' : 'Normal-offset'}
-        </div>
-      )}
-
-      {/* Rohwerte: immer sichtbar, auch ohne Klassifikation — sie sind
-          das, was tatsächlich gemessen wurde. */}
-      <div className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-0.5 border-t border-neutral-800 pt-1.5 text-[10px] tabular-nums text-neutral-400">
-        <span>Cortical Index:</span>
-        <Wert v={raw.corticalIndex} nachkomma={2} />
-        <span>Canal-Calcar Ratio:</span>
-        <Wert v={raw.canalCalcarRatio} nachkomma={2} />
-        <span>NSA (CCD):</span>
-        <Wert v={raw.nsaDeg} nachkomma={1} einheit="°" />
-        <span>Femorales Offset:</span>
-        <Wert v={raw.femoralOffsetMm} nachkomma={1} einheit=" mm" />
-        <span>Femoral Offset Ratio:</span>
-        <Wert v={raw.femoralOffsetRatio} nachkomma={2} />
-      </div>
+      <Kennwerte zeilen={rohwerte} />
 
       {/* Fixationshinweis bei Dorr C (CPAH 7–9). Bewusst als PRÜF-Auftrag
           formuliert, nicht als Entscheidung: Der geometrisch gute Sitz
@@ -138,27 +146,34 @@ export function FemurProfileCard({
           Mehr Schaft-Bezug gibt es hier bewusst NICHT (Entscheidung
           16.09.2026): Die Implantatwahl bleibt beim planenden Chirurgen. */}
       {cpah && cpah.type >= 7 && (
-        <div className="mt-1.5 rounded border border-red-900/60 bg-red-950/30 p-1.5 text-[10px] leading-relaxed text-red-200">
+        <Hinweis stufe="warning">
           Dorr C: zementierte Fixation/Alternative aktiv prüfen.
           Geometrischer Fit hebt das Frakturrisiko nicht auf.
-        </div>
+        </Hinweis>
       )}
 
       {/* Warum keine Klasse? Nur noch bei älteren Plänen, deren gespeicherte
           Checkliste offene Kriterien trägt — deren Entscheidung bleibt. */}
       {!darfKlassifizieren && quality && (
-        <div className="mt-1.5 rounded border border-amber-900/60 bg-amber-950/30 p-1.5 text-[10px] leading-relaxed text-amber-200">
+        <Hinweis stufe="caution">
           <span className="font-semibold">
             Bildqualität laut gespeicherter Checkliste nicht bestätigt — Rohwerte
             bleiben, Klasse nicht:
           </span>
-          <ul className="mt-0.5 list-inside list-disc text-amber-200/80">
+          <ul className="mt-0.5 list-inside list-disc opacity-80">
             {quality.exclusionReasons.map((g) => (
               <li key={g}>{g}</li>
             ))}
           </ul>
-        </div>
+        </Hinweis>
       )}
+
+      {/* Mess-Warnungen der Geometrie (vertauschte Punkte o. Ä.). */}
+      {raw.warnings.map((w) => (
+        <Hinweis key={w} stufe="caution">
+          {w}
+        </Hinweis>
+      ))}
 
       {/* Ärztliche Bestätigung. Nur sinnvoll, wenn überhaupt eine Klasse
           abgeleitet werden darf — ohne Vorschlag gibt es nichts zu
@@ -179,47 +194,16 @@ export function FemurProfileCard({
         raw.corticalIndex != null &&
         raw.nsaDeg != null &&
         raw.femoralOffsetRatio != null && (
-          <div className="mt-2">
+          <Abschnitt>
             <CpahMatrix
               cpah={cpah}
               corticalIndex={raw.corticalIndex}
               nsaDeg={raw.nsaDeg}
               femoralOffsetRatio={raw.femoralOffsetRatio}
             />
-          </div>
+          </Abschnitt>
         )}
-
-      {/* Mess-Warnungen der Geometrie (vertauschte Punkte o. Ä.). */}
-      {raw.warnings.length > 0 && (
-        <ul className="mt-1.5 list-inside list-disc text-[10px] leading-relaxed text-amber-300/80">
-          {raw.warnings.map((w) => (
-            <li key={w}>{w}</li>
-          ))}
-        </ul>
-      )}
-
-      {/* Voraussetzungen der Aufnahme — als ERKLÄRUNG, nicht als Abfrage:
-          Wer plant, hat die Eignung der Aufnahme vorher geprüft
-          (Nutzerentscheid 16.09.2026). Dieselbe Liste wie die frühere
-          Checkliste, damit Anspruch und Dokumentation nicht auseinanderlaufen. */}
-      <details className="mt-1.5 border-t border-neutral-800 pt-1 text-[9px] leading-snug text-neutral-500">
-        <summary className="cursor-pointer select-none hover:text-neutral-300">
-          Voraussetzungen der Aufnahme für Dorr/CPAH
-        </summary>
-        <ul className="mt-0.5 list-inside list-disc">
-          {FEMUR_PROFILE_QUALITAETS_KRITERIEN.map((k) => (
-            <li key={k.feld}>{k.voraussetzung ?? k.frage}</li>
-          ))}
-        </ul>
-        <div className="mt-0.5">
-          Ärztlich vorab zu beurteilen — das Programm erkennt sie nicht selbst.
-        </div>
-      </details>
-
-      <div className="mt-1.5 border-t border-neutral-800 pt-1 text-[9px] leading-snug text-neutral-500">
-        Planungshinweis — keine autonome Implantatentscheidung.
-      </div>
-    </div>
+    </Karte>
   )
 }
 
@@ -276,10 +260,12 @@ function DorrBestaetigung({
   return (
     <div className="mt-1.5 border-t border-neutral-800 pt-1.5">
       {veraltet && (
-        <div className="mb-1 rounded border border-amber-900/60 bg-amber-950/30 p-1.5 text-[10px] leading-relaxed text-amber-200">
-          Die Punkte wurden nach der Bestätigung verändert — der Vorschlag
-          lautet jetzt {vorschlag}, bestätigt wurde gegen{' '}
-          {review?.dorrSuggested}. Bitte erneut prüfen.
+        <div className="mb-1.5 *:mt-0">
+          <Hinweis stufe="caution">
+            Die Punkte wurden nach der Bestätigung verändert — der Vorschlag
+            lautet jetzt {vorschlag}, bestätigt wurde gegen{' '}
+            {review?.dorrSuggested}. Bitte erneut prüfen.
+          </Hinweis>
         </div>
       )}
 
@@ -383,26 +369,6 @@ function DorrBestaetigung({
       )}
     </div>
   )
-}
-
-/** Zahl oder „—", damit ein fehlender Wert nicht als 0 gelesen wird. */
-function Wert({
-  v,
-  nachkomma,
-  einheit = '',
-}: {
-  v: number | null
-  nachkomma: number
-  einheit?: string
-}) {
-  if (v == null) {
-    return <span className="text-right text-neutral-500">—</span>
-  }
-  const text =
-    einheit === '°'
-      ? `${v.toFixed(nachkomma)}${einheit}`
-      : `${v.toFixed(nachkomma).replace('.', ',')}${einheit}`
-  return <span className="text-right text-neutral-200">{text}</span>
 }
 
 export type { FemurProfileRaw }

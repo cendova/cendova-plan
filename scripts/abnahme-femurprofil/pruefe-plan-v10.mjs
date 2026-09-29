@@ -46,9 +46,9 @@ await page.evaluate((punkte) => {
 }, PUNKTE)
 await page.waitForTimeout(500)
 
-const karte = () => page.locator('div.rounded.border').filter({ hasText: 'Morphologie & Fixation' }).last()
+const karte = () => page.locator('section.rounded.border').filter({ hasText: 'Morphologie & Fixation' }).last()
 const vorher = await karte().innerText()
-ok(/Dorr \(ärztlich\)\s+C/.test(vorher), 'Ausgangszustand: aerztlich C')
+ok(/Dorr \(ärztlich\)(\s+Vorschlag war B)?\s+C\b/.test(vorher), 'Ausgangszustand: aerztlich C')
 
 // Plan bauen (der echte Serialisierungsweg) und als JSON-Text mitnehmen.
 const planJson = await page.evaluate(async () => {
@@ -56,7 +56,9 @@ const planJson = await page.evaluate(async () => {
   return JSON.stringify(m.buildPlan())
 })
 const plan = JSON.parse(planJson)
-ok(plan.version === 10, `Plan traegt Version 10 (ist: ${plan.version})`)
+// v10 fuehrte die Femurprofil-Beurteilung ein; spaetere Versionen
+// (v11: Umstellungsosteotomie) muessen sie weiter tragen.
+ok(plan.version >= 10, `Plan traegt mindestens Version 10 (ist: ${plan.version})`)
 const gespeichert = plan.hipMeasurements.find((m) => m.kind === 'femurProfile')
 ok(gespeichert != null, 'Femurprofil-Messung im Plan enthalten')
 ok(gespeichert.points.length === 13, '13 Punkte gespeichert')
@@ -80,10 +82,10 @@ await page.evaluate((json) => {
 await page.waitForTimeout(600)
 
 const nachher = await karte().innerText()
-ok(/Dorr \(ärztlich\)\s+C/.test(nachher), 'Nach dem Laden weiterhin aerztlich C')
+ok(/Dorr \(ärztlich\)(\s+Vorschlag war B)?\s+C\b/.test(nachher), 'Nach dem Laden weiterhin aerztlich C')
 ok(/Vorschlag war B/.test(nachher), 'Vorschlag ueberlebt das Laden')
 ok(/Gesamtmorphologie spricht dagegen/.test(nachher), 'Grund ueberlebt das Laden')
-ok(/Cortical Index:\s*0,50/.test(nachher), 'Rohwerte werden neu berechnet')
+ok(/Cortical Index\s+0,50/.test(nachher), 'Rohwerte werden neu berechnet')
 ok(
   !/Punkte wurden nach der Bestätigung verändert/.test(nachher),
   'Keine falsche Veraltet-Warnung nach dem Laden',
