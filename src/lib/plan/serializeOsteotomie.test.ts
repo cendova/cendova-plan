@@ -45,6 +45,32 @@ describe('Plan-Speicherung der Umstellungsosteotomie', () => {
     expect(buildPlan().kneeOsteotomie).toBeNull()
   })
 
+  it('was die Eingabefelder zulassen, lädt der Import auch wieder (Klemmen)', () => {
+    const s = useKneeOsteotomieStore.getState()
+    s.starte('dlo', 62.5)
+    s.setZiel(625) // Tippfehler statt 62,5
+    s.setDloZielLdfa(0) // geleertes Feld
+    s.setDeltaJlca(50)
+    s.setZiel(Number.NaN) // ändert nichts
+    const plan = buildPlan()
+    expect(plan.kneeOsteotomie!.zielWblProzent).toBe(200)
+    expect(plan.kneeOsteotomie!.dloZielLdfa).toBe(60)
+    expect(plan.kneeOsteotomie!.deltaJlca).toBe(45)
+    expect(pruefePlanGrenzen(plan)).toBeNull()
+  })
+
+  it('macht aus [x, y] einen 3D-Punkt und aus Nicht-Wahrheitswerten die Vorgabe', () => {
+    const roh = {
+      typ: 'htoOeffnend',
+      zielWblProzent: 60,
+      sichtbar: 0,
+      tibiaStart: [1, 2],
+    } as unknown as OsteotomiePlan
+    const n = normalisiereOsteotomiePlan(roh)
+    expect(n.tibiaStart).toEqual([1, 2, 0])
+    expect(n.sichtbar).toBe(true)
+  })
+
   it('normalisiert fehlende Optionsfelder mit den Vorgaben', () => {
     const minimal = { typ: 'dlo', zielWblProzent: 62.5 } as OsteotomiePlan
     const n = normalisiereOsteotomiePlan(minimal)
@@ -72,5 +98,8 @@ describe('Grenzen-Prüfung (manipulierte Pläne)', () => {
     expect(
       pruefePlanGrenzen(basis({ typ: 'dlo', zielWblProzent: 60, deltaJlca: -3 })),
     ).toMatch(/ΔJLCA/)
+    expect(
+      pruefePlanGrenzen(basis({ typ: 'dlo', zielWblProzent: 60, sichtbar: 0 })),
+    ).toMatch(/sichtbar/)
   })
 })

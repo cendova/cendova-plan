@@ -6,6 +6,7 @@ import { grad, mm, mmMitVorzeichen, prozent } from '../lib/zahlFormat'
 import { Hint } from './Hint'
 import { Hinweis, Karte, Kennwerte, type KennwertZeile } from './Ergebnis'
 import { useOsteotomie } from './useOsteotomie'
+import { useViewerStore } from '../state/viewerStore'
 
 /**
  * Ergebnis-Karten des Kniemoduls (rechte Spalte).
@@ -153,6 +154,7 @@ export function KneeBeinachseKarte({ implantat }: { implantat: PlannedCpak | nul
 
 export function KneeOsteotomieKarte() {
   const { plan, ergebnis } = useOsteotomie()
+  const kalibriert = useViewerStore((s) => s.calibration != null)
   if (!plan || !ergebnis?.ok) return null
   const zeilen: KennwertZeile[] = ergebnis.schnitte.flatMap((s) => [
     { label: `${s.knochen}: Korrektur`, werte: [grad(Math.abs(s.grad))] },
@@ -176,6 +178,14 @@ export function KneeOsteotomieKarte() {
       }
     >
       <Kennwerte zeilen={zeilen} />
+      {/* Ohne Kalibrierung rechnet die Planung mit Maßstab 1 — Winkel
+          stimmen, Längen nicht. */}
+      {!kalibriert && (
+        <Hinweis stufe="caution">
+          Bild nicht kalibriert: Öffnung/Keilbasis, Schnittlänge und Beinlänge
+          sind nicht maßstabsgetreu (Winkel unberührt).
+        </Hinweis>
+      )}
       {ergebnis.jlcaKorrekturGrad > 0 && (
         <div className="mt-1 text-[10px] text-neutral-400">
           Laxitätskorrektur eingerechnet — ohne sie wären {grad(ergebnis.zielWinkelOhneKorrektur)} nötig.

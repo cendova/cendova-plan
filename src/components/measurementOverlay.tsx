@@ -96,6 +96,11 @@ export interface InteractionConfig<M extends OverlayMeasurement> {
   anzeigePunkt?(messungId: string, index: number, p: P): P
   /** Umkehrung zu `anzeigePunkt`: gezogener Anzeigepunkt → Speicherstand. */
   speicherPunkt?(messungId: string, index: number, p: P): P
+  /** Optional: Beginn/Ende des Ziehens gespeicherter Punkte (IDs der
+   *  betroffenen Messungen). Das Ende kommt garantiert — auch wenn das
+   *  Overlay mitten im Ziehen abgebaut wird. */
+  onDragStart?(messungIds: string[]): void
+  onDragEnd?(): void
 }
 
 /**
@@ -224,9 +229,11 @@ export function useMeasurementInteraction<M extends OverlayMeasurement>(
     }
 
     function onDragEnd() {
+      const warAktiv = dragRef.current != null
       dragRef.current = null
       window.removeEventListener('mousemove', onDragMove, true)
       window.removeEventListener('mouseup', onDragEnd, true)
+      if (warAktiv) cfgRef.current.onDragEnd?.()
     }
 
     function onMouseDown(e: MouseEvent) {
@@ -252,6 +259,9 @@ export function useMeasurementInteraction<M extends OverlayMeasurement>(
         e.stopPropagation()
         e.preventDefault()
         dragRef.current = hit
+        const refs = hit.kind === 'point' ? [hit.ref] : hit.refs
+        const ids = refs.map((r) => r.source).filter((q) => q !== 'draft')
+        if (ids.length > 0) cfgRef.current.onDragStart?.(ids)
         window.addEventListener('mousemove', onDragMove, true)
         window.addEventListener('mouseup', onDragEnd, true)
         return
@@ -285,8 +295,9 @@ export function useMeasurementInteraction<M extends OverlayMeasurement>(
     return () => {
       window.removeEventListener('mousedown', onMouseDown, true)
       window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('mousemove', onDragMove, true)
-      window.removeEventListener('mouseup', onDragEnd, true)
+      // Abbau mitten im Ziehen: Ende trotzdem melden (sonst bliebe z. B.
+      // die Osteotomie-Rechnung eingefroren).
+      onDragEnd()
     }
   }, [])
 }

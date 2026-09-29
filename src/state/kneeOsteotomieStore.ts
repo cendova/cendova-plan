@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import type { Types } from '@cornerstonejs/core'
-import { osteotomieTyp, type Knochen, type OsteotomieTyp } from '../lib/knee/osteotomie'
+import {
+  klemme,
+  OSTEOTOMIE_GRENZEN,
+  osteotomieTyp,
+  type Knochen,
+  type OsteotomieTyp,
+} from '../lib/knee/osteotomie'
 
 type P = Types.Point3
 
@@ -111,12 +117,31 @@ export const useKneeOsteotomieStore = create<KneeOsteotomieState>((set, get) => 
     // nur ein Vergleich — fehlende Punkte meldet das Panel.
     set({ plan, setzen: get().setzen ? naechsterFehlender(plan) : null })
   },
-  setZiel: (zielWblProzent) =>
-    set((s) => (s.plan ? { plan: { ...s.plan, zielWblProzent } } : s)),
-  setDloZielLdfa: (dloZielLdfa) =>
-    set((s) => (s.plan ? { plan: { ...s.plan, dloZielLdfa } } : s)),
-  setDeltaJlca: (deltaJlca) =>
-    set((s) => (s.plan ? { plan: { ...s.plan, deltaJlca } } : s)),
+  // Geklemmt auf die Import-Grenzen: Was die App speichert, lädt sie auch
+  // wieder. Nicht-endliche Werte (leeres Feld, Tippfehler) ändern nichts.
+  setZiel: (ziel) =>
+    set((s) =>
+      s.plan && Number.isFinite(ziel)
+        ? { plan: { ...s.plan, zielWblProzent: klemme(ziel, OSTEOTOMIE_GRENZEN.zielWblProzent) } }
+        : s,
+    ),
+  setDloZielLdfa: (ldfa) =>
+    set((s) =>
+      s.plan && Number.isFinite(ldfa)
+        ? { plan: { ...s.plan, dloZielLdfa: klemme(ldfa, OSTEOTOMIE_GRENZEN.dloZielLdfa) } }
+        : s,
+    ),
+  setDeltaJlca: (delta) =>
+    set((s) =>
+      s.plan && (delta === null || Number.isFinite(delta))
+        ? {
+            plan: {
+              ...s.plan,
+              deltaJlca: delta === null ? null : klemme(delta, OSTEOTOMIE_GRENZEN.deltaJlca),
+            },
+          }
+        : s,
+    ),
   setBildSimulation: (bildSimulation) =>
     set((s) => (s.plan ? { plan: { ...s.plan, bildSimulation } } : s)),
   setSichtbar: (sichtbar) =>

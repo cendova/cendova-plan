@@ -12,11 +12,44 @@ import { polygonSchwerpunkt } from '../lib/shoulder/cropGeometry'
 import { fuelleLuecke, zeichneVersetzt } from './fragmentBild'
 import { StepPrompt } from './measurementOverlay'
 import { useOsteotomie } from './useOsteotomie'
+import { rotiere } from '../lib/knee/osteotomie'
+import type { OsteotomiePlan } from '../state/kneeOsteotomieStore'
 
 type P = Types.Point3
 
 /** Greif-Radius der Scharnier-/Startpunkte (Bildschirm-Pixel). */
 const GRIFF = 9
+
+/** Cornerstone-Event nach jedem fertigen Render (Enums.Events.IMAGE_RENDERED)
+ *  — als Text, damit keine UI-Komponente Cornerstone ins Haupt-Bundle zieht. */
+const BILD_GERENDERT = 'CORNERSTONE_IMAGE_RENDERED'
+
+type Ergebnis = ReturnType<typeof useOsteotomie>['ergebnis']
+
+/**
+ * Anzeige-Rahmen der Doppel-Level-Osteotomie: Die Tibia liegt im distalen
+ * Fragment des Femurschnitts. Die Planung rechnet ihren Keil deshalb in
+ * der MITGEWANDERTEN Lage. Gezeichnet wird konsistent zum Bild:
+ *  - mit Bildsimulation (Knochen gedreht): Tibia-Griffe mitgewandert, wie
+ *    Keil und Knochen — gezogen wird exakt zurückgerechnet;
+ *  - ohne Simulation (Originalbild): Griffe UND Tibia-Keil in der
+ *    Originallage.
+ * Vorher lagen Griffe und Keil bis zu ~15 mm auseinander (Review
+ * 29.09.2026). Der Femurschritt hängt nicht an den Tibia-Punkten — das
+ * Zurückrechnen beim Ziehen hat also keine Rückkopplung.
+ */
+function dloRahmen(plan: OsteotomiePlan, ergebnis: Ergebnis) {
+  const femur = plan.typ === 'dlo' && ergebnis?.ok ? ergebnis.anzeige.schritte[0] : null
+  const simulation = plan.bildSimulation
+  const drehe = (p: P, richtung: 1 | -1) =>
+    femur ? rotiere(p, femur.scharnier, richtung * femur.grad) : p
+  const tibia = (slot: PunktSlot) => slot === 'tibiaScharnier' || slot === 'tibiaStart'
+  return {
+    zeige: (slot: PunktSlot, p: P) => (simulation && tibia(slot) ? drehe(p, 1) : p),
+    speichere: (slot: PunktSlot, p: P) => (simulation && tibia(slot) ? drehe(p, -1) : p),
+    keil: (knochen: string, p: P) => (!simulation && knochen === 'Tibia' ? drehe(p, -1) : p),
+  }
+}
 
 /**
  * Overlay der Umstellungsosteotomie (Knie, Abschnitt 6).
@@ -42,6 +75,9 @@ export function KneeOsteotomieOverlay() {
   const plan = useKneeOsteotomieStore((s) => s.plan)
   const setzen = useKneeOsteotomieStore((s) => s.setzen)
   const { ergebnis } = useOsteotomie()
+  const rahmen = plan ? dloRahmen(plan, ergebnis) : null
+  const rahmenRef = useRef(rahmen)
+  rahmenRef.current = rahmen
 
   // --- Interaktion: Setzen + Ziehen --------------------------------------
   useEffect(() => {
@@ -60,10 +96,13 @@ export function KneeOsteotomieOverlay() {
       const cp = canvasPunkt(e)
       if (!vp || !cp) return
       const st = useKneeOsteotomieStore.getState()
+      // Rahmen zum Zeitpunkt des Klicks — gilt für das ganze Ziehen.
+      const r = rahmenRef.current
       if (st.setzen) {
         e.stopImmediatePropagation()
         e.preventDefault()
-        st.setzePunkt(vp.canvasToWorld(cp))
+        const w = vp.canvasToWorld(cp)
+        st.setzePunkt(r ? r.speichere(st.setzen, w) : w)
         return
       }
       const plan = st.plan
@@ -71,7 +110,7 @@ export function KneeOsteotomieOverlay() {
       const treffer = benoetigteSlots(plan.typ).find((slot) => {
         const w = plan[slot]
         if (!w) return false
-        const c = vp.worldToCanvas(w)
+        const c = vp.worldToCanvas(r ? r.zeige(slot, w) : w)
         return Math.hypot(c[0] - cp[0], c[1] - cp[1]) <= GRIFF
       })
       if (!treffer) return
@@ -82,7 +121,8 @@ export function KneeOsteotomieOverlay() {
         const q = canvasPunkt(ev)
         if (!v || !q) return
         ev.preventDefault()
-        useKneeOsteotomieStore.getState().verschiebePunkt(treffer, v.canvasToWorld(q))
+        const w = v.canvasToWorld(q)
+        useKneeOsteotomieStore.getState().verschiebePunkt(treffer, r ? r.speichere(treffer, w) : w)
       }
       const los = () => {
         window.removeEventListener('mousemove', ziehe, true)
@@ -105,7 +145,12 @@ export function KneeOsteotomieOverlay() {
   }, [])
 
   // --- Bildsimulation (Canvas) -----------------------------------------
-  useEffect(() => {
+  // Gezeichnet wird nach jedem React-Render UND nach jedem Cornerstone-
+  // Render: Die Pixel kommen aus dem Viewport-Canvas, und eine geänderte
+  // Fensterung (Kontrast) bewegt die Kamera nicht — ohne das Event behielt
+  // das Fragment die alten Kontraste (Review 29.09.2026).
+  const zeichneRef = useRef<() => void>(() => {})
+  zeichneRef.current = () => {
     const canvas = canvasRef.current
     const vp = getViewport()
     if (!canvas || !vp) return
@@ -113,8 +158,10 @@ export function KneeOsteotomieOverlay() {
     const breite = quelle.clientWidth
     const hoehe = quelle.clientHeight
     const dpr = window.devicePixelRatio || 1
-    canvas.width = Math.round(breite * dpr)
-    canvas.height = Math.round(hoehe * dpr)
+    const b = Math.round(breite * dpr)
+    const h = Math.round(hoehe * dpr)
+    if (canvas.width !== b) canvas.width = b
+    if (canvas.height !== h) canvas.height = h
     canvas.style.width = `${breite}px`
     canvas.style.height = `${hoehe}px`
     const ctx = canvas.getContext('2d')
@@ -138,6 +185,16 @@ export function KneeOsteotomieOverlay() {
         w2c(polygonSchwerpunkt(f.ziel)),
       )
     }
+  }
+  useEffect(() => zeichneRef.current())
+  // Bei jedem Render neu anhängen: Nach einem Bildwechsel kann der
+  // Viewport (und damit sein Element) ein anderer sein.
+  useEffect(() => {
+    const el = getViewport()?.element
+    if (!el) return
+    const neu = () => zeichneRef.current()
+    el.addEventListener(BILD_GERENDERT, neu)
+    return () => el.removeEventListener(BILD_GERENDERT, neu)
   })
 
   const vp = getViewport()
@@ -151,10 +208,13 @@ export function KneeOsteotomieOverlay() {
       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0" />
       {plan.sichtbar && (
         <svg className="pointer-events-none absolute inset-0 h-full w-full">
-          {ergebnis?.ok && <Planungsgeometrie c={c} ergebnis={ergebnis} ziel={plan.zielWblProzent} />}
-          {slots.map((slot) => (
-            <Griff key={slot} slot={slot} punkt={plan[slot]} c={c} />
-          ))}
+          {ergebnis?.ok && (
+            <Planungsgeometrie c={c} ergebnis={ergebnis} ziel={plan.zielWblProzent} keil={rahmen!.keil} />
+          )}
+          {slots.map((slot) => {
+            const w = plan[slot]
+            return <Griff key={slot} slot={slot} punkt={w && rahmen!.zeige(slot, w)} c={c} />
+          })}
         </svg>
       )}
       {setzen && (
@@ -198,10 +258,14 @@ function Planungsgeometrie({
   c,
   ergebnis,
   ziel,
+  keil,
 }: {
   c: (p: P) => Types.Point2
   ergebnis: Extract<ReturnType<typeof useOsteotomie>['ergebnis'], { ok: true }>
   ziel: number
+  /** Lage des Keils im Bild (DLO ohne Simulation: Tibia zurück in die
+   *  Originallage, siehe dloRahmen). */
+  keil: (knochen: string, p: P) => P
 }) {
   const { nachher, vorher, punkteNachher, schnitte } = ergebnis
   const hip = c(vorher.hip)
@@ -231,9 +295,9 @@ function Planungsgeometrie({
         {fmt(ziel)} %
       </text>
       {schnitte.map((s) => {
-        const h = c(s.scharnier)
-        const a = c(s.start)
-        const b = c(s.startNeu)
+        const h = c(keil(s.knochen, s.scharnier))
+        const a = c(keil(s.knochen, s.start))
+        const b = c(keil(s.knochen, s.startNeu))
         const oeffnend = s.keil === 'oeffnend'
         return (
           <g key={s.knochen}>

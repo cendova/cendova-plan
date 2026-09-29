@@ -30,10 +30,23 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
 
   if (!vorher) {
     return (
-      <p className="px-1 text-[11px] leading-snug text-neutral-500">
-        Voraussetzung ist die Vollvermessung (Abschnitt 3): Achsen, Plateau und
-        Traglinie kommen von dort.
-      </p>
+      <div className="flex flex-col gap-1.5 px-1">
+        <p className="text-[11px] leading-snug text-neutral-500">
+          Voraussetzung ist die Vollvermessung (Abschnitt 3): Achsen, Plateau und
+          Traglinie kommen von dort.
+          {plan && ' Die begonnene Planung bleibt erhalten und rechnet wieder, sobald die Vollvermessung sichtbar ist.'}
+        </p>
+        {/* Auch ohne (sichtbare) Vollvermessung muss sich eine begonnene
+            Planung verwerfen lassen (Review 29.09.2026). */}
+        {plan && (
+          <button
+            onClick={() => st().verwerfen()}
+            className="self-start rounded bg-neutral-800 px-2 py-1.5 text-xs text-neutral-400 transition hover:bg-neutral-700 hover:text-neutral-200"
+          >
+            Planung verwerfen
+          </button>
+        )}
+      </div>
     )
   }
 
@@ -107,8 +120,10 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
             step={0.5}
             value={plan.zielWblProzent}
             onChange={(e) => {
-              const v = Number(e.target.value)
-              if (Number.isFinite(v)) st().setZiel(v)
+              // Leeres Feld ist kein Wert (wäre sonst 0); der Store klemmt
+              // auf die Import-Grenzen (OSTEOTOMIE_GRENZEN).
+              const roh = e.target.value.trim()
+              if (roh !== '') st().setZiel(Number(roh))
             }}
             className="w-14 rounded border border-neutral-700 bg-neutral-900 px-1 py-0.5 text-right tabular-nums"
           />
@@ -155,8 +170,10 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
               step={0.5}
               value={plan.dloZielLdfa}
               onChange={(e) => {
-                const v = Number(e.target.value)
-                if (Number.isFinite(v)) st().setDloZielLdfa(v)
+                // Leeres Feld ist kein Wert (wäre sonst 0); der Store klemmt
+                // auf die Import-Grenzen (OSTEOTOMIE_GRENZEN).
+                const roh = e.target.value.trim()
+                if (roh !== '') st().setDloZielLdfa(Number(roh))
               }}
               className="w-14 rounded border border-neutral-700 bg-neutral-900 px-1 py-0.5 text-right tabular-nums"
             />

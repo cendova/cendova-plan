@@ -12,7 +12,12 @@ import {
 } from '../lib/knee/resection'
 import { useKneeTemplateStore } from '../state/kneeTemplateStore'
 import { DraggableImageBox, type BoxLine } from './DraggableImageBox'
-import { findeVollvermessung, useOsteotomie } from './useOsteotomie'
+import {
+  findeVollvermessung,
+  friereOsteotomieEin,
+  taueOsteotomieAuf,
+  useOsteotomie,
+} from './useOsteotomie'
 import { speicherePunkt, zeigePunkt } from '../lib/knee/osteotomie'
 import {
   MeasurementSvg,
@@ -69,6 +74,15 @@ export function KneeOverlay() {
   useMeasurementInteraction({
     anzeigePunkt: (id, i, p) => (folgtOsteotomie(id) ? zeigePunkt(osteoAnzeige!, i, p) : p),
     speicherPunkt: (id, i, p) => (folgtOsteotomie(id) ? speicherePunkt(osteoAnzeige!, i, p) : p),
+    // Während eine Landmarke der Vollvermessung bei laufender Simulation
+    // gezogen wird, bleibt die Osteotomie-Rechnung stehen (siehe
+    // friereOsteotomieEin) — sonst löst jede Mausbewegung den Winkel mit
+    // dem gezogenen Punkt neu, und Anzeige und Speicherstand laufen
+    // auseinander. Beim Loslassen wird neu gelöst.
+    onDragStart: (ids) => {
+      if (ids.some(folgtOsteotomie)) friereOsteotomieEin()
+    },
+    onDragEnd: () => taueOsteotomieAuf(),
     getState: () => useKneeStore.getState(),
     getRecipe: (kind) => getKneeRecipe(kind as KneeKind),
     // Leerer Klick: nur eigene Knie-Label-Auswahl aufheben (Hüft-,

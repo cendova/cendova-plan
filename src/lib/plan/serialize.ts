@@ -179,17 +179,21 @@ export interface PlanFile {
 /** Füllt fehlende Optionsfelder eines geladenen Osteotomie-Plans mit den
  *  Vorgaben auf (Typ/Punkte sind vorher in pruefePlanGrenzen geprüft). */
 export function normalisiereOsteotomiePlan(p: OsteotomiePlan): OsteotomiePlan {
+  // Punkte immer als [x, y, z]: Der Import lässt auch [x, y] zu, die
+  // Geometrie braucht aber z (sonst NaN im Bild, Review 29.09.2026).
+  const punkt = (q: readonly number[] | null | undefined): OsteotomiePlan['tibiaStart'] =>
+    q ? [q[0], q[1], q[2] ?? 0] : null
   return {
     typ: p.typ,
     zielWblProzent: p.zielWblProzent,
     dloZielLdfa: p.dloZielLdfa ?? 88,
     deltaJlca: p.deltaJlca ?? null,
-    bildSimulation: p.bildSimulation ?? true,
-    sichtbar: p.sichtbar ?? true,
-    femurScharnier: p.femurScharnier ?? null,
-    femurStart: p.femurStart ?? null,
-    tibiaScharnier: p.tibiaScharnier ?? null,
-    tibiaStart: p.tibiaStart ?? null,
+    bildSimulation: typeof p.bildSimulation === 'boolean' ? p.bildSimulation : true,
+    sichtbar: typeof p.sichtbar === 'boolean' ? p.sichtbar : true,
+    femurScharnier: punkt(p.femurScharnier),
+    femurStart: punkt(p.femurStart),
+    tibiaScharnier: punkt(p.tibiaScharnier),
+    tibiaStart: punkt(p.tibiaStart),
   }
 }
 

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { create } from 'zustand'
 import { useKneeStore, type KneeMeasurement } from '../state/kneeStore'
 import { useViewerStore } from '../state/viewerStore'
 import { useKneeOsteotomieStore, type OsteotomiePlan } from '../state/kneeOsteotomieStore'
@@ -53,7 +53,10 @@ export function berechneOsteotomie(
   mmPerWorldUnit: number,
 ): OsteotomieDaten {
   const wf = findeVollvermessung(ms)
-  const vorher = wf ? computeWorkflowRaw(wf.points, mmPerWorldUnit) : null
+  // Nur die 17 Landmarken: Ein (präparierter) Plan darf mehr Punkte
+  // tragen, und die Simulation dreht sonst jeden davon mit.
+  const punkte = wf ? wf.points.slice(0, 17) : null
+  const vorher = punkte ? computeWorkflowRaw(punkte, mmPerWorldUnit) : null
   const analyse = vorher
     ? analysiereDeformitaet({
         hkaAbweichung: vorher.hkaDeviationSigned,
@@ -64,9 +67,9 @@ export function berechneOsteotomie(
       })
     : null
   const ergebnis =
-    wf && plan
+    punkte && plan
       ? planeOsteotomie({
-          punkte: wf.points,
+          punkte,
           mmPerWorldUnit,
           typ: plan.typ,
           zielWblProzent: plan.zielWblProzent,
@@ -85,9 +88,84 @@ export function berechneOsteotomie(
   return { vorher, analyse, plan, ergebnis }
 }
 
+/**
+ * EINE Rechnung für alle Nutzer (Bild-Overlay, Mess-Overlay, Steuerung,
+ * Messliste, Karten): Vorher memoisierte jede Komponente für sich, und
+ * beim Ziehen eines Punktes lief der Winkel-Löser 5–6-mal pro Mausbewegung
+ * (Review 29.09.2026). Die Store-Werte sind unveränderlich, der Vergleich
+ * per Identität genügt.
+ */
+let letzte: {
+  ms: KneeMeasurement[]
+  plan: OsteotomiePlan | null
+  factor: number
+  daten: OsteotomieDaten
+} | null = null
+
+function berechneGeteilt(
+  ms: KneeMeasurement[],
+  plan: OsteotomiePlan | null,
+  factor: number,
+): OsteotomieDaten {
+  if (letzte && letzte.ms === ms && letzte.plan === plan && letzte.factor === factor)
+    return letzte.daten
+  const daten = berechneOsteotomie(ms, plan, factor)
+  letzte = { ms, plan, factor, daten }
+  return daten
+}
+
+/**
+ * Eingefrorener Stand, solange eine Landmarke der Vollvermessung bei
+ * laufender Bildsimulation gezogen wird. Ohne ihn löst jede Mausbewegung
+ * den Korrekturwinkel neu — mit dem gerade gezogenen Punkt: Das
+ * Sprunggelenk bestimmt den Winkel selbst, seine Anzeige-Lage ist durch
+ * die Konstruktion festgelegt, und der gespeicherte Punkt wanderte
+ * unsichtbar davon (Review 29.09.2026: 20 mm Zug → 0 mm Bewegung im Bild,
+ * Winkel −5,8° → +23,6°). Eingefroren folgt der Punkt dem Cursor auf dem
+ * gezeigten (gedrehten) Knochen und wird mit DERSELBEN Drehung
+ * zurückgerechnet; beim Loslassen wird neu gelöst.
+ */
+const useEingefroren = create<{
+  stand: { plan: OsteotomiePlan | null; factor: number; daten: OsteotomieDaten } | null
+}>(() => ({ stand: null }))
+
+export function friereOsteotomieEin(): void {
+  const ms = useKneeStore.getState().measurements
+  const plan = useKneeOsteotomieStore.getState().plan
+  const factor = useViewerStore.getState().calibration?.mmPerWorldUnit ?? 1
+  useEingefroren.setState({ stand: { plan, factor, daten: berechneGeteilt(ms, plan, factor) } })
+}
+
+export function taueOsteotomieAuf(): void {
+  if (useEingefroren.getState().stand) useEingefroren.setState({ stand: null })
+}
+
+function waehle(
+  ms: KneeMeasurement[],
+  plan: OsteotomiePlan | null,
+  factor: number,
+  stand: ReturnType<typeof useEingefroren.getState>['stand'],
+): OsteotomieDaten {
+  // Der eingefrorene Stand gilt nur für DENSELBEN Plan und Maßstab — ein
+  // Bildwechsel, Rückgängig oder Verwerfen mitten im Ziehen hebt ihn auf.
+  if (stand && stand.plan === plan && stand.factor === factor) return stand.daten
+  return berechneGeteilt(ms, plan, factor)
+}
+
+/** Aktueller Stand außerhalb von React (Tests) — dieselbe Auswahl wie der Hook. */
+export function osteotomieJetzt(): OsteotomieDaten {
+  return waehle(
+    useKneeStore.getState().measurements,
+    useKneeOsteotomieStore.getState().plan,
+    useViewerStore.getState().calibration?.mmPerWorldUnit ?? 1,
+    useEingefroren.getState().stand,
+  )
+}
+
 export function useOsteotomie(): OsteotomieDaten {
   const ms = useKneeStore((s) => s.measurements)
   const plan = useKneeOsteotomieStore((s) => s.plan)
   const factor = useViewerStore((s) => s.calibration?.mmPerWorldUnit ?? 1)
-  return useMemo(() => berechneOsteotomie(ms, plan, factor), [ms, plan, factor])
+  const stand = useEingefroren((s) => s.stand)
+  return waehle(ms, plan, factor, stand)
 }

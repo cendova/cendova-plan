@@ -18,6 +18,7 @@ import {
   MAX_MM_PER_UNIT,
   MIN_MM_PER_UNIT,
 } from '../importGrenzen'
+import { OSTEOTOMIE_GRENZEN } from '../knee/osteotomie'
 
 /** Ein Punkt ist ein Tupel aus 2–3 endlichen Zahlen ([x, y] bzw. [x, y, z]). */
 function istPunkt(q: unknown): boolean {
@@ -46,11 +47,16 @@ function pruefeOsteotomie(o: unknown): string | null {
     return 'Umstellungsosteotomie: unbekannter Typ'
   const zahl = (v: unknown, lo: number, hi: number) =>
     typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi
-  if (!zahl(r.zielWblProzent, -100, 200)) return 'Umstellungsosteotomie: Zielwert unplausibel'
-  if (r.dloZielLdfa !== undefined && !zahl(r.dloZielLdfa, 60, 120))
+  const g = OSTEOTOMIE_GRENZEN
+  if (!zahl(r.zielWblProzent, ...g.zielWblProzent)) return 'Umstellungsosteotomie: Zielwert unplausibel'
+  if (r.dloZielLdfa !== undefined && !zahl(r.dloZielLdfa, ...g.dloZielLdfa))
     return 'Umstellungsosteotomie: Ziel-mLDFA unplausibel'
-  if (r.deltaJlca !== undefined && r.deltaJlca !== null && !zahl(r.deltaJlca, 0, 45))
+  if (r.deltaJlca !== undefined && r.deltaJlca !== null && !zahl(r.deltaJlca, ...g.deltaJlca))
     return 'Umstellungsosteotomie: ΔJLCA unplausibel'
+  for (const k of ['sichtbar', 'bildSimulation']) {
+    if (r[k] !== undefined && typeof r[k] !== 'boolean')
+      return `Umstellungsosteotomie: Feld „${k}" ist kein Wahrheitswert`
+  }
   for (const k of ['femurScharnier', 'femurStart', 'tibiaScharnier', 'tibiaStart']) {
     const v = r[k]
     if (v === undefined || v === null) continue

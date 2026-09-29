@@ -744,7 +744,10 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
       if (osteo.plan || useViewerStore.getState().planningMode === 'knee') {
         writeSection('Deformitätsanalyse (Paley)', deformitaetPdfZeilen(osteo))
       }
-      writeSection('Umstellungsosteotomie', osteotomiePdfZeilen(osteo))
+      writeSection(
+        'Umstellungsosteotomie',
+        osteotomiePdfZeilen(osteo, { kalibriert: calibration != null }),
+      )
     }
 
     // Schulter-Messungen. Zwei bewusste Abweichungen vom Knie-Block:

@@ -26,6 +26,23 @@ import { PALEY_NORM } from './deformitaet'
 
 type P = Types.Point3
 
+/**
+ * Wertebereiche der Planungseingaben — EINE Quelle für die Eingabefelder
+ * (Store klemmt) und den Plan-Import (planGrenzen lehnt ab). Vorher nahmen
+ * die Felder alles Endliche an, der Import aber nicht: Ein von der App
+ * selbst gespeicherter Plan ließ sich dann nicht mehr laden (Review
+ * 29.09.2026). Bewusst weit — Plausibilitätsgrenzen, keine klinischen.
+ */
+export const OSTEOTOMIE_GRENZEN = {
+  zielWblProzent: [-100, 200],
+  dloZielLdfa: [60, 120],
+  deltaJlca: [0, 45],
+} as const
+
+export function klemme(v: number, [lo, hi]: readonly [number, number]): number {
+  return Math.min(hi, Math.max(lo, v))
+}
+
 export type OsteotomieTyp =
   | 'htoOeffnend'
   | 'htoSchliessend'

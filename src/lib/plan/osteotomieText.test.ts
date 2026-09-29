@@ -64,6 +64,19 @@ describe('osteotomieText', () => {
     // Keine Zeichen außerhalb von WinAnsi-typischem Latin-1 (+ ° · Umlaute).
     expect(text).not.toMatch(/[→≥≤⅓Δ—–]/)
   })
+  it('nennt den Grund, wenn die Vollvermessung fehlt', () => {
+    const d = berechneOsteotomie([], PLAN, 1)
+    expect(osteotomiePdfZeilen(d).join('\n')).toContain(
+      'Planung unvollständig: Vollvermessung fehlt oder ist ausgeblendet.',
+    )
+  })
+  it('vermerkt ein unkalibriertes Bild', () => {
+    const d = berechneOsteotomie([MESSUNG], PLAN, 1)
+    const text = osteotomiePdfZeilen(d, { kalibriert: false }).join('\n')
+    expect(text).toContain('Bild nicht kalibriert')
+    expect(osteotomiePdfZeilen(d).join('\n')).not.toContain('nicht kalibriert')
+    expect(text).not.toMatch(/[^\u0000-\u00ff]/)
+  })
   it('Deformitätsanalyse listet die Paley-Bewertung', () => {
     const d = berechneOsteotomie([MESSUNG], null, 1)
     const text = deformitaetPdfZeilen(d).join('\n')

@@ -57,17 +57,25 @@ export function deformitaetPdfZeilen(d: OsteotomieDaten): string[] {
   return zeilen.map(pdfSicherOsteotomie)
 }
 
-export function osteotomiePdfZeilen(d: OsteotomieDaten): string[] {
+export function osteotomiePdfZeilen(
+  d: OsteotomieDaten,
+  { kalibriert = true }: { kalibriert?: boolean } = {},
+): string[] {
   const { plan, ergebnis } = d
   if (!plan) return []
   const kopf = `- ${osteotomieTyp(plan.typ).kurz} | Ziel Traglinie ${f1(plan.zielWblProzent)} %`
   if (!ergebnis || !ergebnis.ok)
-    return [kopf, `- Planung unvollständig: ${ergebnis && !ergebnis.ok ? ergebnis.fehler : ''}`].map(
-      pdfSicherOsteotomie,
-    )
+    return [
+      kopf,
+      // Ohne Ergebnis fehlt die (sichtbare) Vollvermessung — die Planung
+      // rechnet nur auf ihr (vorher stand hier ein leerer Grund).
+      `- Planung unvollständig: ${ergebnis ? ergebnis.fehler : 'Vollvermessung fehlt oder ist ausgeblendet.'}`,
+    ].map(pdfSicherOsteotomie)
   const { vorher, nachher } = ergebnis
   const vn = (label: string, a: string, b: string) => `   ${label}: ${a} -> ${b}`
   const zeilen = [kopf]
+  if (!kalibriert)
+    zeilen.push('- Bild nicht kalibriert: mm-Angaben (Öffnung/Keil, Schnitt, Beinlänge) nicht maßstabsgetreu.')
   if (plan.typ === 'dlo') zeilen.push(`- Ziel-mLDFA femoral ${f1(plan.dloZielLdfa)}°`)
   for (const s of ergebnis.schnitte)
     zeilen.push(
