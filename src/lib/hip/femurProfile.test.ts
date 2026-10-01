@@ -312,6 +312,7 @@ describe('computeFemurProfileRaw — Referenz-Anatomie', () => {
     expect(r.headCenter[0]).toBeCloseTo(-64, 6)
     expect(r.headCenter[1]).toBeCloseTo(-40, 6)
     expect(r.headRadiusWorld).toBeCloseTo(24, 6)
+    expect(r.headDiameterMm).toBeCloseTo(48, 6)
   })
 
   it('berechnet die Beispielwerte aus dem Plan', () => {
@@ -347,6 +348,7 @@ describe('computeFemurProfileRaw — Referenz-Anatomie', () => {
 describe('computeFemurProfileRaw — Kalibrierung', () => {
   it('skaliert Längen mit dem Faktor, Winkel und Ratios nicht', () => {
     const r = computeFemurProfileRaw(referenzPunkte(), 0.5)!
+    expect(r.headDiameterMm).toBeCloseTo(24, 6)
     expect(r.femoralOffsetMm).toBeCloseTo(32, 6)
     expect(r.outerDiameter10cmMm).toBeCloseTo(20, 6)
     expect(r.canalCalcarMm).toBeCloseTo(20, 6)
@@ -442,6 +444,8 @@ describe('computeFemurProfileRaw — unvollständige und ungültige Eingaben', (
     const r = computeFemurProfileRaw(pts, 1)!
     expect(r).not.toBeNull()
     expect(r.warnings.some((w) => w.includes('Hüftkopf'))).toBe(true)
+    // Kein Schein-Durchmesser aus einem Klickfehler.
+    expect(r.headDiameterMm).toBeNull()
   })
 
   it('unterdrückt die Klassifikation bei X > Z (Kanal breiter als außen)', () => {

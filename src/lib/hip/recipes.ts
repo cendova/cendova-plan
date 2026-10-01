@@ -512,6 +512,10 @@ const femurProfile: Recipe = {
     const values: HipResultValue[] = [
       ...raw.warnings.map((w) => ({ label: '⚠ Femurprofil', value: w })),
       {
+        label: 'Hüftkopf-Durchmesser',
+        value: raw.headDiameterMm != null ? mm(raw.headDiameterMm) : NICHT_BESTIMMBAR,
+      },
+      {
         label: 'Dorr-Vorschlag',
         value: raw.dorr
           ? raw.dorr.borderline

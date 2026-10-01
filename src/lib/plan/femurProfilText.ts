@@ -120,7 +120,9 @@ export function femurProfilPdfZeilen(
     )
   }
 
-  // 2) Rohwerte — immer, auch ohne Klasse.
+  // 2) Rohwerte — immer, auch ohne Klasse. Der Kopfdurchmesser zuerst
+  //    (Orientierung für die Pfannengröße).
+  zeilen.push(`   Hüftkopf-Durchmesser: ${zahl(raw.headDiameterMm, 1, ' mm')}`)
   zeilen.push(
     `   Cortical Index: ${zahl(raw.corticalIndex, 2)}  ·  Canal-Calcar Ratio: ${zahl(
       raw.canalCalcarRatio,

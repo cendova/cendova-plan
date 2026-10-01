@@ -85,6 +85,7 @@ ok(/Dorr \\\(ärztlich\\\): C - Vorschlag war B/.test(roh), 'Aerztliche Klasse m
 ok(/Vorschlag war B/.test(roh), 'Vorschlag im PDF')
 ok(/Gesamtmorphologie spricht dagegen/.test(roh), 'Override-Grund im PDF')
 ok(/Cortical Index: 0,50/.test(roh), 'Rohwerte im PDF')
+ok(/Hüftkopf-Durchmesser: 48,0 mm/.test(roh), 'Hueftkopf-Durchmesser im PDF')
 ok(/CPAH 5H/.test(roh), 'CPAH-Code im PDF')
 ok(/Planungshinweis - keine autonome Implantatentscheidung/.test(roh), 'Planungshinweis vollstaendig im PDF')
 ok(!/2026-08-11/.test(roh), 'Kein Zeitstempel im PDF')

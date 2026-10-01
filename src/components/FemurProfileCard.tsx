@@ -89,6 +89,14 @@ export function FemurProfileCard({
       }
     : null
   const rohwerte: KennwertZeile[] = [
+    // Kopfdurchmesser zuerst: eigene Größe (Kopf statt Schaft) und die
+    // Orientierung für die Pfannengröße (Realtest-Wunsch 01.10.2026).
+    {
+      label: 'Hüftkopf-Durchmesser',
+      werte: [raw.headDiameterMm == null ? null : mm(raw.headDiameterMm)],
+      titel:
+        'Umkreis der drei Hüftkopf-Konturpunkte, über die Kalibrierung vergrößerungskorrigiert',
+    },
     { label: 'Cortical Index', werte: [v2(raw.corticalIndex)] },
     { label: 'Canal-Calcar Ratio', werte: [v2(raw.canalCalcarRatio)] },
     { label: 'NSA (CCD)', werte: [raw.nsaDeg == null ? null : grad(raw.nsaDeg)] },

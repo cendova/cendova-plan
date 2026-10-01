@@ -353,6 +353,11 @@ export const FEMUR_PROFILE_POINT_COUNT = 13
 export interface FemurProfileRaw {
   headCenter: P
   headRadiusWorld: number
+  /** Hüftkopf-Durchmesser in mm (Umkreis der drei Konturpunkte, über die
+   *  Kalibrierung vergrößerungskorrigiert) — Orientierung für die
+   *  Pfannengröße. null, wenn die Kopfpunkte (fast) kollinear liegen: Der
+   *  Umkreis wäre dann Klickrauschen. */
+  headDiameterMm: number | null
   shaftAxis: [P, P]
   /** null, wenn die Halsmitte (fast) im Kopfzentrum liegt — dann wäre die
    *  Halsrichtung reines Klickrauschen und der Winkel Scheinpräzision. */
@@ -506,6 +511,7 @@ export function computeFemurProfileRaw(
   return {
     headCenter: center,
     headRadiusWorld: radius,
+    headDiameterMm: degenerate ? null : 2 * radius * mmPerWorldUnit,
     shaftAxis: [s1, s2],
     nsaDeg,
     femoralOffsetMm,

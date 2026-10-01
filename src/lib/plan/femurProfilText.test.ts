@@ -53,6 +53,7 @@ describe('Femurprofil-Zeilen im PDF', () => {
     const t = alsText(
       femurProfilPdfZeilen(punkte(), 1, { imageQuality: bestanden() }),
     )
+    expect(t).toContain('Hüftkopf-Durchmesser: 48,0 mm')
     expect(t).toContain('Cortical Index: 0,50')
     expect(t).toContain('Canal-Calcar Ratio: 0,50')
     expect(t).toContain('NSA (CCD): 135.0°')
