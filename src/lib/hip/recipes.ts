@@ -55,6 +55,13 @@ export interface RenderGeometry {
 export interface HipResultValue {
   label: string
   value: string
+  /** Längenwert in einer sonst kalibrierungsfreien Messung (z. B. der
+   *  Kopfdurchmesser beim CCD): Die Anzeige kennzeichnet ihn ohne
+   *  Kalibrierung einzeln als „unkalibriert" — der Winkel daneben bleibt
+   *  davon unberührt. */
+  kalibrierungNoetig?: true
+  /** Tooltip der Wertzeile (ausgeschriebene Bezeichnung, Definition). */
+  titel?: string
 }
 
 export interface HipComputed {
@@ -161,7 +168,7 @@ const ccd: Recipe = {
     'Femurschaftachse — distaler Punkt',
   ],
   lineGroups: [[4, 5]],
-  compute: (points) => {
+  compute: (points, factor) => {
     const [c1, c2, c3, neckPt, s1, s2] = points
     const { center, radius, degenerate } = circleFrom3Points(c1, c2, c3)
     const neckDir = sub(neckPt, center)
@@ -175,6 +182,15 @@ const ccd: Recipe = {
       values: [
         ...(degenerate ? [HEAD_DEGENERATE_WARNING] : []),
         { label: 'CCD-Winkel', value: deg(angle) },
+        // Kopfdurchmesser aus denselben drei Konturpunkten (Orientierung
+        // für die Pfannengröße, Realtest-Wunsch 01.10.2026) — bei
+        // kollinearen Punkten keine Scheinzahl.
+        {
+          label: 'Kopf-⌀',
+          value: degenerate ? '—' : mm(2 * radius * factor),
+          kalibrierungNoetig: true,
+          titel: 'Hüftkopf-Durchmesser: Umkreis der drei Kopfkontur-Punkte',
+        },
       ],
       geometry: {
         lines: [
@@ -512,7 +528,7 @@ const femurProfile: Recipe = {
     const values: HipResultValue[] = [
       ...raw.warnings.map((w) => ({ label: '⚠ Femurprofil', value: w })),
       {
-        label: 'Hüftkopf-Durchmesser',
+        label: 'Kopf-⌀',
         value: raw.headDiameterMm != null ? mm(raw.headDiameterMm) : NICHT_BESTIMMBAR,
       },
       {

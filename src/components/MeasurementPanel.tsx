@@ -59,16 +59,28 @@ import { Abschnitt, Karte, Kennwerte, type KennwertZeile } from './Ergebnis'
  * und teilen sich nur die Anzeige der Beinachse.
  */
 
-type Werte = { label: string; value: string }[]
+type Werte = { label: string; value: string; titel?: string; kalibrierungNoetig?: true }[]
 
-/** Ein einzelner Wert mit dem Namen der Messung wandert in die Kopfzeile. */
-function aufteilen(label: string, values: Werte) {
-  if (values.length === 1 && values[0].label === label) {
-    return { wert: values[0].value, zeilen: [] as KennwertZeile[] }
-  }
+/** Der Wert mit dem Namen der Messung wandert in die Kopfzeile — auch
+ *  neben weiteren Werten (sonst stünde z. B. „CCD-Winkel" als Titel UND
+ *  als Zeile da). Längen in sonst kalibrierungsfreien Messungen tragen
+ *  ohne Kalibrierung ihren eigenen „unkalibriert"-Vermerk (z. B. der
+ *  Kopfdurchmesser beim CCD). */
+function aufteilen(label: string, values: Werte, kalibriert = true) {
+  const kopf = values.find((v) => v.label === label)
   return {
-    wert: undefined,
-    zeilen: values.map((v): KennwertZeile => ({ label: v.label, werte: [v.value] })),
+    wert: kopf?.value,
+    zeilen: values.filter((v) => v !== kopf).map(
+      (v): KennwertZeile => ({
+        label: v.label,
+        titel: v.titel,
+        werte: [v.value],
+        norm:
+          v.kalibrierungNoetig && !kalibriert ? (
+            <span className="text-amber-500">unkalibriert</span>
+          ) : undefined,
+      }),
+    ),
   }
 }
 
@@ -353,7 +365,11 @@ export function MeasurementPanel() {
               const { wert, zeilen } =
                 istFemurprofil || inBilanz
                   ? { wert: undefined, zeilen: [] }
-                  : aufteilen(recipe.label, recipe.compute(m.points, factor).values)
+                  : aufteilen(
+                      recipe.label,
+                      recipe.compute(m.points, factor).values,
+                      calibration != null,
+                    )
               return (
                 <Row
                   key={m.id}

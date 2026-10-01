@@ -64,7 +64,7 @@ ok(/Grenzbereich B\/C/.test(text), 'Grenzbereich B/C wird als solcher benannt')
 // bedeutet, zeigt das Schaubild.
 ok(/CPAH 5H/.test(text), 'Kartenkopf nennt CPAH 5H')
 ok((text.match(/5H/g) || []).length === 1, 'CPAH-Code steht genau einmal in der Karte')
-ok(/Hüftkopf-Durchmesser\s+48,0\s*mm/.test(text), 'Hueftkopf-Durchmesser 48,0 mm (Kreis r 24) im Rohwert-Block')
+ok(/Kopf-⌀\s+48,0\s*mm/.test(text), 'Kopf-Durchmesser 48,0 mm (Kreis r 24) im Rohwert-Block')
 ok(/Cortical Index\s+0,50/.test(text), 'CI 0,50 im Rohwert-Block')
 ok(/Canal-Calcar Ratio\s+0,50/.test(text), 'CCR 0,50 im Rohwert-Block')
 ok(/Planungshinweis — keine autonome Implantatentscheidung/.test(text), 'Planungshinweis steht darunter')

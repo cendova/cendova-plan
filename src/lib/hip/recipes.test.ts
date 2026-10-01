@@ -86,6 +86,22 @@ describe('femurProfile (geführte 13-Punkt-Messung)', () => {
     expect(recipe.steps[12]).toContain('lateral')
   })
 
+  it('CCD nennt den Hüftkopf-Durchmesser aus denselben drei Punkten', () => {
+    // Kopfkontur der Referenz-Anatomie: Kreis r 24 um (−64, −40).
+    const ccd = getRecipe('ccd')!
+    const pts = femurProfilPunkte().slice(0, 6)
+    const wert = (f: number) =>
+      ccd.compute(pts, f).values.find((v) => v.label === 'Kopf-⌀')
+    expect(wert(1)?.value).toBe('48,0\u00a0mm')
+    expect(wert(0.5)?.value).toBe('24,0\u00a0mm')
+    expect(wert(1)?.kalibrierungNoetig).toBe(true)
+    // Kollineare Kopfpunkte: keine Scheinzahl.
+    const kollinear = [p(-40, -40), p(-64, -40), p(-88, -40), ...pts.slice(3)]
+    expect(
+      ccd.compute(kollinear, 1).values.find((v) => v.label === 'Kopf-⌀')?.value,
+    ).toBe('—')
+  })
+
   it('beginnt mit EXAKT den sechs CCD-Steps (Prefill-Vertrag für Task 10)', () => {
     // Das CCD-Prefill übernimmt Punkte 0–5 einer CCD-Messung. Das ist nur
     // korrekt, solange beide Rezepte dieselben ersten sechs Punktrollen in

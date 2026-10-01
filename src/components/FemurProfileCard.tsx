@@ -92,10 +92,10 @@ export function FemurProfileCard({
     // Kopfdurchmesser zuerst: eigene Größe (Kopf statt Schaft) und die
     // Orientierung für die Pfannengröße (Realtest-Wunsch 01.10.2026).
     {
-      label: 'Hüftkopf-Durchmesser',
+      label: 'Kopf-⌀',
       werte: [raw.headDiameterMm == null ? null : mm(raw.headDiameterMm)],
       titel:
-        'Umkreis der drei Hüftkopf-Konturpunkte, über die Kalibrierung vergrößerungskorrigiert',
+        'Hüftkopf-Durchmesser: Umkreis der drei Kopfkontur-Punkte, über die Kalibrierung vergrößerungskorrigiert',
     },
     { label: 'Cortical Index', werte: [v2(raw.corticalIndex)] },
     { label: 'Canal-Calcar Ratio', werte: [v2(raw.canalCalcarRatio)] },

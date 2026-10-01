@@ -60,6 +60,7 @@ import { berechneOsteotomie } from '../../components/useOsteotomie'
 import { useKneeOsteotomieStore } from '../../state/kneeOsteotomieStore'
 import { deformitaetPdfZeilen, osteotomiePdfZeilen } from './osteotomieText'
 import { pdfSicher } from './pdfText'
+import { erfassungUnvollstaendig, mittlereHelligkeit, naechsteFrames } from './erfassungPruefung'
 
 /**
  * Wendet die AMBER-Einfärbung der Schablonen-Bilder MANUELL an, vor dem
@@ -301,14 +302,44 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
   // Schaft-PNGs einfärben (sonst schwarz-auf-schwarz).
   const canvases: HTMLCanvasElement[] = []
   for (const el of viewportEls) {
-    const restorers = freezeFormFields(el)
-    restorers.push(...hidePdfHiddenElements(el))
-    restorers.push(...(await pretintTemplateImages(el)))
-    try {
-      canvases.push(await snapshotViewport(el))
-    } finally {
-      for (let i = restorers.length - 1; i >= 0; i--) restorers[i]()
+    // Das live angezeigte Röntgenbild als Maßstab (vor UND nach der
+    // Erfassung gemessen — es könnte selbst gerade neu aufgebaut werden).
+    const live = () => {
+      const c = el.querySelector<HTMLCanvasElement>('canvas.cornerstone-canvas')
+      return c ? mittlereHelligkeit(c) : null
     }
+    let erfasst: HTMLCanvasElement | null = null
+    // Bis zu 3 Versuche: Ein schwarzer Snapshot (Realtest 01.10.2026, erst
+    // der zweite Export klappte) wird erkannt und neu erfasst.
+    for (let versuch = 0; versuch < 3 && !erfasst; versuch++) {
+      if (versuch > 0) {
+        await new Promise((r) => setTimeout(r, 400))
+        await naechsteFrames(2)
+      }
+      const liveVorher = live()
+      const restorers = freezeFormFields(el)
+      restorers.push(...hidePdfHiddenElements(el))
+      restorers.push(...(await pretintTemplateImages(el)))
+      let canvas: HTMLCanvasElement
+      try {
+        // Layout nach der DOM-Vorbereitung erst setzen lassen.
+        await naechsteFrames(2)
+        canvas = await snapshotViewport(el)
+      } finally {
+        for (let i = restorers.length - 1; i >= 0; i--) restorers[i]()
+      }
+      const liveNachher = live()
+      const liveMax =
+        liveVorher == null ? liveNachher : liveNachher == null ? liveVorher : Math.max(liveVorher, liveNachher)
+      if (!erfassungUnvollstaendig(liveMax, mittlereHelligkeit(canvas))) erfasst = canvas
+      else console.warn(`PDF-Export: Bild im Snapshot schwarz (Versuch ${versuch + 1}) — erfasse neu.`)
+    }
+    if (!erfasst) {
+      throw new Error(
+        'Das Röntgenbild wurde nicht vollständig erfasst (im Snapshot schwarz). Bitte den Export wiederholen.',
+      )
+    }
+    canvases.push(erfasst)
   }
 
   // A4 quer (297 × 210 mm). Querformat passt zur typischen X-Ray-Geometrie.
@@ -973,6 +1004,8 @@ export async function triggerPdfExport(): Promise<void> {
   if (panes.maximizedPane != null) {
     panes.setMaximizedPane(null)
     await new Promise((resolve) => setTimeout(resolve, 200))
+    // Danach rendern Cornerstone und die Overlays im rAF nach.
+    await naechsteFrames(3)
   }
   const roots: HTMLElement[] = [el]
   // Knie-Zwei-Bild-Ansicht: die seitliche Aufnahme kommt als zweites Bild
