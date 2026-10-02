@@ -18,7 +18,7 @@ Messungen, Pläne und PDF-Export sind uneingeschränkt nutzbar.
 
 | Hüfte — Beinlängen-Bilanz (Beckenübersicht AP) | Knie — 17-Punkt-Vollvermessung + CPAK (Ganzbein) |
 | --- | --- |
-| ![CendovaPlan: Beinlängendifferenz auf einer AP-Beckenübersicht](docs/screenshots/huefte-becken-ap.jpg) | ![CendovaPlan: Knie-Vollvermessung mit mHKA und CPAK-Klassifikation auf einem Ganzbein](docs/screenshots/knie-ganzbein.png) |
+| ![CendovaPlan: Beinlängendifferenz auf einer AP-Beckenübersicht](docs/screenshots/huefte-becken-ap.jpg) | ![CendovaPlan: Knie-Vollvermessung mit mHKA und CPAK-Klassifikation auf einem Ganzbein](docs/screenshots/knie-ganzbein.jpg) |
 
 <sub>Screenshots mit frei lizenzierten Lehr-Röntgenbildern (keine Patienten-
 oder Herstellerdaten) — Quellen & Lizenzen: [docs/screenshots/QUELLEN.md](docs/screenshots/QUELLEN.md).</sub>

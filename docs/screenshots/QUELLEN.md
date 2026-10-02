@@ -16,7 +16,7 @@ Eintrag was ist, steht in der Lizenzspalte der Tabelle.
 | Screenshot | Zugrunde liegendes Bild | Autor | Lizenz | Quelle |
 | --- | --- | --- | --- | --- |
 | `huefte-becken-ap.jpg` | „Protrusio acetabuli rechts mehr als links 81W – CR ap – 001" | Hellerhoff | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Protrusio_acetabuli_rechts_mehr_als_links_81W_-_CR_ap_-_001.jpg) |
-| `knie-ganzbein.png` | „Genu varum – Roe Ganzbein 001" | Hellerhoff | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Genu_varum_-_Roe_Ganzbein_001.jpg) |
+| `knie-ganzbein.jpg` | „Genu varum – Roe Ganzbein 001" | Hellerhoff | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Genu_varum_-_Roe_Ganzbein_001.jpg) |
 | `cpah-matrix-mockup.png` | — (reines UI-Mockup, synthetische Beispielwerte, kein Röntgenbild) | eigenes Projekt | Apache 2.0 (wie der Code) | Design-Vorlage für `CpahMatrix.tsx`, siehe `docs/plans/2026-08-08-femurprofil-cpah.md` Task 6 |
 
 **Eigene Demo-Screenshots erzeugen** (ohne echte Patientendaten):
