@@ -18,7 +18,7 @@ Eintrag was ist, steht in der Lizenzspalte der Tabelle.
 | --- | --- | --- | --- | --- |
 | `huefte-becken-ap.jpg` | „Protrusio acetabuli rechts mehr als links 81W – CR ap – 001" | Hellerhoff | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Protrusio_acetabuli_rechts_mehr_als_links_81W_-_CR_ap_-_001.jpg) |
 | `knie-ganzbein.jpg` | „Genu varum – Roe Ganzbein 001" | Hellerhoff | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Genu_varum_-_Roe_Ganzbein_001.jpg) |
-| Website-Kachel „Osteotomie" (`knie-osteotomie-kachel.jpg` auf cendova.de) | Abb. 1 (Panel oben links, Ausschnitt) aus: Stotter C, Klestil T, Chen K, Hummer A, Salzlechner C, Angele P, Nehrer S. *Artificial intelligence-based analyses of varus leg alignment and after high tibial osteotomy show high accuracy and reproducibility.* Knee Surg Sports Traumatol Arthrosc 2023;31:5885–5895 | Stotter et al. 2023 | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) — Ausschnitt, in DICOM umgewandelt, mit Messlinien überlagert | [doi:10.1007/s00167-023-07644-0](https://doi.org/10.1007/s00167-023-07644-0) · reproduzierbar über `scripts/website-screenshots/hole-ganzbein-varus.mjs` |
+| Reproduzierbare Osteotomie-Kachel aus `scripts/website-screenshots/erzeuge.mjs` (`knie-osteotomie-kachel.png`; auf cendova.de aktuell durch den Screenshot einer eigenen anonymisierten Aufnahme ersetzt) | Abb. 1 (Panel oben links, Ausschnitt) aus: Stotter C, Klestil T, Chen K, Hummer A, Salzlechner C, Angele P, Nehrer S. *Artificial intelligence-based analyses of varus leg alignment and after high tibial osteotomy show high accuracy and reproducibility.* Knee Surg Sports Traumatol Arthrosc 2023;31:5885–5895 | Stotter et al. 2023 | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) — Ausschnitt, in DICOM umgewandelt, mit Messlinien überlagert | [doi:10.1007/s00167-023-07644-0](https://doi.org/10.1007/s00167-023-07644-0) · reproduzierbar über `scripts/website-screenshots/hole-ganzbein-varus.mjs` |
 | `cpah-matrix-mockup.png` | — (reines UI-Mockup, synthetische Beispielwerte, kein Röntgenbild) | eigenes Projekt | Apache 2.0 (wie der Code) | Design-Vorlage für `CpahMatrix.tsx`, siehe `docs/plans/2026-08-08-femurprofil-cpah.md` Task 6 |
 
 Warum ein zweites Ganzbein für die Osteotomie: Das Hellerhoff-Ganzbein zeigt
@@ -27,6 +27,11 @@ Umstellung mehr indiziert, sondern eine Prothese. Das Stotter-Bild zeigt
 einen milden Varus bei erhaltenem Gelenkspalt (der Patient erhielt in der
 Studie eine öffnende HTO) — das fachlich passende Bild für die HTO-Planung.
 Pixelabstand 0,94 mm/px ist eine plausible Annahme (Femurlänge/Hüftkopf).
+
+Auf cendova.de zeigen die Kacheln „Ganzbein a.p.", „Osteotomie" und
+„Femurprofil" seit 10/2026 manuelle Screenshots eigener, anonymisierter
+Aufnahmen (keine personenbezogenen Daten, nicht per Skript reproduzierbar);
+Hero, Kniezoom, Beinlängen und Schulter kommen weiterhin aus `erzeuge.mjs`.
 
 **Website-Screenshots reproduzierbar erzeugen:** `npm run dev`, dann
 `node scripts/website-screenshots/hole-ganzbein-varus.mjs` (einmalig) und
