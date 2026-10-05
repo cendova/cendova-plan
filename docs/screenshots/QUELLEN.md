@@ -28,10 +28,11 @@ einen milden Varus bei erhaltenem Gelenkspalt (der Patient erhielt in der
 Studie eine öffnende HTO) — das fachlich passende Bild für die HTO-Planung.
 Pixelabstand 0,94 mm/px ist eine plausible Annahme (Femurlänge/Hüftkopf).
 
-Auf cendova.de zeigen die Kacheln „Ganzbein a.p.", „Osteotomie" und
-„Femurprofil" seit 10/2026 manuelle Screenshots eigener, anonymisierter
-Aufnahmen (keine personenbezogenen Daten, nicht per Skript reproduzierbar);
-Hero, Kniezoom, Beinlängen und Schulter kommen weiterhin aus `erzeuge.mjs`.
+Auf cendova.de zeigen die Becken- und Knie-Kacheln (Beinlängen & Offset,
+Femurprofil, Osteotomie, Beinachse/CPAK mit Planung) seit 10/2026 manuelle
+Screenshots eigener, anonymisierter Aufnahmen (keine personenbezogenen Daten,
+nicht per Skript reproduzierbar); Hero und Schulter-Kachel kommen weiterhin
+aus `erzeuge.mjs`.
 
 **Website-Screenshots reproduzierbar erzeugen:** `npm run dev`, dann
 `node scripts/website-screenshots/hole-ganzbein-varus.mjs` (einmalig) und
