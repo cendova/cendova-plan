@@ -171,7 +171,19 @@ export function KneeOverlay() {
 
       <OverlayLabels computed={computed} vp={vp} adapter={labelAdapter} />
 
-      {alignmentLines && <DraggableImageBox vp={vp} lines={alignmentLines} />}
+      {/* Startposition rechts unten im Bild (Design-Runde 09.10.2026) —
+          dort, wo der Kasten beim Planen ohnehin hingeschoben wurde; er
+          bleibt frei verschiebbar und wandert mit dem Bild. */}
+      {alignmentLines && (
+        <DraggableImageBox
+          vp={vp}
+          lines={alignmentLines}
+          initialWorld={vp.canvasToWorld([
+            vp.canvas.clientWidth * 0.84,
+            vp.canvas.clientHeight * 0.87,
+          ])}
+        />
+      )}
 
       {nextPrompt && recipe && (
         <StepPrompt

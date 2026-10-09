@@ -48,6 +48,7 @@ import {
   unit as unit3,
 } from '../lib/knee/geometry'
 import { DraggableImageBox } from './DraggableImageBox'
+import { resektionsFarbe } from '../lib/knee/resektionsFarbe'
 
 type Vp = NonNullable<ReturnType<typeof getViewport>>
 
@@ -90,6 +91,10 @@ export interface ImplantBox {
   key: string
   lines: string[]
   world: V3
+  /** Rahmenfarbe (tibiale Resektionskästen: nach Tiefe, Design-Runde 09.10.2026) */
+  rahmen?: string
+  /** große Schrift (Implantatgröße) */
+  gross?: boolean
 }
 
 /**
@@ -173,12 +178,18 @@ function implantBoxes(
 
   // Schlitten (UKA) versorgen nur EIN Kompartiment — die Resektionstiefe
   // der Gegenseite ist klinisch bedeutungslos und entfällt (Debug-Runde 3).
+  // Tibiale Resektionskästen tragen einen Rahmen in der Tiefenfarbe
+  // (weiß/grün/orange/rot) — so sind sie auf den ersten Blick von den
+  // Femur-Kästen zu unterscheiden (Design-Runde 09.10.2026).
+  const rahmenFuer = (tiefe: number): string | undefined =>
+    isFemur ? undefined : resektionsFarbe(tiefe)
   const boxes: ImplantBox[] = []
   if (t.kind !== 'journey-uk-tibia-lateral') {
     boxes.push({
       key: `${t.id}-resM`,
       lines: [`M ${fmtMm(depthMed)} mm`],
       world: add3(medEnd, scale3(medialDir, out)),
+      rahmen: rahmenFuer(depthMed),
     })
   }
   if (t.kind !== 'journey-uk-tibia-medial') {
@@ -186,11 +197,12 @@ function implantBoxes(
       key: `${t.id}-resL`,
       lines: [`L ${fmtMm(depthLat)} mm`],
       world: add3(latEnd, scale3(lateralDir, out)),
+      rahmen: rahmenFuer(depthLat),
     })
   }
   boxes.push(
     { key: `${t.id}-angle`, lines: angleLines, world: angleWorld },
-    { key: `${t.id}-size`, lines: [sizeLabel], world: sizeWorld },
+    { key: `${t.id}-size`, lines: [sizeLabel], world: sizeWorld, gross: true },
   )
   return boxes
 }
@@ -728,6 +740,8 @@ export function KneeTemplateOverlay({
                 vp={vp}
                 lines={b.lines}
                 initialWorld={b.world}
+                rahmen={b.rahmen}
+                gross={b.gross}
               />
             ))
           })}
@@ -759,6 +773,7 @@ export function KneeTemplateOverlay({
               vp={vp}
               lines={[label]}
               initialWorld={world}
+              gross
             />
           )
         })}

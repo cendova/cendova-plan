@@ -72,6 +72,7 @@ import {
   mechanicalAlignRotationDeg,
 } from '../knee/resection'
 import { autoPlaceImplant } from '../knee/resectionLine'
+import { vorwahlTibiaGroesse } from '../knee/groessenVorwahl'
 import { useHistoryStore } from '../../state/historyStore'
 import {
   computeAutoCupPosition,
@@ -928,6 +929,20 @@ export function addKneeTemplate(
   // synchronisiert setSizeIndex/setSide später beide Schablonen.
   const groupId = `kneeG-${Date.now()}-${Math.round(Math.random() * 1e6)}`
 
+  // Größenvorwahl (Design-Runde 09.10.2026): Der Femur wird in der Regel
+  // zuerst geplant — eine neue Tibia startet mit SEINER Größe statt mit
+  // „Gr. 1". Maßgeblich ist der zuletzt platzierte AP-Femur im Haupt-Pane.
+  let sizeIndex: number | undefined
+  if (boneOf(kind) === 'Tibia') {
+    const femur = [...tmplStore.templates]
+      .reverse()
+      .find(
+        (t) =>
+          t.view === 'AP' && (t.pane ?? 'left') === 'left' && boneOf(t.kind) === 'Femur',
+      )
+    if (femur) sizeIndex = vorwahlTibiaGroesse(femur.kind, femur.sizeIndex, kind)
+  }
+
   // Platziert die Schablone mittig in EINEM Pane — nur, wenn das Pane einen
   // Viewport hat UND die zur Pane-Rolle gehörende Kontur getraced ist.
   const placeIn = (
@@ -940,7 +955,7 @@ export function addKneeTemplate(
     const w = vp.canvas.clientWidth
     const h = vp.canvas.clientHeight
     const center = vp.canvasToWorld([w / 2, h / 2])
-    return tmplStore.add(kind, side, view, center, undefined, pane, groupId)
+    return tmplStore.add(kind, side, view, center, sizeIndex, pane, groupId)
   }
 
   let lastId: string | null = null

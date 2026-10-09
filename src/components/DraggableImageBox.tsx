@@ -21,11 +21,18 @@ export function DraggableImageBox({
   vp,
   lines,
   initialWorld,
+  rahmen,
+  gross = false,
 }: {
   vp: Vp
   lines: BoxLine[]
   /** Welt-Startposition (z. B. nahe dem Implantat). Default: unten-mittig. */
   initialWorld?: Types.Point3
+  /** Rahmenfarbe — z. B. die tibialen Resektionskästen (weiß/grün/orange/rot
+   *  nach Tiefe); ohne Rahmen bleibt der Kasten wie bisher. */
+  rahmen?: string
+  /** Große Schrift — Implantatgröße (Design-Runde 09.10.2026). */
+  gross?: boolean
 }) {
   const [anchor, setAnchor] = useState<Types.Point3>(
     () =>
@@ -68,7 +75,10 @@ export function DraggableImageBox({
       <div
         data-overlay-ui
         onMouseDown={startDrag}
-        className="cursor-move rounded bg-slate-900/85 px-2 py-1 text-[17px] font-semibold leading-tight text-slate-50"
+        className={`cursor-move rounded bg-slate-900/85 px-2 py-1 font-semibold leading-tight text-slate-50 ${
+          gross ? 'text-[23px]' : 'text-[17px]'
+        }`}
+        style={rahmen ? { border: `2px solid ${rahmen}` } : undefined}
       >
         {lines.map((ln, i) => {
           const text = typeof ln === 'string' ? ln : ln.text

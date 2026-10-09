@@ -87,16 +87,11 @@ import {
   entdoppleGenesisTibia,
   ohneTibiaVariantenZusatz,
   isHiddenKneeSize,
-  LEGION_PS_FEMUR,
-  SPHERE_FEMUR,
-  SPHERE_TIBIA_BASEPLATE,
-  GENESIS_II_TIBIA_FEMALE_TAPERED,
-  JOURNEY_UK_FEMUR,
-  JOURNEY_UK_TIBIA_MEDIAL,
   TIBIA_INSERT,
   type KneeImplantFamily,
   type KneeImplantKind,
 } from '../lib/knee/smithNephewCatalog'
+import { sizesForKind } from '../lib/knee/groessenVorwahl'
 import { renderKneeTemplate } from '../lib/knee/templates'
 
 export function Toolbar() {
@@ -1266,19 +1261,8 @@ function SelectedKneeTemplatePanel() {
 }
 
 /** Liefert die rohe Größenliste je nach Implantat-Familie. */
-function sizesForKind(kind: KneeImplantKind): ReadonlyArray<{ size: string }> {
-  switch (kind) {
-    case 'legion-ps-femur':           return LEGION_PS_FEMUR
-    case 'sphere-femur':              return SPHERE_FEMUR
-    case 'sphere-tibia-baseplate':    return SPHERE_TIBIA_BASEPLATE
-    case 'genesis-tibia-female':
-    case 'genesis-tibia-male':        return GENESIS_II_TIBIA_FEMALE_TAPERED
-    case 'journey-uk-femur':          return JOURNEY_UK_FEMUR
-    case 'journey-uk-tibia-medial':
-    case 'journey-uk-tibia-lateral':  return JOURNEY_UK_TIBIA_MEDIAL
-    default:                          return []
-  }
-}
+// Größentabelle je Art: seit 09.10.2026 in lib/knee/groessenVorwahl.ts (dort
+// auch die Vorwahl der Tibiagröße aus dem Femur).
 
 /** Generisches Select-Element für das Schablonen-Panel — DRY für die
  *  drei Dropdowns (Größe, Seite, View). */

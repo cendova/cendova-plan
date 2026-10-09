@@ -539,7 +539,10 @@ const workflow: KneeRecipe = {
           { from: tibDistMed, to: tibDistLat },
         ],
         circles: [{ center: hip, radius: hipRadius }],
-        labels: [{ at: knee, text: `mHKA ${deg(raw.mHKA)}` }],
+        // Keine mHKA-Beschriftung mehr im Bild (Design-Runde 09.10.2026):
+        // der Wert steht in der Ergebnisliste, im Bild zählt der
+        // Ausrichtungs-Kasten (Varus/Valgus, korrigiert in Grün).
+        labels: [],
       },
     }
   },
