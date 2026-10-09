@@ -178,11 +178,11 @@ function implantBoxes(
 
   // Schlitten (UKA) versorgen nur EIN Kompartiment — die Resektionstiefe
   // der Gegenseite ist klinisch bedeutungslos und entfällt (Debug-Runde 3).
-  // Tibiale Resektionskästen tragen einen Rahmen in der Tiefenfarbe
-  // (weiß/grün/orange/rot) — so sind sie auf den ersten Blick von den
-  // Femur-Kästen zu unterscheiden (Design-Runde 09.10.2026).
-  const rahmenFuer = (tiefe: number): string | undefined =>
-    isFemur ? undefined : resektionsFarbe(tiefe)
+  // Resektionskästen tragen einen Rahmen in der Tiefenfarbe
+  // (weiß/grün/orange/rot) — Design-Runde 09.10.2026, zuerst nur Tibia,
+  // auf Nutzerwunsch auch femoral: die Farbe sagt auf einen Blick, ob
+  // eine Resektion sparsam, üblich oder viel ist.
+  const rahmenFuer = (tiefe: number): string | undefined => resektionsFarbe(tiefe)
   const boxes: ImplantBox[] = []
   if (t.kind !== 'journey-uk-tibia-lateral') {
     boxes.push({

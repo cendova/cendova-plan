@@ -1,9 +1,8 @@
 /**
- * Farbkodierung der tibialen Resektionstiefe (Design-Runde 09.10.2026).
+ * Farbkodierung der Resektionstiefe, Tibia und Femur (Design-Runde 09.10.2026).
  *
- * Die Kästen „M x,x mm" / „L x,x mm" an der Tibia tragen einen Rahmen —
- * damit sie auf den ersten Blick zur Tibia gehören (Femur-Kästen haben
- * keinen) — und der Rahmen färbt sich nach der Tiefe:
+ * Die Kästen „M x,x mm" / „L x,x mm" an Tibia und Femur tragen einen
+ * Rahmen, der sich nach der Tiefe färbt:
  *   0 – 7,0 mm   weiß      (sparsam)
  *   7,1 – 10,5   grün      (üblicher Bereich)
  *   10,6 – 11,9  orange    (viel)
