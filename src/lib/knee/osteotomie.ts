@@ -1,3 +1,4 @@
+import { dezimalTrenner } from '../zahlFormat'
 /**
  * Umstellungsosteotomie am Knie — Rechenkern (HTO, DFO, Doppel-Level).
  * Fachliche Grundlage und Quellen: docs/knie-osteotomie-plan.md.
@@ -321,7 +322,7 @@ const SEVERITY_RANG: Record<OsteotomieHinweis['severity'], number> = {
   info: 2,
 }
 
-const k1 = (v: number) => v.toFixed(1).replace('.', ',')
+const k1 = (v: number) => v.toFixed(1).replace('.', dezimalTrenner())
 
 /**
  * Ausschnitt-Polygon des distalen Fragments: oben exakt die (beidseits
