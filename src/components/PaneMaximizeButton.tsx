@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useKneePanesStore, type ActivePane } from '../state/kneePanesStore'
 
 /**
@@ -37,7 +38,7 @@ export function PaneMaximizeButton({
       data-overlay-ui
       data-pdf-hide
       onClick={toggle}
-      title={isMax ? 'Geteilte Ansicht wiederherstellen' : 'Pane maximieren'}
+      title={translate(isMax ? 'Geteilte Ansicht wiederherstellen' : 'Pane maximieren')}
       className={[
         'rounded border border-neutral-700 bg-neutral-950/80 p-1.5 text-neutral-300 shadow transition hover:bg-neutral-800 hover:text-sky-300',
         className,

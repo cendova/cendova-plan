@@ -1,3 +1,5 @@
+import { dezimalTrenner } from '../lib/zahlFormat'
+import { translate } from '../i18n'
 import { useEffect, useRef } from 'react'
 import type { Types } from '@cornerstonejs/core'
 import { getViewport } from '../lib/cornerstone/viewer'
@@ -276,7 +278,7 @@ function Planungsgeometrie({
   const pl = nachher.plateauLateral
   const t = ziel / 100
   const zielPunkt = c([pm[0] + t * (pl[0] - pm[0]), pm[1] + t * (pl[1] - pm[1]), pm[2]])
-  const fmt = (v: number) => v.toFixed(1).replace('.', ',')
+  const fmt = (v: number) => v.toFixed(1).replace('.', dezimalTrenner())
   return (
     <g>
       {/* Neue Traglinie Hüfte → Sprunggelenk (nachher). */}
@@ -292,7 +294,7 @@ function Planungsgeometrie({
         strokeWidth={3}
         paintOrder="stroke"
       >
-        {fmt(ziel)} %
+        {translate(fmt(ziel))} %
       </text>
       {schnitte.map((s) => {
         const h = c(keil(s.knochen, s.scharnier))
@@ -327,7 +329,7 @@ function Planungsgeometrie({
               strokeWidth={3}
               paintOrder="stroke"
             >
-              {`${s.knochen} ${fmt(Math.abs(s.grad))}° · ${oeffnend ? 'Öffnung' : 'Keilbasis'} ${fmt(s.keilhoeheMm)} mm`}
+              {translate(`${s.knochen} ${fmt(Math.abs(s.grad))}° · ${oeffnend ? 'Öffnung' : 'Keilbasis'} ${fmt(s.keilhoeheMm)} mm`)}
             </text>
           </g>
         )

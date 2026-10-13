@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useRef, useState } from 'react'
 import {
   useOrgProfileStore,
@@ -58,13 +59,11 @@ export function OrgProfileDialog() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
-          <h2 className="text-sm font-semibold text-neutral-100">
-            Einrichtung personalisieren
-          </h2>
+          <h2 className="text-sm font-semibold text-neutral-100">{translate("Einrichtung personalisieren")}</h2>
           <button
             onClick={() => s.setDialogOpen(false)}
             className="rounded p-1 text-neutral-400 transition hover:bg-neutral-800 hover:text-neutral-100"
-            aria-label="Schließen"
+            aria-label={translate("Schließen")}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path
@@ -78,41 +77,36 @@ export function OrgProfileDialog() {
         </div>
 
         <div className="max-h-[70vh] space-y-3 overflow-y-auto px-4 py-4">
-          <p className="rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-[11px] leading-relaxed text-neutral-400">
-            Diese Angaben bleiben lokal auf diesem Rechner gespeichert und sind
-            nicht Teil des öffentlichen Programms. Über Export/Import lässt sich
-            das Profil auf weitere Rechner übertragen. Leere Felder bedeuten
-            „neutral" (nur „CendovaPlan" ohne Zusatz).
-          </p>
+          <p className="rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-[11px] leading-relaxed text-neutral-400">{translate("Diese Angaben bleiben lokal auf diesem Rechner gespeichert und sind nicht Teil des öffentlichen Programms. Über Export/Import lässt sich das Profil auf weitere Rechner übertragen. Leere Felder bedeuten „neutral\" (nur „CendovaPlan\" ohne Zusatz).")}</p>
 
-          <Field label="Kopfzeile — Untertitel">
+          <Field label={translate("Kopfzeile — Untertitel")}>
             <input
               type="text"
               value={s.headerSubtitle}
               onChange={(e) => s.setProfile({ headerSubtitle: e.target.value })}
-              placeholder="z. B. Zentrum für Endoprothetik"
+              placeholder={translate("z. B. Zentrum für Endoprothetik")}
               className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-sky-600 focus:outline-none"
             />
           </Field>
 
-          <Field label="Standorte / Krankenhäuser (eine pro Zeile)">
+          <Field label={translate("Standorte / Krankenhäuser (eine pro Zeile)")}>
             <textarea
               rows={4}
               value={s.hospitals.join('\n')}
               onChange={(e) =>
                 s.setProfile({ hospitals: e.target.value.split('\n') })
               }
-              placeholder={'z. B.\nKlinikum Musterstadt\nOrthopädische Praxis'}
+              placeholder={translate('z. B.\nKlinikum Musterstadt\nOrthopädische Praxis')}
               className="w-full resize-y rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-sky-600 focus:outline-none"
             />
           </Field>
 
-          <Field label="Planer — Vorbelegung">
+          <Field label={translate("Planer — Vorbelegung")}>
             <input
               type="text"
               value={s.defaultPlanner}
               onChange={(e) => s.setProfile({ defaultPlanner: e.target.value })}
-              placeholder="z. B. Dr. med. …"
+              placeholder={translate("z. B. Dr. med. …")}
               className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-sky-600 focus:outline-none"
             />
           </Field>
@@ -121,24 +115,18 @@ export function OrgProfileDialog() {
             <button
               onClick={handleExport}
               className="rounded border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-neutral-800 hover:text-sky-300"
-            >
-              Profil exportieren (JSON)
-            </button>
+            >{translate("Profil exportieren (JSON)")}</button>
             <button
               onClick={() => importRef.current?.click()}
               className="rounded border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-neutral-800 hover:text-sky-300"
-            >
-              Profil importieren …
-            </button>
+            >{translate("Profil importieren …")}</button>
             <button
               onClick={() => {
                 s.resetProfile()
                 setNote('Auf neutralen Stand zurückgesetzt.')
               }}
               className="rounded border border-neutral-800 px-3 py-1.5 text-xs text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-300"
-            >
-              Zurücksetzen (neutral)
-            </button>
+            >{translate("Zurücksetzen (neutral)")}</button>
             <input
               ref={importRef}
               type="file"
@@ -151,16 +139,14 @@ export function OrgProfileDialog() {
             />
           </div>
 
-          {note && <p className="text-xs text-emerald-400">{note}</p>}
+          {note && <p className="text-xs text-emerald-400">{translate(note)}</p>}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-neutral-700 px-4 py-3">
           <button
             onClick={() => s.setDialogOpen(false)}
             className="rounded bg-sky-700 px-4 py-1.5 text-sm font-medium text-sky-50 transition hover:bg-sky-600"
-          >
-            Fertig
-          </button>
+          >{translate("Fertig")}</button>
         </div>
       </div>
     </div>
@@ -177,9 +163,9 @@ function Field({
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium text-neutral-400">
-        {label}
+        {translate(label)}
       </span>
-      {children}
+      {translate(children)}
     </label>
   )
 }

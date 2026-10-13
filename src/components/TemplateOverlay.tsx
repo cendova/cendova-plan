@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useEffect, useRef, useState } from 'react'
 import type { Types } from '@cornerstonejs/core'
 import { logDiagnostic } from '../lib/diagnostics'
@@ -300,7 +301,7 @@ export function TemplateOverlay() {
           pending.stage === 'femur-axis' &&
           pending.axisDraft && (
             <g style={{ pointerEvents: 'none' }}>
-              {(() => {
+              {translate((() => {
                 const p = w2c(pending.axisDraft)
                 const arm = 7
                 return (
@@ -323,7 +324,7 @@ export function TemplateOverlay() {
                     />
                   </>
                 )
-              })()}
+              })())}
             </g>
           )}
       </svg>
@@ -710,7 +711,7 @@ function CupGraphic({
           (= das mit kleinerem Canvas-y, also weiter oben im Bild).
           So sitzt das Label für R UND L spiegelbildlich an der gleichen
           klinischen Position. */}
-      {inclination != null && (() => {
+      {translate(inclination != null && (() => {
         const cranialRim = rimA[1] <= rimB[1] ? rimA : rimB
         return (
           <text
@@ -723,10 +724,10 @@ function CupGraphic({
             stroke="#0f172a"
             strokeWidth={3}
           >
-            {`${inclination.toFixed(1)}°`}
+            {translate(`${inclination.toFixed(1)}°`)}
           </text>
         )
-      })()}
+      })())}
     </g>
   )
 }
@@ -1086,8 +1087,7 @@ function TeardropMeasure({
         stroke="#0f172a"
         strokeWidth={3}
       >
-        {mm.toFixed(1)} mm
-      </text>
+        {translate(mm.toFixed(1))}{translate(" mm")}</text>
     </g>
   )
 }
@@ -1309,25 +1309,19 @@ function PlacementBanner({
         data-overlay-ui
         className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded bg-sky-700/95 px-3 py-1.5 text-xs font-medium text-white shadow"
       >
-        <span>{kindLabel} — welche Seite?</span>
+        <span>{translate(kindLabel)}{translate(" — welche Seite?")}</span>
         <button
           onClick={() => pickSide('R')}
           className="rounded bg-sky-900/80 px-2 py-0.5 hover:bg-sky-900"
-        >
-          Rechts
-        </button>
+        >{translate("Rechts")}</button>
         <button
           onClick={() => pickSide('L')}
           className="rounded bg-sky-900/80 px-2 py-0.5 hover:bg-sky-900"
-        >
-          Links
-        </button>
+        >{translate("Links")}</button>
         <button
           onClick={store.cancelPlacement}
           className="ml-2 text-sky-200 hover:text-white"
-        >
-          Abbrechen
-        </button>
+        >{translate("Abbrechen")}</button>
       </div>
     )
   }
@@ -1344,16 +1338,13 @@ function PlacementBanner({
         data-overlay-ui
         className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded bg-sky-700/95 px-3 py-1.5 text-xs font-medium text-white shadow"
       >
-        <span>
-          Schaft ({sideLabel[pending.side]}) — Schritt {stepNum}/2:{' '}
-          {stepText}
+        <span>{translate("Schaft (")}{translate(sideLabel[pending.side])}{translate(") — Schritt ")}{translate(stepNum)}/2:{translate(' ')}
+          {translate(stepText)}
         </span>
         <button
           onClick={store.cancelPlacement}
           className="ml-2 text-sky-200 hover:text-white"
-        >
-          Abbrechen
-        </button>
+        >{translate("Abbrechen")}</button>
       </div>
     )
   }
@@ -1366,19 +1357,15 @@ function PlacementBanner({
       data-overlay-ui
       className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded bg-sky-700/95 px-3 py-1.5 text-xs font-medium text-white shadow"
     >
-      <span>{prompt}</span>
+      <span>{translate(prompt)}</span>
       <button
         onClick={skip}
         className="rounded bg-sky-900/80 px-2 py-0.5 hover:bg-sky-900"
-      >
-        Überspringen
-      </button>
+      >{translate("Überspringen")}</button>
       <button
         onClick={store.cancelPlacement}
         className="ml-2 text-sky-200 hover:text-white"
-      >
-        Abbrechen
-      </button>
+      >{translate("Abbrechen")}</button>
     </div>
   )
 }

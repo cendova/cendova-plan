@@ -1,3 +1,4 @@
+import { dezimalTrenner } from '../zahlFormat'
 /**
  * PDF-Zeilen der Abschnitte „Deformitätsanalyse" und „Umstellungs-
  * osteotomie" (Knie). Reine Funktion über die gemeinsame Berechnung
@@ -6,22 +7,23 @@
  * Zwei PDF-Eigenheiten, beide wie in femurProfilText.ts behandelt:
  *  - Helvetica/WinAnsi kennt Zeichen wie → ≥ ⅓ Δ — nicht; sie fielen still
  *    heraus und machten klinische Zeilen mehrdeutig → hier ersetzt.
- *  - `writeSection` bricht nicht um → lange Hinweise werden hier auf
- *    Seitenbreite umbrochen.
+ *  - Lange Hinweise werden vor der Zeichenabsicherung übersetzt und
+ *    vorab umbrochen; `writeSection` prüft zusätzlich die reale Textbreite.
  */
 import type { OsteotomieDaten } from '../../components/useOsteotomie'
 import { osteotomieTyp } from '../knee/osteotomie'
 import { computeCpak } from '../knee/cpak'
 import { pdfSicher } from './pdfText'
+import { t, translateText } from '../../i18n'
 
 const BREITE = 100
 
 /** Delegiert an die zentrale Absicherung (pdfText.ts) — eine Liste für alle Module. */
-export const pdfSicherOsteotomie = (s: string) => pdfSicher(s)
+export const pdfSicherOsteotomie = (s: string) => pdfSicher(translateText(s))
 
 /** Wortumbruch auf `BREITE` Zeichen; Folgezeilen eingerückt. */
 export function umbrechen(text: string, einzug = '   '): string[] {
-  const woerter = text.split(/\s+/).filter(Boolean)
+  const woerter = translateText(text).split(/\s+/).filter(Boolean)
   const zeilen: string[] = []
   let zeile = ''
   for (const w of woerter) {
@@ -37,23 +39,29 @@ export function umbrechen(text: string, einzug = '   '): string[] {
   return zeilen
 }
 
-const f1 = (v: number) => v.toFixed(1).replace('.', ',')
+const f1 = (v: number) => v.toFixed(1).replace('.', dezimalTrenner())
 
 export function deformitaetPdfZeilen(d: OsteotomieDaten): string[] {
   const { vorher, analyse } = d
   if (!vorher || !analyse) return []
   const zeilen = [
-    `- Achse: ${analyse.richtung} (mHKA-Abweichung ${f1(Math.abs(vorher.hkaDeviationSigned))}°)` +
-      (vorher.wblProzent != null ? ` | Traglinie ${f1(vorher.wblProzent)} % der Plateaubreite` : ''),
+    t('- Achse: {0} (mHKA-Abweichung {1}°)', {
+      0: t(analyse.richtung),
+      1: f1(Math.abs(vorher.hkaDeviationSigned)),
+    }) + (vorher.wblProzent != null
+      ? ` ${t('| Traglinie {0} % der Plateaubreite', { 0: f1(vorher.wblProzent) })}`
+      : ''),
     ...analyse.bewertungen.map(
       (b) =>
-        `- ${b.winkel} ${f1(b.wert)}° (Norm ${b.norm[0]}-${b.norm[1]}°)` +
-        (b.status === 'normal' ? '' : ` ${b.status}`),
+        `- ${b.winkel} ${f1(b.wert)}° (${t('Norm')} ${b.norm[0]}-${b.norm[1]}°)` +
+        (b.status === 'normal' ? '' : ` ${t(b.status)}`),
     ),
   ]
   if (analyse.lokalisation.length > 0)
-    zeilen.push(...umbrechen(`- Lokalisation: ${analyse.lokalisation.join(' | ')}`))
-  zeilen.push(...umbrechen(`- ${analyse.begruendung}`))
+    zeilen.push(...umbrechen(t('- Lokalisation: {0}', {
+      0: analyse.lokalisation.map((text) => translateText(text)).join(' | '),
+    })))
+  zeilen.push(...umbrechen(`- ${translateText(analyse.begruendung)}`))
   return zeilen.map(pdfSicherOsteotomie)
 }
 
@@ -63,25 +71,30 @@ export function osteotomiePdfZeilen(
 ): string[] {
   const { plan, ergebnis } = d
   if (!plan) return []
-  const kopf = `- ${osteotomieTyp(plan.typ).kurz} | Ziel Traglinie ${f1(plan.zielWblProzent)} %`
+  const kopf = t('- {0} | Ziel Traglinie {1} %', {
+    0: t(osteotomieTyp(plan.typ).kurz),
+    1: f1(plan.zielWblProzent),
+  })
   if (!ergebnis || !ergebnis.ok)
     return [
       kopf,
       // Ohne Ergebnis fehlt die (sichtbare) Vollvermessung — die Planung
       // rechnet nur auf ihr (vorher stand hier ein leerer Grund).
-      `- Planung unvollständig: ${ergebnis ? ergebnis.fehler : 'Vollvermessung fehlt oder ist ausgeblendet.'}`,
+      t('- Planung unvollständig: {0}', {
+        0: translateText(ergebnis ? ergebnis.fehler : 'Vollvermessung fehlt oder ist ausgeblendet.'),
+      }),
     ].map(pdfSicherOsteotomie)
   const { vorher, nachher } = ergebnis
-  const vn = (label: string, a: string, b: string) => `   ${label}: ${a} -> ${b}`
+  const vn = (label: string, a: string, b: string) => `   ${t(label)}: ${translateText(a)} -> ${translateText(b)}`
   const zeilen = [kopf]
   if (!kalibriert)
     zeilen.push('- Bild nicht kalibriert: mm-Angaben (Öffnung/Keil, Schnitt, Beinlänge) nicht maßstabsgetreu.')
   if (plan.typ === 'dlo') zeilen.push(`- Ziel-mLDFA femoral ${f1(plan.dloZielLdfa)}°`)
   for (const s of ergebnis.schnitte)
     zeilen.push(
-      `- ${s.knochen}: Korrektur ${f1(Math.abs(s.grad))}° | ` +
-        `${s.keil === 'oeffnend' ? 'Öffnung' : 'Keilbasis'} ${f1(s.keilhoeheMm)} mm | ` +
-        `Schnittlänge ${s.schnittlaengeMm.toFixed(0)} mm`,
+      t('- {0}: Korrektur {1}° |', { 0: t(s.knochen), 1: f1(Math.abs(s.grad)) }) +
+        ` ${t(s.keil === 'oeffnend' ? 'Öffnung' : 'Keilbasis')} ${f1(s.keilhoeheMm)} mm | ` +
+        t('Schnittlänge {0} mm', { 0: s.schnittlaengeMm.toFixed(0) }),
     )
   if (ergebnis.jlcaKorrekturGrad > 0)
     zeilen.push(

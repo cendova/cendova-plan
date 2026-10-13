@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useEffect, useRef } from 'react'
 import type { Types } from '@cornerstonejs/core'
 import { getViewport } from '../lib/cornerstone/viewer'
@@ -171,23 +172,17 @@ export function OsteophyteOverlay() {
           data-overlay-ui
           className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded bg-red-700/95 px-3 py-1.5 text-xs font-medium text-white shadow"
         >
-          <span className="pointer-events-none">
-            Osteophyten markieren · {draftPoints.length} Punkt
-            {draftPoints.length === 1 ? '' : 'e'}
+          <span className="pointer-events-none">{translate("Osteophyten markieren · ")}{translate(draftPoints.length)}{translate(" Punkt")}{translate(draftPoints.length === 1 ? '' : 'e')}
           </span>
           <button
             onClick={() => useOsteophyteStore.getState().finishRegion()}
             disabled={draftPoints.length < 3}
             className="rounded bg-red-900/80 px-2 py-0.5 enabled:hover:bg-red-900 disabled:opacity-40"
-          >
-            Fläche abschließen (Enter)
-          </button>
+          >{translate("Fläche abschließen (Enter)")}</button>
           <button
             onClick={() => useOsteophyteStore.getState().setPlacing(false)}
             className="rounded bg-red-900/60 px-2 py-0.5 hover:bg-red-900"
-          >
-            Fertig
-          </button>
+          >{translate("Fertig")}</button>
         </div>
       )}
     </>

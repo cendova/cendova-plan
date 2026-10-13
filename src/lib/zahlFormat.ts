@@ -13,12 +13,22 @@
  *    Grad ohne Leerzeichen, wie im Deutschen üblich.
  */
 
+import { getLocale } from '../i18n'
+
+const trennerCache = new Map<string, string>()
+export function dezimalTrenner(): string {
+  const locale = getLocale()
+  if (!trennerCache.has(locale)) {
+    trennerCache.set(locale, new Intl.NumberFormat(locale).formatToParts(1.1).find((p) => p.type === 'decimal')?.value ?? ',')
+  }
+  return trennerCache.get(locale)!
+}
 const NBSP = ' '
 const MINUS = '−'
 
 /** Zahl mit Komma und echtem Minus; rundet wie `toFixed`. */
 export function zahl(v: number, nachkomma = 1): string {
-  const s = Math.abs(v).toFixed(nachkomma).replace('.', ',')
+  const s = Math.abs(v).toFixed(nachkomma).replace('.', dezimalTrenner())
   // Auf 0 gerundete negative Werte ohne Vorzeichen — „−0,0" ist Rauschen.
   const istNull = Number(Math.abs(v).toFixed(nachkomma)) === 0
   return v < 0 && !istNull ? `${MINUS}${s}` : s

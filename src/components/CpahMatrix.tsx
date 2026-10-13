@@ -1,3 +1,5 @@
+import { dezimalTrenner } from '../lib/zahlFormat'
+import { translate } from '../i18n'
 /**
  * CPAH-Schaubild: die neun Femur-Morphotypen aus Dorr-Typ (Cortical
  * Index) und NSA, plus der Offset-Untertyp N/H als eigene Leiste.
@@ -116,7 +118,7 @@ export function CpahMatrix({
     // Ohne eigenen Kartenrahmen und Titel: Das Schaubild sitzt IN der Karte
     // „Morphologie & Fixation", deren Kopf den Typ bereits nennt.
     <div>
-      <svg width={W} height={H} className="block" role="img" aria-label={`CPAH-Schaubild, Typ ${cpah.code}`}>
+      <svg width={W} height={H} className="block" role="img" aria-label={translate(`CPAH-Schaubild, Typ ${cpah.code}`)}>
         <rect
           x={PAD_LEFT}
           y={PAD_TOP}
@@ -186,7 +188,7 @@ export function CpahMatrix({
                 fontSize={12}
                 fontWeight={typ === cpah.type ? 700 : 400}
               >
-                {typ}
+                {translate(typ)}
               </text>
             )
           }),
@@ -195,30 +197,28 @@ export function CpahMatrix({
         {/* Spalten- und Zeilen-Beschriftung */}
         {['vara', 'norma', 'valga'].map((t, i) => (
           <text key={t} x={colCenters[i]} y={PAD_TOP - 8} textAnchor="middle" fontSize={9} className="fill-neutral-400">
-            {t}
+            {translate(t)}
           </text>
         ))}
         {['Dorr A', 'Dorr B', 'Dorr C'].map((t, i) => (
           <text key={t} x={PAD_LEFT - 4} y={rowCenters[i] + 3} textAnchor="end" fontSize={9} className="fill-neutral-400">
-            {t}
+            {translate(t)}
           </text>
         ))}
 
         {/* Schwellenwerte anschreiben — sonst bleibt die Skala Behauptung. */}
         <text x={xVara} y={PLOT_BOT + 11} textAnchor="middle" fontSize={8} className="fill-neutral-500">
-          {NSA_THRESHOLDS.varaBelow}°
+          {translate(NSA_THRESHOLDS.varaBelow)}°
         </text>
         <text x={xValga} y={PLOT_BOT + 11} textAnchor="middle" fontSize={8} className="fill-neutral-500">
-          {NSA_THRESHOLDS.valgaAbove}°
+          {translate(NSA_THRESHOLDS.valgaAbove)}°
         </text>
-        <text x={PAD_LEFT + PLOT_W / 2} y={PLOT_BOT + 23} textAnchor="middle" fontSize={9} className="fill-neutral-500">
-          NSA (CCD-Winkel)
-        </text>
+        <text x={PAD_LEFT + PLOT_W / 2} y={PLOT_BOT + 23} textAnchor="middle" fontSize={9} className="fill-neutral-500">{translate("NSA (CCD-Winkel)")}</text>
         <text x={PAD_LEFT + PLOT_W - 3} y={yAB - 3} textAnchor="end" fontSize={8} className="fill-neutral-500">
-          {DORR_CI_THRESHOLDS.dorrAAbove.toFixed(2).replace('.', ',')}
+          {translate(DORR_CI_THRESHOLDS.dorrAAbove.toFixed(2).replace('.', dezimalTrenner()))}
         </text>
         <text x={PAD_LEFT + PLOT_W - 3} y={yBC - 3} textAnchor="end" fontSize={8} className="fill-neutral-500">
-          {DORR_CI_THRESHOLDS.dorrCBelow.toFixed(2).replace('.', ',')}
+          {translate(DORR_CI_THRESHOLDS.dorrCBelow.toFixed(2).replace('.', dezimalTrenner()))}
         </text>
 
         {/* Der Messpunkt (NSA, CI). */}
@@ -233,9 +233,7 @@ export function CpahMatrix({
 
         {/* Offset-Untertyp als eigene Leiste: die dritte Dimension gehört
             sichtbar gemacht, nicht nur als Buchstabe im Code versteckt. */}
-        <text x={PAD_LEFT - 4} y={BAR_Y + BAR_H - 1} textAnchor="end" fontSize={9} className="fill-neutral-400">
-          FOR
-        </text>
+        <text x={PAD_LEFT - 4} y={BAR_Y + BAR_H - 1} textAnchor="end" fontSize={9} className="fill-neutral-400">{translate("FOR")}</text>
         <rect x={PAD_LEFT} y={BAR_Y} width={PLOT_W} height={BAR_H} fill="#0f172a" stroke="#334155" strokeWidth={1} />
         <rect
           x={xHigh}
@@ -246,14 +244,10 @@ export function CpahMatrix({
           fillOpacity={0.1}
         />
         <line x1={xHigh} y1={BAR_Y - 2} x2={xHigh} y2={BAR_Y + BAR_H + 2} stroke="#475569" strokeWidth={1} />
-        <text x={(PAD_LEFT + xHigh) / 2} y={BAR_Y - 5} textAnchor="middle" fontSize={9} className="fill-neutral-400">
-          N
-        </text>
-        <text x={(xHigh + PAD_LEFT + PLOT_W) / 2} y={BAR_Y - 5} textAnchor="middle" fontSize={9} className="fill-neutral-400">
-          H
-        </text>
+        <text x={(PAD_LEFT + xHigh) / 2} y={BAR_Y - 5} textAnchor="middle" fontSize={9} className="fill-neutral-400">{translate("N")}</text>
+        <text x={(xHigh + PAD_LEFT + PLOT_W) / 2} y={BAR_Y - 5} textAnchor="middle" fontSize={9} className="fill-neutral-400">{translate("H")}</text>
         <text x={xHigh} y={BAR_Y + BAR_H + 12} textAnchor="middle" fontSize={8} className="fill-neutral-500">
-          {FOR_HIGH_AT.toFixed(2).replace('.', ',')}
+          {translate(FOR_HIGH_AT.toFixed(2).replace('.', dezimalTrenner()))}
         </text>
         <circle
           cx={xForOf(femoralOffsetRatio)}

@@ -1,3 +1,5 @@
+import { dezimalTrenner } from '../lib/zahlFormat'
+import { translate } from '../i18n'
 /**
  * Linke Sidebar — domänenspezifische Planungs-Werkzeuge.
  *
@@ -107,17 +109,17 @@ export function Toolbar() {
           Schulter-Werkzeugen um. */}
       <div className="flex border-b border-neutral-700 bg-neutral-950">
         <TabButton
-          label="Hüfte"
+          label={translate("Hüfte")}
           active={planningMode === 'hip'}
           onClick={() => setPlanningMode('hip')}
         />
         <TabButton
-          label="Knie"
+          label={translate("Knie")}
           active={planningMode === 'knee'}
           onClick={() => setPlanningMode('knee')}
         />
         <TabButton
-          label="Schulter"
+          label={translate("Schulter")}
           active={planningMode === 'shoulder'}
           onClick={() => setPlanningMode('shoulder')}
         />
@@ -137,10 +139,7 @@ export function Toolbar() {
       </div>
 
       <Hint>
-        <div className="mt-auto p-3 text-xs leading-relaxed text-neutral-600">
-          Maus: links = aktives Werkzeug, Cmd/Strg+links oder Mitte =
-          verschieben, rechts = zoomen, Rad = blättern.
-        </div>
+        <div className="mt-auto p-3 text-xs leading-relaxed text-neutral-600">{translate("Maus: links = aktives Werkzeug, Cmd/Strg+links oder Mitte = verschieben, rechts = zoomen, Rad = blättern.")}</div>
       </Hint>
     </aside>
   )
@@ -171,7 +170,7 @@ function KneeFamilienDropdown<K extends string>({
 }) {
   return (
     <div className="px-1">
-      <label className="mb-1 block text-[10px] text-neutral-400">{label}</label>
+      <label className="mb-1 block text-[10px] text-neutral-400">{translate(label)}</label>
       {/* value="" hält das Select auf dem Platzhalter — so löst auch die
           erneute Wahl derselben Familie wieder ein onChange aus. */}
       <select
@@ -182,7 +181,7 @@ function KneeFamilienDropdown<K extends string>({
         }}
         className="mb-2 w-full rounded border border-neutral-700 bg-neutral-950 px-1 py-1 text-xs disabled:opacity-50"
       >
-        <option value="">Familie wählen …</option>
+        <option value="">{translate("Familie wählen …")}</option>
         {familien.map((f) => (
           <option key={f.kind} value={f.kind}>
             {f.label}
@@ -209,13 +208,10 @@ function PaketOhneModulHinweis({
   deklariert: number
 }) {
   return (
-    <div className="mx-1 mb-2 rounded border border-amber-900 bg-amber-950/40 px-2 py-1.5 text-[11px] leading-relaxed text-amber-200">
-      Paket „{paketName}" ist geladen,{' '}
-      {deklariert > 0
+    <div className="mx-1 mb-2 rounded border border-amber-900 bg-amber-950/40 px-2 py-1.5 text-[11px] leading-relaxed text-amber-200">{translate("Paket „")}{paketName}{translate("\" ist geladen,")}{translate(' ')}
+      {translate(deklariert > 0
         ? `${deklariert} ${modul}-Familien stehen im Katalog — aber keine hat eine platzierbare Kontur.`
-        : `enthält aber keine ${modul}-Daten.`}{' '}
-      Kennzahlen: „Diagnose" in der Fußzeile.
-    </div>
+        : `enthält aber keine ${modul}-Daten.`)}{translate(' ')}{translate("Kennzahlen: „Diagnose\" in der Fußzeile.")}</div>
   )
 }
 
@@ -277,7 +273,7 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
           Reihenfolge um. */}
       <CollapsibleSection
         id="hip-cal"
-        title="1 · Kalibrierung"
+        title={translate("1 · Kalibrierung")}
         defaultCollapsed={calibrated}
         statusDot={calibrated ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -288,14 +284,14 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="hip-measure"
-        title="2 · Messungen"
+        title={translate("2 · Messungen")}
         defaultCollapsed={hasHipMeasurement}
         statusDot={hasHipMeasurement ? 'bg-emerald-500' : 'bg-amber-500'}
       >
         {AVAILABLE_RECIPES.map((recipe) => (
           <ToolButton
             key={recipe.kind}
-            label={recipe.label}
+            label={translate(recipe.label)}
             active={activeKind === recipe.kind}
             disabled={!hasImage}
             onClick={() => pickHipTool(recipe.kind)}
@@ -310,7 +306,7 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
           ist ein wechselnder String. */}
       <CollapsibleSection
         id="hip-femurprofil"
-        title="3 · Femurprofil"
+        title={translate("3 · Femurprofil")}
         // IMMER standardmäßig zu (nicht erst nach Abschluss): Das
         // Femurprofil ist ein Sonderfall, den die meisten Planungen nicht
         // brauchen — aufgeklappt bliebe es dauerhaft im Weg. Eine
@@ -333,7 +329,7 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="hip-templates"
-        title="4 · Schablonen"
+        title={translate("4 · Schablonen")}
         defaultCollapsed={templatesFertig}
         // Ohne Katalog KEIN amber: die Hinzufügen-Buttons sind dann
         // deaktiviert — ein „hier steht etwas aus"-Punkt fordert zu einer
@@ -349,15 +345,15 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
       >
         {keinHipKatalog && <KeinPaketHinweis />}
         {pkgInfo && hipKatalogLeer && (
-          <PaketOhneModulHinweis paketName={pkgInfo.name} modul="Hüft" deklariert={0} />
+          <PaketOhneModulHinweis paketName={pkgInfo.name} modul={translate("Hüft")} deklariert={0} />
         )}
         <ToolButton
-          label="Pfanne hinzufügen"
+          label={translate("Pfanne hinzufügen")}
           disabled={!hasImage || !cupsVerfuegbar}
           onClick={addCupTemplate}
         />
         <ToolButton
-          label="Schaft hinzufügen"
+          label={translate("Schaft hinzufügen")}
           disabled={!hasImage || !stemsVerfuegbar}
           onClick={addStemTemplate}
         />
@@ -371,21 +367,18 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="hip-osteotomy"
-        title="5 · Osteotomie"
+        title={translate("5 · Osteotomie")}
         defaultCollapsed={hasOsteotomy}
         statusDot={hasOsteotomy ? 'bg-emerald-500' : undefined}
       >
         <ToolButton
-          label="Osteotomie-Planer"
+          label={translate("Osteotomie-Planer")}
           active={activeKind === 'osteotomy'}
           disabled={!hasImage}
           onClick={() => pickHipTool('osteotomy')}
         />
         <Hint>
-          <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
-            1. Spitze Trochanter minor · 2. kranialer Schenkelhals ·
-            3. Kalkaregion → Resektionshöhe in cm.
-          </p>
+          <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">{translate("1. Spitze Trochanter minor · 2. kranialer Schenkelhals · 3. Kalkaregion → Resektionshöhe in cm.")}</p>
         </Hint>
       </CollapsibleSection>
 
@@ -393,7 +386,7 @@ function HipSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="hip-osteophytes"
-        title="6 · Osteophyten"
+        title={translate("6 · Osteophyten")}
         defaultCollapsed={hasOsteophytes}
         statusDot={hasOsteophytes ? 'bg-emerald-500' : undefined}
       >
@@ -447,11 +440,11 @@ function FemurProfileButton({
         }
         disabled={gesperrt}
         title={
-          !hasImage
+          translate(!hasImage
             ? 'Erst ein Bild laden.'
             : !calibrated
               ? 'Erst kalibrieren — das Femurprofil misst in Millimetern.'
-              : undefined
+              : undefined)
         }
         className={[
           'rounded border px-3 py-2 text-left text-sm transition',
@@ -462,26 +455,18 @@ function FemurProfileButton({
         ].join(' ')}
       >
         <div className="font-medium">
-          {active ? 'Femurprofil abbrechen' : 'Femurprofil starten'}
+          {translate(active ? 'Femurprofil abbrechen' : 'Femurprofil starten')}
         </div>
-        <div className="text-[10px] text-violet-300/70">
-          13 Punkte · Dorr · CI · CCR · NSA · Offset · CPAH
-        </div>
+        <div className="text-[10px] text-violet-300/70">{translate("13 Punkte · Dorr · CI · CCR · NSA · Offset · CPAH")}</div>
       </button>
       <Hint>
-        <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
-          Optional: Dorr, CPAH und Femurmorphologie quantitativ bestimmen.
-          {ccdPrefill && !active && (
+        <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">{translate("Optional: Dorr, CPAH und Femurmorphologie quantitativ bestimmen.")}{ccdPrefill && !active && (
             <span>
-              {' '}
-              Die sechs Punkte der CCD-Messung werden übernommen — Seite prüfen.
-            </span>
+              {translate(' ')}{translate("Die sechs Punkte der CCD-Messung werden übernommen — Seite prüfen.")}</span>
           )}
           {hasImage && !calibrated && (
             <span className="text-amber-500">
-              {' '}
-              Erst kalibrieren — die Messung braucht echte Millimeter.
-            </span>
+              {translate(' ')}{translate("Erst kalibrieren — die Messung braucht echte Millimeter.")}</span>
           )}
         </p>
       </Hint>
@@ -506,14 +491,10 @@ function OsteophyteToolButton({ hasImage }: { hasImage: boolean }) {
           !hasImage ? 'cursor-not-allowed opacity-50' : '',
         ].join(' ')}
       >
-        {placing ? 'Markieren aktiv — fertig' : 'Osteophyten markieren'}
+        {translate(placing ? 'Markieren aktiv — fertig' : 'Osteophyten markieren')}
       </button>
       <Hint>
-        <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
-          Feine Punkte um den Osteophyten setzen → rot schraffierte Fläche
-          als Erinnerung zur intraop. Entfernung. Enter schließt eine Fläche
-          ab, Esc verwirft sie.
-        </p>
+        <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">{translate("Feine Punkte um den Osteophyten setzen → rot schraffierte Fläche als Erinnerung zur intraop. Entfernung. Enter schließt eine Fläche ab, Esc verwirft sie.")}</p>
       </Hint>
     </>
   )
@@ -531,11 +512,11 @@ function OsteophyteList() {
           key={r.id}
           className="flex items-center justify-between rounded px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          <span>Osteophyt {i + 1} ({r.points.length} Pkt.)</span>
+          <span>{translate("Osteophyt ")}{translate(i + 1)} ({translate(r.points.length)}{translate(" Pkt.)")}</span>
           <button
             onClick={() => removeRegion(r.id)}
             className="text-red-400 hover:text-red-300"
-            title="Fläche entfernen"
+            title={translate("Fläche entfernen")}
           >
             ✕
           </button>
@@ -559,7 +540,7 @@ function CalibrationButton({ hasImage }: { hasImage: boolean }) {
   if (calibration) {
     const mag =
       calibration.magnificationFactor && calibration.magnificationFactor !== 1.0
-        ? ` · Mag ${calibration.magnificationFactor.toFixed(2)}×`
+        ? ` · Mag ${calibration.magnificationFactor.toFixed(2).replace('.', dezimalTrenner())}×`
         : ''
     statusText =
       calibration.referenceMm > 0
@@ -585,9 +566,9 @@ function CalibrationButton({ hasImage }: { hasImage: boolean }) {
             isCalibrated ? 'bg-emerald-500' : 'bg-amber-500',
           ].join(' ')}
         />
-        {isCalibrated ? 'Kalibriert ✓' : 'Kalibrieren …'}
+        {translate(isCalibrated ? 'Kalibriert ✓' : 'Kalibrieren …')}
       </div>
-      <div className="mt-0.5 text-[10px] text-neutral-400">{statusText}</div>
+      <div className="mt-0.5 text-[10px] text-neutral-400">{translate(statusText)}</div>
     </button>
   )
 }
@@ -615,7 +596,7 @@ function KneeCalibrationButtons({ hasImage }: { hasImage: boolean }) {
     if (!c) return 'Noch nicht kalibriert'
     const mag =
       c.magnificationFactor && c.magnificationFactor !== 1.0
-        ? ` · Mag ${c.magnificationFactor.toFixed(2)}×`
+        ? ` · Mag ${c.magnificationFactor.toFixed(2).replace('.', dezimalTrenner())}×`
         : ''
     return c.referenceMm > 0
       ? `Referenz ${c.referenceMm} mm${mag}`
@@ -626,7 +607,7 @@ function KneeCalibrationButtons({ hasImage }: { hasImage: boolean }) {
   if (!splitView) {
     return (
       <PaneCalibrationButton
-        label="Kalibrieren …"
+        label={translate("Kalibrieren …")}
         labelDone="Kalibriert ✓"
         pane="left"
         mode={calMode(leftCal)}
@@ -642,7 +623,7 @@ function KneeCalibrationButtons({ hasImage }: { hasImage: boolean }) {
   return (
     <div className="flex flex-col gap-1">
       <PaneCalibrationButton
-        label="Kalibrieren: AP (links) …"
+        label={translate("Kalibrieren: AP (links) …")}
         labelDone="Kalibriert: AP (links) ✓"
         pane="left"
         mode={calMode(leftCal)}
@@ -651,7 +632,7 @@ function KneeCalibrationButtons({ hasImage }: { hasImage: boolean }) {
         highlight={activePane === 'left'}
       />
       <PaneCalibrationButton
-        label="Kalibrieren: seitlich (rechts) …"
+        label={translate("Kalibrieren: seitlich (rechts) …")}
         labelDone="Kalibriert: seitlich (rechts) ✓"
         pane="right"
         mode={rightHasImage ? calMode(rightCal) : 'none'}
@@ -707,9 +688,9 @@ function PaneCalibrationButton({
     >
       <div className="flex items-center gap-1.5 font-medium">
         <span className={['inline-block h-2 w-2 rounded-full', dotColor].join(' ')} />
-        {mode === 'manual' ? labelDone : label}
+        {translate(mode === 'manual' ? labelDone : label)}
       </div>
-      <div className="mt-0.5 text-[10px] text-neutral-400">{statusText}</div>
+      <div className="mt-0.5 text-[10px] text-neutral-400">{translate(statusText)}</div>
     </button>
   )
 }
@@ -802,7 +783,7 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
           hängt, wo der tibiale Slope gemessen wird. */}
       <CollapsibleSection
         id="knee-view"
-        title="1 · Ansicht"
+        title={translate("1 · Ansicht")}
         defaultCollapsed={splitView && rightHasImage}
         badge={splitView ? 'zwei Bilder' : 'ein Bild'}
       >
@@ -813,7 +794,7 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="knee-cal"
-        title="2 · Kalibrierung"
+        title={translate("2 · Kalibrierung")}
         defaultCollapsed={allCalibrated}
         statusDot={allCalibrated ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -824,7 +805,7 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="knee-fullmeasure"
-        title="3 · Vollvermessung"
+        title={translate("3 · Vollvermessung")}
         defaultCollapsed={hasWorkflow}
         statusDot={hasWorkflow ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -840,10 +821,8 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
             !hasImage ? 'cursor-not-allowed opacity-50' : '',
           ].join(' ')}
         >
-          <div className="font-medium">{workflow.label}</div>
-          <div className="text-[10px] text-violet-300/70">
-            17 Punkte · HKA · mLDFA · mMPTA · JLCA · β-Winkel
-          </div>
+          <div className="font-medium">{translate(workflow.label)}</div>
+          <div className="text-[10px] text-violet-300/70">{translate("17 Punkte · HKA · mLDFA · mMPTA · JLCA · β-Winkel")}</div>
         </button>
       )}
       </CollapsibleSection>
@@ -857,14 +836,14 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
           Vollvermessung zuklappt, ist Absicht und steht getrennt davon. */}
       <CollapsibleSection
         id="knee-measure"
-        title="4 · Messungen"
+        title={translate("4 · Messungen")}
         defaultCollapsed={hasWorkflow || hatEinzelmessung}
         statusDot={hatEinzelmessung ? 'bg-emerald-500' : undefined}
       >
         {singles.map((recipe) => (
           <ToolButton
             key={recipe.kind}
-            label={recipe.label}
+            label={translate(recipe.label)}
             active={activeKind === recipe.kind}
             disabled={!hasImage}
             onClick={() => pickKneeTool(recipe.kind)}
@@ -877,7 +856,7 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="knee-templates"
-        title="5 · Schablonen"
+        title={translate("5 · Schablonen")}
         defaultCollapsed={kneeComponentCount >= 2}
         // Ohne Katalog kein amber — gleiche Begründung wie bei der Hüfte.
         statusDot={
@@ -894,13 +873,13 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
       {pkgInfo && kneeKatalogLeer && (
         <PaketOhneModulHinweis
           paketName={pkgInfo.name}
-          modul="Knie"
+          modul={translate("Knie")}
           deklariert={KNEE_IMPLANT_FAMILIES.length}
         />
       )}
       {femurFamilien.length > 0 && (
         <KneeFamilienDropdown
-          label="Femurkomponente"
+          label={translate("Femurkomponente")}
           familien={femurFamilien}
           disabled={!hasImage}
           onWahl={setPendingSideKind}
@@ -908,7 +887,7 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
       )}
       {tibiaFamilien.length > 0 && (
         <KneeFamilienDropdown
-          label="Tibiakomponente"
+          label={translate("Tibiakomponente")}
           familien={tibiaFamilien}
           disabled={!hasImage}
           onWahl={setPendingSideKind}
@@ -920,14 +899,12 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
           {/* Gewählte Familie anzeigen — bei den Dropdowns ist die Wahl
               sonst nicht mehr sichtbar, sobald das Select zurückspringt. */}
           <div className="mb-1 truncate text-sky-200">
-            {(() => {
+            {translate((() => {
               const l = KNEE_IMPLANT_FAMILIES.find(
                 (f) => f.kind === pendingSideKind,
               )?.label
               return l ? ohneTibiaVariantenZusatz(l) : 'Schablone'
-            })()}{' '}
-            — Seite?
-          </div>
+            })())}{translate(' ')}{translate("— Seite?")}</div>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => {
@@ -935,21 +912,17 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
                 setPendingSideKind(null)
               }}
               className="rounded bg-sky-700 px-2 py-0.5 font-medium text-white transition hover:bg-sky-600"
-            >
-              Rechts
-            </button>
+            >{translate("Rechts")}</button>
             <button
               onClick={() => {
                 addKneeTemplate(pendingSideKind, 'L')
                 setPendingSideKind(null)
               }}
               className="rounded bg-sky-700 px-2 py-0.5 font-medium text-white transition hover:bg-sky-600"
-            >
-              Links
-            </button>
+            >{translate("Links")}</button>
             <button
               onClick={() => setPendingSideKind(null)}
-              title="Abbrechen"
+              title={translate("Abbrechen")}
               className="ml-auto rounded px-1 text-neutral-400 transition hover:text-neutral-200"
             >
               ✕
@@ -971,7 +944,7 @@ function KneeSection({ hasImage }: { hasImage: boolean }) {
           grenzt ihn vom Hüft-„Osteotomie-Planer" (Schenkelhals) ab. */}
       <CollapsibleSection
         id="knee-osteotomie"
-        title="6 · Umstellungsosteotomie"
+        title={translate("6 · Umstellungsosteotomie")}
         defaultCollapsed={!hasWorkflow}
         statusDot={osteotomieKomplett ? 'bg-emerald-500' : undefined}
       >
@@ -1004,7 +977,7 @@ function SlopeMeasureButton({
   const useRight = splitView && rightHasImage
   return (
     <ToolButton
-      label={useRight ? 'Tibialer Slope (seitliches Bild)' : 'Tibialer Slope'}
+      label={translate(useRight ? 'Tibialer Slope (seitliches Bild)' : 'Tibialer Slope')}
       active={useRight ? slopeActive : kneeActiveKind === 'tibialSlope'}
       disabled={!hasImage && !useRight}
       onClick={() => {
@@ -1037,20 +1010,17 @@ function DualViewControls() {
         ].join(' ')}
       >
         <div className="font-medium">
-          {splitView ? 'Zwei Bilder ✓' : 'Einzelbild'}
+          {translate(splitView ? 'Zwei Bilder ✓' : 'Einzelbild')}
         </div>
         <div className="text-[10px] text-neutral-400">
-          {splitView
+          {translate(splitView
             ? 'links AP-Ganzbein · rechts seitlich'
-            : 'auf Zwei-Bild umschalten'}
+            : 'auf Zwei-Bild umschalten')}
         </div>
       </button>
       {splitView && (
         <Hint>
-          <p className="px-1 pt-0.5 text-[10px] leading-snug text-neutral-500">
-            Klick wählt das aktive Bild (blauer Rahmen). Obere Werkzeuge + Laden
-            gelten fürs aktive Bild.
-          </p>
+          <p className="px-1 pt-0.5 text-[10px] leading-snug text-neutral-500">{translate("Klick wählt das aktive Bild (blauer Rahmen). Obere Werkzeuge + Laden gelten fürs aktive Bild.")}</p>
         </Hint>
       )}
     </div>
@@ -1131,16 +1101,15 @@ function SelectedKneeTemplatePanel() {
 
   return (
     <div className="mx-2 mt-2 rounded border border-pink-900/60 bg-pink-950/30 p-2 text-xs">
-      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-pink-300">
-        Ausgewählte Schablone
-      </div>
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-pink-300">{translate("Ausgewählte Schablone")}</div>
       <div className="mb-2 text-[11px] text-neutral-300">
         {family ? ohneTibiaVariantenZusatz(family.label) : selected.kind}
       </div>
 
       <KneeSelect
-        label="Größe"
+        label={translate("Größe")}
         value={selected.sizeIndex}
+        preserveLabels
         onChange={(v) => store.setSizeIndex(selected.id, v)}
         options={sizes
           .map((s, i) => ({ value: i, label: s.size }))
@@ -1155,7 +1124,7 @@ function SelectedKneeTemplatePanel() {
 
       {insertCfg && (
         <KneeSelect
-          label="Inlay-Höhe"
+          label={translate("Inlay-Höhe")}
           value={selected.insertThicknessMm ?? insertCfg.baseMm}
           onChange={(v) => store.setInsertThickness(selected.id, v)}
           options={insertCfg.thicknessesMm.map((mm) => ({ value: mm, label: `${mm} mm` }))}
@@ -1163,7 +1132,7 @@ function SelectedKneeTemplatePanel() {
       )}
 
       <KneeSelect
-        label="Seite"
+        label={translate("Seite")}
         value={selected.side}
         onChange={(v) => store.setSide(selected.id, v as 'R' | 'L')}
         options={[
@@ -1173,7 +1142,7 @@ function SelectedKneeTemplatePanel() {
       />
 
       <KneeSelect
-        label="Aufnahme-Ebene"
+        label={translate("Aufnahme-Ebene")}
         value={selected.view}
         onChange={(v) => store.setView(selected.id, v as 'AP' | 'lateral')}
         options={[
@@ -1183,8 +1152,7 @@ function SelectedKneeTemplatePanel() {
       />
 
       <div className="mb-2">
-        <div className="mb-1 text-[10px] text-neutral-400">
-          Drehung · {selected.rotationDeg.toFixed(1)}°
+        <div className="mb-1 text-[10px] text-neutral-400">{translate("Drehung · ")}{translate(selected.rotationDeg.toFixed(1).replace('.', dezimalTrenner()))}°
         </div>
         <div className="grid grid-cols-5 gap-1">
           {[-1, -0.2, 0.2, 1].map((d) => (
@@ -1195,13 +1163,13 @@ function SelectedKneeTemplatePanel() {
               }
               className="rounded border border-neutral-700 px-0.5 py-0.5 text-center text-[10px] text-neutral-300 transition hover:bg-neutral-800"
             >
-              {d > 0 ? '+' : '−'}
-              {Math.abs(d).toFixed(1).replace('.', ',')}
+              {translate(d > 0 ? '+' : '−')}
+              {translate(Math.abs(d).toFixed(1).replace('.', dezimalTrenner()))}
             </button>
           ))}
           <button
             onClick={() => store.setRotationDeg(selected.id, 0)}
-            title="Drehung zurücksetzen"
+            title={translate("Drehung zurücksetzen")}
             className="rounded border border-neutral-700 px-0.5 py-0.5 text-center text-[10px] text-neutral-400 transition hover:bg-neutral-800"
           >
             0°
@@ -1215,47 +1183,36 @@ function SelectedKneeTemplatePanel() {
             <>
               <button
                 onClick={alignMechanically}
-                title="Schnitt senkrecht zur mechanischen Achse, auf die Gelenklinie setzen"
+                title={translate("Schnitt senkrecht zur mechanischen Achse, auf die Gelenklinie setzen")}
                 className="w-full rounded border border-emerald-800/60 bg-emerald-950/30 px-2 py-1 text-[11px] font-medium text-emerald-300 transition hover:bg-emerald-900/40"
-              >
-                Mechanisch ausrichten
-              </button>
+              >{translate("Mechanisch ausrichten")}</button>
               {plannedReadout && (
                 <div className="mt-1 text-center text-[10px] text-neutral-400">
-                  {plannedReadout.label} (geplant):{' '}
+                  {translate(plannedReadout.label)}{translate(" (geplant):")}{translate(' ')}
                   <span className="font-semibold text-amber-300">
-                    {plannedReadout.value.toFixed(1).replace('.', ',')}°
+                    {translate(plannedReadout.value.toFixed(1).replace('.', dezimalTrenner()))}°
                   </span>
                 </div>
               )}
             </>
           ) : (
-            <p className="text-[10px] text-neutral-500">
-              Für „Mechanisch ausrichten" zuerst die Vollvermessung setzen.
-            </p>
+            <p className="text-[10px] text-neutral-500">{translate("Für „Mechanisch ausrichten\" zuerst die Vollvermessung setzen.")}</p>
           )}
         </div>
       )}
 
       {!shapeAvailable && (
-        <p className="mb-2 text-[10px] text-amber-500/80">
-          Für diese Hersteller/Ebene-Kombination liegt noch keine
-          Schablonen-Kontur vor — wird in Kürze ergänzt.
-        </p>
+        <p className="mb-2 text-[10px] text-amber-500/80">{translate("Für diese Hersteller/Ebene-Kombination liegt noch keine Schablonen-Kontur vor — wird in Kürze ergänzt.")}</p>
       )}
 
       {!calibration && (
-        <p className="mb-2 text-[10px] text-amber-500/80">
-          unkalibriert — Maße sind ungenau
-        </p>
+        <p className="mb-2 text-[10px] text-amber-500/80">{translate("unkalibriert — Maße sind ungenau")}</p>
       )}
 
       <button
         onClick={() => store.remove(selected.id)}
         className="w-full rounded border border-red-900/60 px-2 py-1 text-[11px] text-red-300 transition hover:bg-red-900/40"
-      >
-        Schablone entfernen
-      </button>
+      >{translate("Schablone entfernen")}</button>
     </div>
   )
 }
@@ -1271,15 +1228,18 @@ function KneeSelect<T extends string | number>({
   value,
   onChange,
   options,
+  preserveLabels = false,
 }: {
   label: string
   value: T
   onChange: (v: T) => void
   options: { value: T; label: string }[]
+  /** Katalog-Groessen sind Herstellerdaten und bleiben unveraendert. */
+  preserveLabels?: boolean
 }) {
   return (
     <>
-      <label className="mb-1 block text-[10px] text-neutral-400">{label}</label>
+      <label className="mb-1 block text-[10px] text-neutral-400">{translate(label)}</label>
       <select
         value={String(value)}
         onChange={(e) => {
@@ -1291,7 +1251,7 @@ function KneeSelect<T extends string | number>({
       >
         {options.map((o) => (
           <option key={String(o.value)} value={String(o.value)}>
-            {o.label}
+            {preserveLabels ? o.label : translate(o.label)}
           </option>
         ))}
       </select>
@@ -1341,7 +1301,7 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
     <>
       <CollapsibleSection
         id="shoulder-cal"
-        title="1 · Kalibrierung"
+        title={translate("1 · Kalibrierung")}
         defaultCollapsed={calibrated}
         statusDot={calibrated ? 'bg-emerald-500' : 'bg-amber-500'}
       >
@@ -1352,18 +1312,18 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="shoulder-side"
-        title="2 · Seite"
+        title={translate("2 · Seite")}
         defaultCollapsed={hatMessung}
         badge={side === 'R' ? 'rechts' : 'links'}
       >
         <div className="flex gap-1 px-1">
           <SegmentButton
-            label="Rechts"
+            label={translate("Rechts")}
             active={side === 'R'}
             onClick={() => setSide('R')}
           />
           <SegmentButton
-            label="Links"
+            label={translate("Links")}
             active={side === 'L'}
             onClick={() => setSide('L')}
           />
@@ -1374,18 +1334,18 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="shoulder-prosthesis"
-        title="3 · Prothese"
+        title={translate("3 · Prothese")}
         defaultCollapsed={hatMessung}
         badge={prosthesis === 'reverse' ? 'invers' : 'anatomisch'}
       >
         <div className="flex gap-1 px-1">
           <SegmentButton
-            label="Anatomisch"
+            label={translate("Anatomisch")}
             active={prosthesis === 'anatomic'}
             onClick={() => setProsthesis('anatomic')}
           />
           <SegmentButton
-            label="Invers"
+            label={translate("Invers")}
             active={prosthesis === 'reverse'}
             onClick={() => setProsthesis('reverse')}
           />
@@ -1396,24 +1356,21 @@ function ShoulderSection({ hasImage }: { hasImage: boolean }) {
 
       <CollapsibleSection
         id="shoulder-measure"
-        title="4 · Messungen"
+        title={translate("4 · Messungen")}
         defaultCollapsed={hatMessung}
         statusDot={hatMessung ? 'bg-emerald-500' : 'bg-amber-500'}
       >
         {rezepte.map((r) => (
           <ToolButton
             key={r.kind}
-            label={r.label}
+            label={translate(r.label)}
             active={activeKind === r.kind}
             disabled={!hasImage}
             onClick={() => pickShoulderTool(r.kind)}
           />
         ))}
         <Hint>
-          <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
-            Gilt für die echte a.p.-Aufnahme; Glenoid-Version und Walch-Typ
-            bleiben dem CT vorbehalten.
-          </p>
+          <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">{translate("Gilt für die echte a.p.-Aufnahme; Glenoid-Version und Walch-Typ bleiben dem CT vorbehalten.")}</p>
         </Hint>
       </CollapsibleSection>
 
@@ -1447,7 +1404,7 @@ function ShaftFragmentSection({ hasImage }: { hasImage: boolean }) {
   return (
     <CollapsibleSection
       id="shoulder-crop"
-      title="5 · Schaft-Crop"
+      title={translate("5 · Schaft-Crop")}
       defaultCollapsed={fragmente.length === 0}
       statusDot={fragmente.length > 0 ? 'bg-emerald-500' : undefined}
     >
@@ -1462,7 +1419,7 @@ function ShaftFragmentSection({ hasImage }: { hasImage: boolean }) {
           !hasImage ? 'cursor-not-allowed opacity-50' : '',
         ].join(' ')}
       >
-        {placing ? 'Schneiden aktiv — fertig' : 'Schaft ausschneiden'}
+        {translate(placing ? 'Schneiden aktiv — fertig' : 'Schaft ausschneiden')}
       </button>
 
       {placing && (
@@ -1470,9 +1427,7 @@ function ShaftFragmentSection({ hasImage }: { hasImage: boolean }) {
           onClick={() => store.finishFragment()}
           disabled={draftPoints.length < 3}
           className="mt-1 rounded border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-left text-[11px] text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Schnitt abschließen ({draftPoints.length} Punkte)
-        </button>
+        >{translate("Schnitt abschließen (")}{translate(draftPoints.length)}{translate(" Punkte)")}</button>
       )}
 
       {fragmente.map((f, i) => (
@@ -1480,18 +1435,18 @@ function ShaftFragmentSection({ hasImage }: { hasImage: boolean }) {
           key={f.id}
           className="mt-1 flex items-center gap-2 rounded border border-neutral-800 px-2 py-1 text-[11px] text-neutral-300"
         >
-          <span className="flex-1">Fragment {i + 1}</span>
+          <span className="flex-1">{translate("Fragment ")}{translate(i + 1)}</span>
           <button
             onClick={() => store.setVisible(f.id, !f.visible)}
             className="text-neutral-400 transition hover:text-neutral-100"
-            title={f.visible ? 'ausblenden' : 'einblenden'}
+            title={translate(f.visible ? 'ausblenden' : 'einblenden')}
           >
-            {f.visible ? '👁' : '🚫'}
+            {translate(f.visible ? '👁' : '🚫')}
           </button>
           <button
             onClick={() => store.remove(f.id)}
             className="text-red-400 transition hover:text-red-200"
-            title="entfernen"
+            title={translate("entfernen")}
           >
             ✕
           </button>
@@ -1499,14 +1454,7 @@ function ShaftFragmentSection({ hasImage }: { hasImage: boolean }) {
       ))}
 
       <Hint>
-        <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">
-          Den Schaft mit Klicks umfahren, Enter schließt den Schnitt
-          (Rücktaste nimmt einen Punkt zurück, Esc verwirft). Das
-          ausgeschnittene Stück lässt sich ziehen und am Griff darüber
-          drehen (± = fein, Entf = löschen). An der Ausgangsstelle bleibt
-          eine schwarze Lücke, gestrichelt umrandet — die Verschiebung ist
-          damit als Vorher/Nachher lesbar.
-        </p>
+        <p className="px-3 pt-1 text-[10px] leading-snug text-neutral-500">{translate("Den Schaft mit Klicks umfahren, Enter schließt den Schnitt (Rücktaste nimmt einen Punkt zurück, Esc verwirft). Das ausgeschnittene Stück lässt sich ziehen und am Griff darüber drehen (± = fein, Entf = löschen). An der Ausgangsstelle bleibt eine schwarze Lücke, gestrichelt umrandet — die Verschiebung ist damit als Vorher/Nachher lesbar.")}</p>
       </Hint>
     </CollapsibleSection>
   )
@@ -1555,7 +1503,7 @@ function ShoulderTemplatesSection({ hasImage }: { hasImage: boolean }) {
     <>
       <CollapsibleSection
         id="shoulder-templates"
-        title="6 · Schablonen"
+        title={translate("6 · Schablonen")}
         defaultCollapsed={placedCount >= 1}
         // Ohne Katalog kein amber — gleiche Begründung wie Hüfte/Knie.
         statusDot={
@@ -1570,13 +1518,13 @@ function ShoulderTemplatesSection({ hasImage }: { hasImage: boolean }) {
         {pkgInfo && katalogLeer && (
           <PaketOhneModulHinweis
             paketName={pkgInfo.name}
-            modul="Schulter"
+            modul={translate("Schulter")}
             deklariert={shoulderFamiliesForProsthesis(prosthesis).length}
           />
         )}
         {humerusFamilien.length > 0 && (
           <KneeFamilienDropdown
-            label="Humerus-Komponente"
+            label={translate("Humerus-Komponente")}
             familien={humerusFamilien}
             disabled={!hasImage}
             onWahl={platziere}
@@ -1584,7 +1532,7 @@ function ShoulderTemplatesSection({ hasImage }: { hasImage: boolean }) {
         )}
         {glenoidFamilien.length > 0 && (
           <KneeFamilienDropdown
-            label="Glenoid-Komponente"
+            label={translate("Glenoid-Komponente")}
             familien={glenoidFamilien}
             disabled={!hasImage}
             onWahl={platziere}
@@ -1613,22 +1561,21 @@ function SelectedShoulderTemplatePanel() {
 
   return (
     <div className="mx-2 mt-2 rounded border border-pink-900/60 bg-pink-950/30 p-2 text-xs">
-      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-pink-300">
-        Ausgewählte Schablone
-      </div>
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-pink-300">{translate("Ausgewählte Schablone")}</div>
       <div className="mb-2 text-[11px] text-neutral-300">
         {family?.label ?? selected.kind}
       </div>
 
       <KneeSelect
-        label="Größe"
+        label={translate("Größe")}
         value={selected.sizeIndex}
+        preserveLabels
         onChange={(v) => store.setSizeIndex(selected.id, v)}
         options={labels.map((l, i) => ({ value: i, label: l }))}
       />
 
       <KneeSelect
-        label="Seite"
+        label={translate("Seite")}
         value={selected.side}
         onChange={(v) => store.setSide(selected.id, v as 'R' | 'L')}
         options={[
@@ -1637,17 +1584,12 @@ function SelectedShoulderTemplatePanel() {
         ]}
       />
 
-      <div className="text-[10px] text-neutral-500">
-        Größe: {shoulderSizeLabel(selected.kind, selected.sizeIndex)} · Drag =
-        verschieben · Pfeile/± = fein · Entf = löschen
-      </div>
+      <div className="text-[10px] text-neutral-500">{translate("Größe: ")}{shoulderSizeLabel(selected.kind, selected.sizeIndex)}{translate(" · Drag = verschieben · Pfeile/± = fein · Entf = löschen")}</div>
 
       <button
         onClick={() => store.remove(selected.id)}
         className="mt-2 w-full rounded border border-red-900/60 bg-red-950/40 px-2 py-1 text-[11px] text-red-300 transition hover:bg-red-900/40"
-      >
-        Schablone entfernen
-      </button>
+      >{translate("Schablone entfernen")}</button>
     </div>
   )
 }
@@ -1673,7 +1615,7 @@ function SegmentButton({
           : 'border-neutral-700 bg-neutral-800 text-neutral-400 hover:text-neutral-200',
       ].join(' ')}
     >
-      {label}
+      {translate(label)}
     </button>
   )
 }
@@ -1698,7 +1640,7 @@ function TabButton({
           : 'border-b-2 border-transparent text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200',
       ].join(' ')}
     >
-      {label}
+      {translate(label)}
     </button>
   )
 }
@@ -1792,7 +1734,7 @@ function CollapsibleSection({
         onClick={() =>
           useUiStore.getState().setSectionCollapsed(id, !collapsed)
         }
-        title={collapsed ? 'Sektion ausklappen' : 'Sektion einklappen'}
+        title={translate(collapsed ? 'Sektion ausklappen' : 'Sektion einklappen')}
         className="flex w-full items-center gap-1.5 px-3 pb-1 pt-3 text-left text-[11px] font-semibold uppercase tracking-wider text-neutral-500 transition hover:text-neutral-300"
       >
         <span
@@ -1808,12 +1750,12 @@ function CollapsibleSection({
             Badge und Punkt bekommen `shrink-0`, damit nicht stattdessen
             SIE gestaucht werden. Bei den heutigen Titeln greift `truncate`
             nie — es ist das Netz für künftige längere Rubriken. */}
-        <span className="min-w-0 flex-1 truncate" title={title}>
-          {title}
+        <span className="min-w-0 flex-1 truncate" title={translate(title)}>
+          {translate(title)}
         </span>
         {badge && (
           <span className="shrink-0 rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-neutral-300">
-            {badge}
+            {translate(badge)}
           </span>
         )}
         {statusDot && (
@@ -1822,7 +1764,7 @@ function CollapsibleSection({
           />
         )}
       </button>
-      {!collapsed && children}
+      {translate(!collapsed && children)}
     </>
   )
 }
@@ -1859,7 +1801,7 @@ function ToolButton({
           : '',
       ].join(' ')}
     >
-      {label}
+      {translate(label)}
     </button>
   )
 }
@@ -1901,11 +1843,9 @@ function SelectedCupPanel({ cup }: { cup: CupTemplate }) {
 
   return (
     <div className="mx-2 mt-2 rounded border border-sky-900/60 bg-sky-950/30 p-2 text-xs">
-      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-sky-300">
-        Ausgewählte Schablone
-      </div>
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-sky-300">{translate("Ausgewählte Schablone")}</div>
 
-      <label className="mb-1 block text-[10px] text-neutral-400">Typ</label>
+      <label className="mb-1 block text-[10px] text-neutral-400">{translate("Typ")}</label>
       <select
         value={cup.catalogIndex}
         onChange={(e) =>
@@ -1920,7 +1860,7 @@ function SelectedCupPanel({ cup }: { cup: CupTemplate }) {
         ))}
       </select>
 
-      <label className="mb-1 block text-[10px] text-neutral-400">Größe</label>
+      <label className="mb-1 block text-[10px] text-neutral-400">{translate("Größe")}</label>
       <select
         value={cup.sizeIndex}
         onChange={(e) =>
@@ -1928,41 +1868,33 @@ function SelectedCupPanel({ cup }: { cup: CupTemplate }) {
         }
         className="mb-2 w-full rounded border border-neutral-700 bg-neutral-950 px-1 py-1 text-xs tabular-nums"
       >
-        {entry?.sizes.map((s, i) => (
+        {translate(entry?.sizes.map((s, i) => (
           <option key={s.refNo + i} value={i}>
-            ⌀ {s.size} mm
-          </option>
-        ))}
+            ⌀ {s.size}{translate(" mm")}</option>
+        )))}
       </select>
 
       {incl != null && (
-        <div className="text-[11px] text-neutral-300">
-          Inklination: <span className="tabular-nums">{incl.toFixed(1)}°</span>
+        <div className="text-[11px] text-neutral-300">{translate("Inklination: ")}<span className="tabular-nums">{translate(incl.toFixed(1).replace('.', dezimalTrenner()))}°</span>
         </div>
       )}
-      <div className="mb-2 text-[11px] text-neutral-300">
-        Seite:{' '}
+      <div className="mb-2 text-[11px] text-neutral-300">{translate("Seite:")}{translate(' ')}
         <span className="text-neutral-100">
-          {cup.side === 'R' ? 'rechts' : 'links'}
+          {translate(cup.side === 'R' ? 'rechts' : 'links')}
         </span>
-        {' · '}
-        Tränenfigur:{' '}
+        {translate(' · ')}{translate("Tränenfigur:")}{translate(' ')}
         <span className={cup.teardrop ? 'text-emerald-400' : 'text-neutral-500'}>
-          {cup.teardrop ? 'gesetzt' : '—'}
+          {translate(cup.teardrop ? 'gesetzt' : '—')}
         </span>
       </div>
       {!calibration && (
-        <p className="mb-2 text-[10px] text-amber-500/80">
-          unkalibriert — Maße sind ungenau
-        </p>
+        <p className="mb-2 text-[10px] text-amber-500/80">{translate("unkalibriert — Maße sind ungenau")}</p>
       )}
 
       <button
         onClick={() => store.remove(cup.id)}
         className="w-full rounded border border-red-900/60 px-2 py-1 text-[11px] text-red-300 transition hover:bg-red-900/40"
-      >
-        Schablone entfernen
-      </button>
+      >{translate("Schablone entfernen")}</button>
     </div>
   )
 }
@@ -1975,11 +1907,9 @@ function SelectedStemPanel({ stem }: { stem: StemTemplate }) {
 
   return (
     <div className="mx-2 mt-2 rounded border border-sky-900/60 bg-sky-950/30 p-2 text-xs">
-      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-sky-300">
-        Ausgewählte Schablone
-      </div>
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-sky-300">{translate("Ausgewählte Schablone")}</div>
 
-      <label className="mb-1 block text-[10px] text-neutral-400">Familie</label>
+      <label className="mb-1 block text-[10px] text-neutral-400">{translate("Familie")}</label>
       <select
         value={stem.catalogIndex}
         onChange={(e) =>
@@ -1994,7 +1924,7 @@ function SelectedStemPanel({ stem }: { stem: StemTemplate }) {
         ))}
       </select>
 
-      <label className="mb-1 block text-[10px] text-neutral-400">Größe</label>
+      <label className="mb-1 block text-[10px] text-neutral-400">{translate("Größe")}</label>
       <select
         value={stem.sizeIndex}
         onChange={(e) =>
@@ -2002,16 +1932,13 @@ function SelectedStemPanel({ stem }: { stem: StemTemplate }) {
         }
         className="mb-2 w-full rounded border border-neutral-700 bg-neutral-950 px-1 py-1 text-xs tabular-nums"
       >
-        {entry?.sizes.map((s, i) => (
-          <option key={s.refNo + i} value={i}>
-            Gr. {s.size}
+        {translate(entry?.sizes.map((s, i) => (
+          <option key={s.refNo + i} value={i}>{translate("Gr. ")}{s.size}
           </option>
-        ))}
+        )))}
       </select>
 
-      <label className="mb-1 block text-[10px] text-neutral-400">
-        Kopflänge
-      </label>
+      <label className="mb-1 block text-[10px] text-neutral-400">{translate("Kopflänge")}</label>
       <select
         value={stem.headOffsetIndex}
         onChange={(e) =>
@@ -2019,36 +1946,31 @@ function SelectedStemPanel({ stem }: { stem: StemTemplate }) {
         }
         className="mb-2 w-full rounded border border-neutral-700 bg-neutral-950 px-1 py-1 text-xs tabular-nums"
       >
-        {Array.from({ length: HEAD_OFFSET_COUNT }, (_, i) => {
+        {translate(Array.from({ length: HEAD_OFFSET_COUNT }, (_, i) => {
           const mm = headOffsetMm(i)
           const label = mm >= 0 ? `+${mm} mm` : `${mm} mm`
           return (
             <option key={i} value={i}>
-              {label}
+              {translate(label)}
             </option>
           )
-        })}
+        }))}
       </select>
 
-      <div className="mb-2 text-[11px] text-neutral-300">
-        Seite:{' '}
+      <div className="mb-2 text-[11px] text-neutral-300">{translate("Seite:")}{translate(' ')}
         <span className="text-neutral-100">
-          {stem.side === 'R' ? 'rechts' : 'links'}
+          {translate(stem.side === 'R' ? 'rechts' : 'links')}
         </span>
       </div>
 
       {!calibration && (
-        <p className="mb-2 text-[10px] text-amber-500/80">
-          unkalibriert — Maße sind ungenau
-        </p>
+        <p className="mb-2 text-[10px] text-amber-500/80">{translate("unkalibriert — Maße sind ungenau")}</p>
       )}
 
       <button
         onClick={() => store.remove(stem.id)}
         className="w-full rounded border border-red-900/60 px-2 py-1 text-[11px] text-red-300 transition hover:bg-red-900/40"
-      >
-        Schablone entfernen
-      </button>
+      >{translate("Schablone entfernen")}</button>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { t, translate } from '../i18n'
 /**
  * Vollbild-Modal zum interaktiven Tracen von Implantat-Konturen mit
  * mehreren SUB-PFADEN pro Kombination.
@@ -301,9 +302,9 @@ export function TemplateTracer() {
     const bandNote = band ? ` (${band})` : ''
     try {
       await navigator.clipboard.writeText(payload)
-      alert(`Trace „${kind} · ${view}${bandNote}" in die Zwischenablage kopiert.`)
+      alert(t('Trace „{0} · {1}{2}" in die Zwischenablage kopiert.', { 0: kind, 1: view, 2: bandNote }))
     } catch {
-      window.prompt('Trace zum Kopieren:', payload)
+      window.prompt(translate('Trace zum Kopieren:'), payload)
     }
   }
 
@@ -312,7 +313,7 @@ export function TemplateTracer() {
     try {
       text = await navigator.clipboard.readText()
     } catch {
-      text = window.prompt('Trace-JSON einfügen:') ?? ''
+      text = window.prompt(translate('Trace-JSON einfügen:')) ?? ''
     }
     if (!text.trim()) return
     try {
@@ -322,7 +323,7 @@ export function TemplateTracer() {
       const importBand = parsed?.band ?? band
       if (parsed && Array.isArray(parsed.subpaths)) {
         setTrace(parsed.kind ?? kind, parsed.view ?? view, parsed.subpaths, importBand)
-        alert(`Importiert: ${parsed.subpaths.length} Sub-Pfade.`)
+        alert(t('Importiert: {0} Sub-Pfade.', { 0: parsed.subpaths.length }))
       } else if (parsed && Array.isArray(parsed.points)) {
         setTrace(
           parsed.kind ?? kind,
@@ -337,12 +338,12 @@ export function TemplateTracer() {
           ],
           importBand,
         )
-        alert(`Importiert: ${parsed.points.length} Punkte als Außenkontur.`)
+        alert(t('Importiert: {0} Punkte als Außenkontur.', { 0: parsed.points.length }))
       } else {
-        alert('Ungültiges Trace-Format.')
+        alert(translate('Ungültiges Trace-Format.'))
       }
     } catch (e) {
-      alert(`Parse-Fehler: ${e instanceof Error ? e.message : String(e)}`)
+      alert(t('Parse-Fehler: {0}', { 0: e instanceof Error ? e.message : String(e) }))
     }
   }
 
@@ -354,14 +355,14 @@ export function TemplateTracer() {
     <div className="fixed inset-0 z-50 flex flex-col bg-neutral-950/95">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-neutral-700 bg-neutral-900 px-4 py-2 text-sm">
-        <span className="font-semibold text-pink-300">Schablonen-Tracer</span>
+        <span className="font-semibold text-pink-300">{translate("Schablonen-Tracer")}</span>
         <select
           value={kind}
           onChange={(e) => { setKind(e.target.value as KneeImplantKind); reset() }}
           className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs"
         >
           {families.map((f) => (
-            <option key={f.kind} value={f.kind}>{f.label}</option>
+            <option key={f.kind} value={f.kind}>{translate(f.label)}</option>
           ))}
         </select>
         <select
@@ -369,68 +370,54 @@ export function TemplateTracer() {
           onChange={(e) => { setView(e.target.value as KneeView); reset() }}
           className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs"
         >
-          <option value="AP">AP (frontal)</option>
-          <option value="lateral">lateral (seitlich)</option>
+          <option value="AP">{translate("AP (frontal)")}</option>
+          <option value="lateral">{translate("lateral (seitlich)")}</option>
         </select>
         <span className="ml-4 text-[11px] text-neutral-400">
-          {mode === 'bbox'
+          {translate(mode === 'bbox'
             ? '1. Rechteck um die Außenkontur ziehen.'
-            : `2. Aktiver Sub-Pfad: „${subpaths[activeIdx]?.label}" — Klick = Punkt, Drag = verschieben, Backspace = letzten löschen.`}
+            : t('2. Aktiver Sub-Pfad: „{0}" — Klick = Punkt, Drag = verschieben, Backspace = letzten löschen.', { 0: subpaths[activeIdx]?.label ?? '' }))}
         </span>
         <div className="ml-auto flex items-center gap-2">
           {(traces[`${kind}|${view}`]?.length ?? 0) >= 1 && (
             <button
               onClick={() => {
-                if (window.confirm(`Gespeicherte Kontur „${kind} · ${view}" wirklich löschen?`)) {
+                if (window.confirm(t('Gespeicherte Kontur „{0} · {1}" wirklich löschen?', { 0: kind, 1: view }))) {
                   deleteTrace(kind, view)
                   reset()
                 }
               }}
               className="rounded border border-red-900/60 px-3 py-1 text-xs text-red-300 hover:bg-red-900/30"
-            >
-              Gespeicherte Kontur löschen
-            </button>
+            >{translate("Gespeicherte Kontur löschen")}</button>
           )}
           <button
             onClick={exportTrace}
             className="rounded border border-cyan-900/60 px-3 py-1 text-xs text-cyan-300 hover:bg-cyan-900/30"
-          >
-            Export
-          </button>
+          >{translate("Export")}</button>
           <button
             onClick={importTrace}
             className="rounded border border-cyan-900/60 px-3 py-1 text-xs text-cyan-300 hover:bg-cyan-900/30"
-          >
-            Import
-          </button>
+          >{translate("Import")}</button>
           <button
             onClick={reset}
             className="rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
-          >
-            Zurücksetzen
-          </button>
+          >{translate("Zurücksetzen")}</button>
           <button
             onClick={closeTracer}
             className="rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
-          >
-            Abbrechen (Esc)
-          </button>
+          >{translate("Abbrechen (Esc)")}</button>
           <button
             onClick={save}
             disabled={!bbox || !usable}
             className="rounded bg-pink-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-pink-500 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-500"
-          >
-            Speichern (Enter)
-          </button>
+          >{translate("Speichern (Enter)")}</button>
         </div>
       </div>
 
       {/* Body: Sub-Pfad-Sidebar links, Stage rechts */}
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-56 shrink-0 border-r border-neutral-700 bg-neutral-900 p-2 text-xs">
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
-            Sub-Pfade
-          </div>
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">{translate("Sub-Pfade")}</div>
           <ul className="flex flex-col gap-1">
             {subpaths.map((sp, i) => {
               const active = i === activeIdx
@@ -448,7 +435,7 @@ export function TemplateTracer() {
                     <span className="flex-1 truncate">
                       {sp.label}
                       <div className="text-[10px] text-neutral-500">
-                        {sp.points.length} Pkt · {sp.style} · {sp.closed ? 'closed' : 'open'}
+                        {translate(sp.points.length)}{translate(" Pkt · ")}{translate(sp.style)} · {translate(sp.closed ? 'closed' : 'open')}
                       </div>
                     </span>
                     {subpaths.length > 1 && (
@@ -458,7 +445,7 @@ export function TemplateTracer() {
                           deleteSubpath(i)
                         }}
                         className="ml-1 cursor-pointer rounded px-1 text-neutral-500 hover:bg-red-900/40 hover:text-red-300"
-                        title="Sub-Pfad löschen"
+                        title={translate("Sub-Pfad löschen")}
                       >
                         ×
                       </span>
@@ -474,7 +461,7 @@ export function TemplateTracer() {
               <input
                 value={draftLabel}
                 onChange={(e) => setDraftLabel(e.target.value)}
-                placeholder="Label, z. B. PS-Box"
+                placeholder={translate("Label, z. B. PS-Box")}
                 className="mb-1 w-full rounded border border-neutral-700 bg-neutral-900 px-1 py-0.5 text-xs"
                 autoFocus
               />
@@ -487,9 +474,7 @@ export function TemplateTracer() {
                       ? 'bg-pink-700/40 text-pink-100'
                       : 'border border-neutral-700 text-neutral-400',
                   ].join(' ')}
-                >
-                  line
-                </button>
+                >{translate("line")}</button>
                 <button
                   onClick={() => setDraftStyle('fill')}
                   className={[
@@ -498,26 +483,20 @@ export function TemplateTracer() {
                       ? 'bg-pink-700/40 text-pink-100'
                       : 'border border-neutral-700 text-neutral-400',
                   ].join(' ')}
-                >
-                  fill
-                </button>
+                >{translate("fill")}</button>
               </div>
               <label className="mb-1 flex items-center gap-1 text-[10px] text-neutral-400">
                 <input
                   type="checkbox"
                   checked={draftClosed}
                   onChange={(e) => setDraftClosed(e.target.checked)}
-                />
-                geschlossen
-              </label>
+                />{translate("geschlossen")}</label>
               <div className="flex gap-1">
                 <button
                   onClick={addSubpath}
                   disabled={!draftLabel.trim()}
                   className="flex-1 rounded bg-pink-600 px-2 py-0.5 text-[10px] text-white disabled:bg-neutral-700"
-                >
-                  Anlegen
-                </button>
+                >{translate("Anlegen")}</button>
                 <button
                   onClick={() => {
                     setAdding(false)
@@ -538,9 +517,7 @@ export function TemplateTracer() {
                 setDraftClosed(true)
               }}
               className="mt-2 w-full rounded border border-dashed border-neutral-700 px-2 py-1 text-[11px] text-neutral-400 hover:bg-neutral-800"
-            >
-              + Sub-Pfad
-            </button>
+            >{translate("+ Sub-Pfad")}</button>
           )}
         </aside>
 
@@ -553,14 +530,12 @@ export function TemplateTracer() {
             {bg ? (
               <img
                 src={bg.src}
-                alt={bg.description}
+                alt={translate(bg.description)}
                 className="block h-full w-auto select-none"
                 draggable={false}
               />
             ) : (
-              <div className="flex h-[60vh] w-[60vw] items-center justify-center border border-dashed border-neutral-700 text-xs text-neutral-500">
-                Kein Vorlage-Bild für diese Kombination — frei tracen
-              </div>
+              <div className="flex h-[60vh] w-[60vw] items-center justify-center border border-dashed border-neutral-700 text-xs text-neutral-500">{translate("Kein Vorlage-Bild für diese Kombination — frei tracen")}</div>
             )}
 
             <svg
@@ -588,7 +563,7 @@ export function TemplateTracer() {
                   zusammen). Hilft beim Tracen: wenn die gelbe Box mit
                   der cyanen BBox deckungsgleich ist, sitzt die BBox
                   eng genug für eine saubere mm-Skalierung. */}
-              {(() => {
+              {translate((() => {
                 const allPts = subpaths.flatMap((sp) => sp.points)
                 if (allPts.length < 2) return null
                 let minX = Infinity, maxX = -Infinity
@@ -612,7 +587,7 @@ export function TemplateTracer() {
                     opacity={0.7}
                   />
                 )
-              })()}
+              })())}
 
               {subpaths.map((sp, si) => {
                 const active = si === activeIdx
@@ -667,10 +642,8 @@ export function TemplateTracer() {
 
       {/* Footer */}
       <div className="flex items-center justify-between border-t border-neutral-700 bg-neutral-900 px-4 py-2 text-[11px] text-neutral-400">
-        <span>{bg?.description ?? 'Frei tracen ohne Hintergrundbild'}</span>
-        <span>
-          Aktiver Pfad bekommt Klicks. Inaktive Pfade in violett, aktiver in pink.
-        </span>
+        <span>{translate(bg?.description ?? 'Frei tracen ohne Hintergrundbild')}</span>
+        <span>{translate("Aktiver Pfad bekommt Klicks. Inaktive Pfade in violett, aktiver in pink.")}</span>
       </div>
     </div>
   )

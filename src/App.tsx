@@ -1,3 +1,5 @@
+import { formatDisplayDate, translate, useLanguage } from './i18n'
+import { LanguageSelector } from './components/LanguageSelector'
 import { useEffect } from 'react'
 import { Toolbar } from './components/Toolbar'
 import { Viewport } from './components/Viewport'
@@ -24,6 +26,7 @@ import { captureDiagnostics } from './lib/diagnostics'
 import { zahl } from './lib/zahlFormat'
 
 function App() {
+  useLanguage()
   const status = useViewerStore((s) => s.status)
   const setStatus = useViewerStore((s) => s.setStatus)
   const imageMeta = useViewerStore((s) => s.imageMeta)
@@ -37,9 +40,9 @@ function App() {
           .filter(Boolean)
           .join(', '),
         patientInfo.birthDate
-          ? `* ${patientInfo.birthDate}` +
+          ? `* ${formatDisplayDate(patientInfo.birthDate)}` +
             (patientInfo.ageYears != null
-              ? ` (${patientInfo.ageYears} J.)`
+              ? ` (${patientInfo.ageYears} ${translate('J.')})`
               : '')
           : '',
       ]
@@ -92,7 +95,7 @@ function App() {
 
   return (
     <div className="relative flex h-full flex-col bg-neutral-900 text-neutral-200">
-      <header className="flex items-center gap-3 border-b border-neutral-700 bg-neutral-950 px-4 py-2">
+      <header className="flex flex-wrap items-center gap-3 border-b border-neutral-700 bg-neutral-950 px-4 py-2">
         {/* Marken-Icon aus dem Cendova-Design-System (public/brand);
             BASE_URL, damit es auch unter einem Unterpfad (GitHub Pages) lädt. */}
         <img
@@ -101,9 +104,7 @@ function App() {
           className="h-7 w-7 select-none"
           draggable={false}
         />
-        <h1 className="text-sm font-semibold tracking-wide">
-          CendovaPlan
-          {headerSubtitle && (
+        <h1 className="text-sm font-semibold tracking-wide">{translate("CendovaPlan")}{headerSubtitle && (
             <span className="ml-2 font-normal text-neutral-500">
               {headerSubtitle}
             </span>
@@ -113,8 +114,8 @@ function App() {
           <HistoryButton
             onClick={undo}
             disabled={!canUndo}
-            title="Rückgängig (Strg+Z)"
-            label="Zurück"
+            title={translate("Rückgängig (Strg+Z)")}
+            label={translate("Zurück")}
             icon={
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path
@@ -130,8 +131,8 @@ function App() {
           <HistoryButton
             onClick={redo}
             disabled={!canRedo}
-            title="Vorwärts (Strg+Shift+Z / Strg+Y)"
-            label="Vor"
+            title={translate("Vorwärts (Strg+Shift+Z / Strg+Y)")}
+            label={translate("Vor")}
             icon={
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path
@@ -151,39 +152,36 @@ function App() {
 
         <div className="mx-2 h-5 w-px bg-neutral-800" />
         <HeaderTools />
+        <LanguageSelector />
 
         {/* Laufender Stand. Bewusst sichtbar statt nur in der Konsole:
             Eine Installation hing still auf einem alten Commit fest, und
             ohne diese Angabe liess sich das am Bildschirm nicht erkennen. */}
         <span
           className="ml-auto text-[10px] tabular-nums text-neutral-600"
-          title={`CendovaPlan ${__APP_VERSION__}${__APP_COMMIT__ ? ` · Commit ${__APP_COMMIT__}` : ''} — beim Melden eines Problems bitte mit angeben.`}
-        >
-          v{__APP_VERSION__}
-          {__APP_COMMIT__ ? ` · ${__APP_COMMIT__}` : ''}
+          title={translate(`CendovaPlan ${__APP_VERSION__}${__APP_COMMIT__ ? ` · Commit ${__APP_COMMIT__}` : ''} — beim Melden eines Problems bitte mit angeben.`)}
+        >{translate("v")}{translate(__APP_VERSION__)}
+          {translate(__APP_COMMIT__ ? ` · ${__APP_COMMIT__}` : '')}
         </span>
 
-        <span className="ml-2 rounded bg-amber-900/60 px-2 py-0.5 text-xs text-amber-300">
-          Lern-/Eigenprojekt — nicht für klinische Nutzung
-        </span>
+        <span className="ml-2 rounded bg-amber-900/60 px-2 py-0.5 text-xs text-amber-300">{translate("Lern-/Eigenprojekt — nicht für klinische Nutzung")}</span>
       </header>
 
       <div className="flex min-h-0 flex-1">
         <Toolbar />
         <Viewport />
         <aside className="flex w-64 flex-col border-l border-neutral-700 bg-neutral-900">
-          <div className="border-b border-neutral-700 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">
-            Bildinformationen{paneSuffix}
+          <div className="border-b border-neutral-700 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-400">{translate("Bildinformationen")}{translate(paneSuffix)}
           </div>
           <div className="space-y-0.5 px-3 py-2">
             {activeImageMeta ? (
               <>
                 <InfoRow
-                  label="Größe"
+                  label={translate("Größe")}
                   value={`${activeImageMeta.columns} × ${activeImageMeta.rows}\u00a0px`}
                 />
                 <InfoRow
-                  label="Pixelabstand"
+                  label={translate("Pixelabstand")}
                   value={
                     activeImageMeta.pixelSpacing
                       ? `${zahl(activeImageMeta.pixelSpacing, 4)}\u00a0mm/px`
@@ -192,7 +190,7 @@ function App() {
                 />
               </>
             ) : (
-              <p className="text-xs text-neutral-500">Noch kein Bild geladen.</p>
+              <p className="text-xs text-neutral-500">{translate("Noch kein Bild geladen.")}</p>
             )}
           </div>
 
@@ -202,7 +200,7 @@ function App() {
       </div>
 
       <footer className="flex items-center gap-4 border-t border-neutral-700 bg-neutral-950 px-4 py-1 text-xs text-neutral-500">
-        <span>{status}</span>
+        <span>{translate(status)}</span>
         {patientLine && (
           <span
             className="max-w-[30%] truncate text-neutral-400"
@@ -218,23 +216,19 @@ function App() {
               'Diagnose gespeichert: Datei im Download-Ordner (CendovaPlan-Diagnose-*.txt) + in der Zwischenablage. Bitte schicken.',
             )
           }}
-          title="Programmzustand (Geometrie/Flags, KEINE Patientendaten) als Datei speichern + in die Zwischenablage"
+          title={translate("Programmzustand (Geometrie/Flags, KEINE Patientendaten) als Datei speichern + in die Zwischenablage")}
           className="ml-auto rounded px-2 py-0.5 text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-300"
-        >
-          Diagnose
-        </button>
+        >{translate("Diagnose")}</button>
         <span>
-          {activeCalibration == null ? (
+          {translate(activeCalibration == null ? (
             `Kalibrierung${paneSuffix}: nicht gesetzt`
           ) : activeCalibration.referenceMm > 0 ? (
-            <span className="text-emerald-400">
-              Kalibriert ✓ (Referenz {activeCalibration.referenceMm} mm){paneSuffix}
+            <span className="text-emerald-400">{translate("Kalibriert ✓ (Referenz ")}{translate(activeCalibration.referenceMm)}{translate(" mm)")}{translate(paneSuffix)}
             </span>
           ) : (
-            <span className="text-neutral-400">
-              Maßstab aus DICOM (nicht manuell kalibriert){paneSuffix}
+            <span className="text-neutral-400">{translate("Maßstab aus DICOM (nicht manuell kalibriert)")}{translate(paneSuffix)}
             </span>
-          )}
+          ))}
         </span>
       </footer>
 
@@ -253,8 +247,8 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     // Zeilenbild wie die Kennwerte der Ergebnis-Karten (Ergebnis.tsx).
     <div className="flex items-baseline justify-between gap-2">
-      <span className="text-[11px] text-neutral-400">{label}</span>
-      <span className="text-right text-xs tabular-nums text-neutral-100">{value}</span>
+      <span className="text-[11px] text-neutral-400">{translate(label)}</span>
+      <span className="text-right text-xs tabular-nums text-neutral-100">{translate(value)}</span>
     </div>
   )
 }
@@ -276,7 +270,7 @@ function HistoryButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      title={title}
+      title={translate(title)}
       className={[
         'flex items-center gap-1 rounded px-2 py-1 text-xs transition',
         disabled
@@ -284,8 +278,8 @@ function HistoryButton({
           : 'text-neutral-300 hover:bg-neutral-800 hover:text-sky-300',
       ].join(' ')}
     >
-      {icon}
-      <span className="hidden sm:inline">{label}</span>
+      {translate(icon)}
+      <span className="hidden sm:inline">{translate(label)}</span>
     </button>
   )
 }

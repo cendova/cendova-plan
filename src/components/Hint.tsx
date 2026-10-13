@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import type { ReactNode } from 'react'
 import { useUiStore } from '../state/uiStore'
 
@@ -10,5 +11,5 @@ import { useUiStore } from '../state/uiStore'
 export function Hint({ children }: { children: ReactNode }) {
   const show = useUiStore((s) => s.showHints)
   if (!show) return null
-  return <>{children}</>
+  return <>{translate(children)}</>
 }

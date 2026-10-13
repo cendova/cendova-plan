@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 /**
  * Overlay für platzierte Schulter-Schablonen. Rendert die Paket-Konturen
  * (SHOULDER_CONTOURS) als SVG-Polygone im Haupt-Pane und bietet dieselbe
@@ -310,7 +311,7 @@ export function ShoulderTemplateOverlay() {
               fill={stroke}
               className="pointer-events-none select-none"
             >
-              {shoulderSizeLabel(t.kind, t.sizeIndex)}
+              {translate(shoulderSizeLabel(t.kind, t.sizeIndex))}
             </text>
             {/* Rotations-Griff (nur wenn selektiert und nicht gesperrt) */}
             {isSelected && !locked && (

@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useEffect } from 'react'
 import { useViewerStore } from '../state/viewerStore'
 import { useKneePanesStore } from '../state/kneePanesStore'
@@ -88,8 +89,7 @@ export function StackImagePicker({ pane }: { pane: 'left' | 'right' }) {
         className="absolute inset-x-0 bottom-6 z-30 flex justify-center px-3"
       >
         <div className="flex max-w-[92%] items-center gap-2 rounded-lg border border-sky-800 bg-neutral-950/90 px-3 py-1.5 shadow-lg">
-          <span className="shrink-0 text-xs font-semibold text-sky-200 tabular-nums">
-            Bild {sel.index + 1}/{sel.count}
+          <span className="shrink-0 text-xs font-semibold text-sky-200 tabular-nums">{translate("Bild ")}{translate(sel.index + 1)}/{translate(sel.count)}
           </span>
           <span className="min-w-0 truncate text-[11px] text-neutral-400">
             {fileName}
@@ -98,9 +98,7 @@ export function StackImagePicker({ pane }: { pane: 'left' | 'right' }) {
             type="button"
             onClick={fix}
             className="shrink-0 rounded bg-sky-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-sky-500"
-          >
-            Dieses Bild verwenden
-          </button>
+          >{translate("Dieses Bild verwenden")}</button>
         </div>
       </div>
     </>
@@ -123,7 +121,7 @@ function ArrowButton({
       data-pdf-hide
       onClick={onClick}
       disabled={disabled}
-      title={side === 'left' ? 'Vorheriges Bild (←)' : 'Nächstes Bild (→)'}
+      title={translate(side === 'left' ? 'Vorheriges Bild (←)' : 'Nächstes Bild (→)')}
       className={[
         'absolute top-1/2 z-30 -translate-y-1/2 rounded-full border bg-neutral-950/80 p-2 text-xl leading-none transition',
         side === 'left' ? 'left-2' : 'right-2',
@@ -132,7 +130,7 @@ function ArrowButton({
           : 'border-sky-700 text-sky-200 shadow-lg hover:bg-sky-900/60',
       ].join(' ')}
     >
-      {side === 'left' ? '‹' : '›'}
+      {translate(side === 'left' ? '‹' : '›')}
     </button>
   )
 }

@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 /**
  * Gemeinsame Bausteine der rechten Spalte — damit alle Module (Hüfte,
  * Knie, Schulter, Prothesen- und Osteotomieplanung) gleich aussehen
@@ -36,20 +37,20 @@ export function Karte({
       <header className="mb-1.5 flex items-baseline justify-between gap-2">
         <h3
           className="min-w-0 truncate text-xs font-semibold text-neutral-200"
-          title={titel}
+          title={translate(titel)}
         >
-          {titel}
+          {translate(titel)}
         </h3>
         {kennung != null && (
           <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-violet-300">
-            {kennung}
+            {translate(kennung)}
           </span>
         )}
       </header>
-      {children}
+      {translate(children)}
       {fuss != null && (
         <div className="mt-1.5 border-t border-neutral-800 pt-1 text-[9px] leading-snug text-neutral-500">
-          {fuss}
+          {translate(fuss)}
         </div>
       )}
     </section>
@@ -93,15 +94,15 @@ export function Kennwerte({
       {spalten && (
         <>
           <span />
-          {Array.from({ length: n }, (_, i) => (
+          {translate(Array.from({ length: n }, (_, i) => (
             <span key={i} className="text-right text-[9px] uppercase tracking-wider text-neutral-500">
-              {spalten[i] ?? ''}
+              {translate(spalten[i] ?? '')}
             </span>
-          ))}
+          )))}
         </>
       )}
       {zeilen.map((z, zi) => (
-        <div key={zi} className="contents" title={z.titel}>
+        <div key={zi} className="contents" title={translate(z.titel)}>
           <span className="flex min-w-0 items-baseline gap-1 text-[11px] text-neutral-400">
             {mitAmpel && (
               <span
@@ -118,13 +119,13 @@ export function Kennwerte({
             {/* Wird es eng (zweite Wertspalte), bricht der Zusatz unter die
                 Bezeichnung um, statt sie abzuschneiden. */}
             <span className="flex min-w-0 flex-wrap items-baseline gap-x-1">
-              <span className="min-w-0 max-w-full truncate">{z.label}</span>
+              <span className="min-w-0 max-w-full truncate">{translate(z.label)}</span>
               {z.norm && (
-                <span className="shrink-0 text-[9px] leading-tight text-neutral-600">{z.norm}</span>
+                <span className="shrink-0 text-[9px] leading-tight text-neutral-600">{translate(z.norm)}</span>
               )}
             </span>
           </span>
-          {Array.from({ length: n }, (_, i) => {
+          {translate(Array.from({ length: n }, (_, i) => {
             const w = z.werte[i]
             const farbe =
               w == null
@@ -144,13 +145,13 @@ export function Kennwerte({
                   z.betont ? 'font-semibold' : '',
                 ].join(' ')}
               >
-                {w ?? '—'}
+                {translate(w ?? '—')}
                 {u != null && (
-                  <span className="block text-[9px] leading-tight opacity-70">{u}</span>
+                  <span className="block text-[9px] leading-tight opacity-70">{translate(u)}</span>
                 )}
               </span>
             )
-          })}
+          }))}
         </div>
       ))}
     </div>
@@ -179,13 +180,13 @@ export function Hinweis({
             : 'border-neutral-800 bg-neutral-900/60 text-neutral-300',
       ].join(' ')}
     >
-      {children}
-      {belege != null && <div className="mt-0.5 text-[9px] opacity-70">{belege}</div>}
+      {translate(children)}
+      {belege != null && <div className="mt-0.5 text-[9px] opacity-70">{translate(belege)}</div>}
     </div>
   )
 }
 
 /** Trennlinie + Abstand zwischen Abschnitten innerhalb einer Karte. */
 export function Abschnitt({ children }: { children: ReactNode }) {
-  return <div className="mt-1.5 border-t border-neutral-800 pt-1.5">{children}</div>
+  return <div className="mt-1.5 border-t border-neutral-800 pt-1.5">{translate(children)}</div>
 }

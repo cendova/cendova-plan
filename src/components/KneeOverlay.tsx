@@ -1,3 +1,4 @@
+import { dezimalTrenner } from '../lib/zahlFormat'
 import { useRef } from 'react'
 import { getViewport } from '../lib/cornerstone/viewer'
 import { useViewportSync } from '../lib/cornerstone/useViewportSync'
@@ -119,7 +120,7 @@ export function KneeOverlay() {
     if (!wf || !wfRecipe || wf.points.length < wfRecipe.steps.length) return null
     const raw = computeWorkflowRaw(wf.points, factor)
     if (!raw) return null
-    const fmtDeg = (n: number) => n.toFixed(1).replace('.', ',')
+    const fmtDeg = (n: number) => n.toFixed(1).replace('.', dezimalTrenner())
     const alignText = (signed: number, mag: number) => {
       const dir = classifyAlignment(signed)
       return dir === 'Neutral' ? `${fmtDeg(mag)}° neutral` : `${fmtDeg(mag)}° ${dir}`

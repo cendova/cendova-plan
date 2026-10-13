@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import type { Types } from '@cornerstonejs/core'
 import { getViewport } from '../lib/cornerstone/viewer'
 import { useHipStore } from '../state/hipStore'
@@ -80,7 +81,7 @@ export function CupLabel({
           selected ? 'ring-1 ring-amber-300' : '',
         ].join(' ')}
       >
-        {lines.join('\n')}
+        {translate(lines.join('\n'))}
       </div>
     </div>
   )
