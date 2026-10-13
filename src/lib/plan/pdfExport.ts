@@ -1,3 +1,4 @@
+import { dezimalTrenner } from '../zahlFormat'
 /**
  * PDF-Export des Plans.
  *
@@ -61,6 +62,7 @@ import { useKneeOsteotomieStore } from '../../state/kneeOsteotomieStore'
 import { deformitaetPdfZeilen, osteotomiePdfZeilen } from './osteotomieText'
 import { pdfSicher } from './pdfText'
 import { erfassungUnvollstaendig, mittlereHelligkeit, naechsteFrames } from './erfassungPruefung'
+import { formatDisplayDate, getLocale, t, translateText } from '../../i18n'
 
 /**
  * Wendet die AMBER-Einfärbung der Schablonen-Bilder MANUELL an, vor dem
@@ -276,14 +278,14 @@ async function snapshotViewport(viewportEl: HTMLElement): Promise<HTMLCanvasElem
 function stemDisplayName(catalogIndex: number, sizeIndex: number): string {
   const entry = stemCatalogEntries()[catalogIndex]
   const size = entry?.sizes[sizeIndex]
-  if (!entry || !size) return '(unbekannt)'
+  if (!entry || !size) return t('(unbekannt)')
   const folder = entry.folder.replace('MEDACTA INTERNATIONAL - [Stem] - ', '')
-  return `${folder} – Größe ${size.size}`
+  return t('{0} – Größe {1}', { 0: folder, 1: size.size })
 }
 function cupDisplayName(catalogIndex: number, sizeIndex: number): string {
   const entry = cupCatalogEntries()[catalogIndex]
   const size = entry?.sizes[sizeIndex]
-  if (!entry || !size) return '(unbekannt)'
+  if (!entry || !size) return t('(unbekannt)')
   const folder = entry.folder.replace('MEDACTA INTERNATIONAL - [Cup] - ', '')
   return `${folder} – Ø ${size.size} mm`
 }
@@ -350,18 +352,15 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
   // — Patient + Planungsdaten für die Kopfzeile —
   const patient = useViewerStore.getState().patientInfo
   const planning = usePlanningStore.getState()
-  const ts = new Date().toLocaleString('de-DE')
+  const ts = new Date().toLocaleString(getLocale())
 
-  const fmtIsoDate = (iso: string): string => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
-    return m ? `${m[3]}.${m[2]}.${m[1]}` : iso
-  }
+  const fmtIsoDate = formatDisplayDate
   const nameStr = patient
     ? [patient.lastName, patient.firstName].filter(Boolean).join(', ') || '–'
     : '–'
   const gebStr = patient?.birthDate
-    ? patient.birthDate +
-      (patient.ageYears != null ? ` (${patient.ageYears} J.)` : '')
+    ? fmtIsoDate(patient.birthDate) +
+      (patient.ageYears != null ? ` (${patient.ageYears} ${t('J.')})` : '')
     : '–'
   // Größe/Gewicht: manueller Override (Dialog) hat Vorrang, sonst DICOM.
   const hCm =
@@ -371,18 +370,22 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
   const groesseGewicht =
     hCm || wKg ? `${hCm || '–'} cm / ${wKg || '–'} kg` : '–'
   const bmiVal = computeBmi(hCm, wKg)
-  const bmiText = bmiVal != null ? bmiVal.toFixed(1) : '–'
+  const bmiText = bmiVal != null ? bmiVal.toFixed(1).replace('.', dezimalTrenner()) : '–'
   const opTermin = planning.surgeryDateUnknown
-    ? 'noch unklar'
+    ? t('noch unklar')
     : planning.surgeryDate
       ? fmtIsoDate(planning.surgeryDate)
       : '–'
   let rehaText = '–'
-  if (planning.reha === 'Physio') rehaText = 'Physio'
+  if (planning.reha === 'Physio') rehaText = t('Physio')
   else if (planning.reha)
     rehaText =
-      planning.reha +
-      (planning.rehaDate ? ` ab ${fmtIsoDate(planning.rehaDate)}` : '')
+      t(planning.reha) +
+      (planning.rehaDate ? ` ${t('ab {0}', { 0: fmtIsoDate(planning.rehaDate) })}` : '')
+  const hospitalText = planning.hospital === 'unklar'
+    ? t('noch unklar')
+    : planning.hospital || '–'
+  const insuranceText = planning.insurance ? t(planning.insurance) : '–'
 
   // BLD (klinisch) — wandert prominent in die Kopfzeile (Hüfte).
   const clinicalBld = useViewerStore.getState().clinicalBld
@@ -440,16 +443,18 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
     pdf.setTextColor(165, 182, 205)
     // Auf die schmale Kopf-Spalte umbrechen (bis vor die Datenspalten bei
     // x≈44), max. zwei Zeilen.
-    const subLines: string[] = pdf.splitTextToSize(orgSubtitle, 34).slice(0, 2)
+    const subLines: string[] = pdf.splitTextToSize(pdfSicher(orgSubtitle), 34).slice(0, 2)
     subLines.forEach((ln, i) => pdf.text(ln, 8, 11 + i * 3))
   }
 
   // Label (grau) + Wert (hell, bei Bedarf gekürzt) auf einer Zeile.
   const fit = (text: string, maxW: number): string => {
-    if (pdf.getTextWidth(text) <= maxW) return text
-    let t = text
-    while (t.length > 1 && pdf.getTextWidth(t + '…') > maxW) t = t.slice(0, -1)
-    return t + '…'
+    const safe = pdfSicher(text)
+    if (pdf.getTextWidth(safe) <= maxW) return safe
+    let shortened = safe
+    while (shortened.length > 1 && pdf.getTextWidth(shortened + '...') > maxW)
+      shortened = shortened.slice(0, -1)
+    return shortened + '...'
   }
   const headerField = (
     x: number,
@@ -463,11 +468,17 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
     pdf.setFont('helvetica', 'normal')
     pdf.setFontSize(6)
     pdf.setTextColor(140, 158, 182)
-    pdf.text(label, x, y)
+    const translatedLabel = pdfSicher(translateText(label))
+    const columnWidth = labelW + valueMaxW
+    const translatedLabelW = Math.min(
+      Math.max(labelW, pdf.getTextWidth(translatedLabel) + 1.5),
+      columnWidth - 12,
+    )
+    pdf.text(fit(translatedLabel, translatedLabelW - 1.5), x, y)
     pdf.setFont('helvetica', 'bold')
     pdf.setFontSize(7.5)
     pdf.setTextColor(valueColor[0], valueColor[1], valueColor[2])
-    pdf.text(fit(value, valueMaxW), x + labelW, y)
+    pdf.text(fit(value, columnWidth - translatedLabelW), x + translatedLabelW, y)
   }
 
   // Vier Datenspalten à drei Zeilen. Reihenstart r1, Zeilenhöhe lh.
@@ -479,16 +490,16 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
   const groesseBmi =
     groesseGewicht === '–'
       ? bmiText !== '–'
-        ? `BMI ${bmiText}`
+        ? t('BMI {0}', { 0: bmiText })
         : '–'
-      : groesseGewicht + (bmiText !== '–' ? `  ·  BMI ${bmiText}` : '')
+      : groesseGewicht + (bmiText !== '–' ? `  ${t('· BMI {0}', { 0: bmiText })}` : '')
   // Spalte 1 — Patient
   headerField(44, r1, 'Name', nameStr, 16, 50)
   headerField(44, r1 + lh, 'geb.', gebStr, 16, 50)
   headerField(44, r1 + 2 * lh, 'Größe/Gew.', groesseBmi, 16, 50)
   // Spalte 2 — Administrativ
-  headerField(114, r1, 'Versicher.', planning.insurance || '–', 16, 46)
-  headerField(114, r1 + lh, 'Krankenhaus', planning.hospital || '–', 16, 46)
+  headerField(114, r1, 'Versicher.', insuranceText, 16, 46)
+  headerField(114, r1 + lh, 'Krankenhaus', hospitalText, 16, 46)
   headerField(114, r1 + 2 * lh, 'OP-Termin', opTermin, 16, 46)
   // Spalte 3 — Reha + CAVE (rot, damit es im OP sofort auffällt)
   headerField(180, r1, 'Reha', rehaText, 15, 40)
@@ -519,7 +530,7 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
     pdf.setFontSize(10.5)
     pdf.setTextColor(251, 191, 36)
     pdf.text(
-      fit(`BLD ${clinicalBld.trim() || '–'}`, 55),
+      fit(t('BLD {0}', { 0: clinicalBld.trim() || '–' }), 55),
       238,
       r1 + 2 * lh + 0.8,
     )
@@ -545,17 +556,18 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
   }
   const plannerName =
     planning.planner.trim() || getOrgProfile().defaultPlanner.trim()
+  const footerWidth = (pageW - 24) / 2
   pdf.text(
-    plannerName
-      ? `Planung durchgeführt von ${plannerName} am ${ts}`
-      : `Planung durchgeführt am ${ts}`,
+    pdf.splitTextToSize(pdfSicher(plannerName
+      ? t('Planung durchgeführt von {0} am {1}', { 0: plannerName, 1: ts })
+      : t('Planung durchgeführt am {0}', { 0: ts })), footerWidth),
     8,
-    footerY,
+    Math.min(footerY, pageH - 7),
   )
   pdf.text(
-    'ohne CE-Kennzeichnung — keine alleinige Grundlage für klinische Entscheidungen',
+    pdf.splitTextToSize(pdfSicher(t('ohne CE-Kennzeichnung — keine alleinige Grundlage für klinische Entscheidungen')), footerWidth),
     pageW - 8,
-    footerY,
+    Math.min(footerY, pageH - 7),
     { align: 'right' },
   )
 
@@ -589,13 +601,49 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
     pdf.setTextColor(15, 25, 40)
     pdf.setFontSize(16)
     pdf.setFont('helvetica', 'bold')
-    pdf.text('Zusammenfassung', 14, y)
+    pdf.text(pdfSicher(t('Zusammenfassung')), 14, y)
     y += 8
     pdf.setFont('helvetica', 'normal')
     pdf.setFontSize(9)
     pdf.setTextColor(80, 80, 80)
-    pdf.text(`Erstellt am ${ts}`, 14, y)
+    pdf.text(pdfSicher(t('Erstellt am {0}', { 0: ts })), 14, y)
     y += 8
+
+    // Seitenbreite nach der Übersetzung prüfen; freie Nutzerdaten werden
+    // mit localize=false unverändert ausgegeben (nur Zeichenabsicherung).
+    const writeSection = (title: string, lines: string[], localize = true) => {
+      if (lines.length === 0) return
+      pdf.setTextColor(15, 25, 40)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFontSize(11)
+      const titleLines: string[] = pdf.splitTextToSize(pdfSicher(translateText(title)), pw - 28)
+      if (y + titleLines.length * 5.5 + 5 > 285) {
+        pdf.addPage('a4', 'portrait')
+        y = 18
+      }
+      for (const line of titleLines) {
+        pdf.text(line, 14, y)
+        y += 5.5
+      }
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(9.5)
+      pdf.setTextColor(45, 55, 70)
+      for (const line of lines) {
+        const safe = pdfSicher(localize ? translateText(line) : line)
+        const indentation = safe.match(/^\s+/)?.[0] ?? ''
+        const indentWidth = Math.min(pdf.getTextWidth(indentation), 12)
+        const wrapped: string[] = pdf.splitTextToSize(safe.trimStart(), pw - 28 - indentWidth)
+        for (const part of wrapped) {
+          if (y > 285) {
+            pdf.addPage('a4', 'portrait')
+            y = 18
+          }
+          pdf.text(part, 14 + indentWidth, y)
+          y += 5
+        }
+      }
+      y += 3
+    }
 
     // Patient (aus DICOM) + klinische BLD-Notiz zuoberst.
     if (patient) {
@@ -603,8 +651,8 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
         .filter(Boolean)
         .join(', ')
       const birthLine = patient.birthDate
-        ? `geb. ${patient.birthDate}` +
-          (patient.ageYears != null ? ` (${patient.ageYears} J.)` : '')
+        ? t('geb. {0}', { 0: fmtIsoDate(patient.birthDate) }) +
+          (patient.ageYears != null ? ` (${patient.ageYears} ${t('J.')})` : '')
         : ''
       const bodyLine = [
         patient.heightCm != null ? `${patient.heightCm} cm` : '',
@@ -613,60 +661,13 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
         .filter(Boolean)
         .join(' / ')
       const lines = [nameLine, birthLine, bodyLine].filter(Boolean)
-      if (lines.length > 0) {
-        // (writeSection ist erst weiter unten definiert — inline ausgeben)
-        pdf.setTextColor(15, 25, 40)
-        pdf.setFont('helvetica', 'bold')
-        pdf.setFontSize(11)
-        pdf.text('Patient', 14, y)
-        y += 5.5
-        pdf.setFont('helvetica', 'normal')
-        pdf.setFontSize(9.5)
-        pdf.setTextColor(45, 55, 70)
-        for (const line of lines) {
-          pdf.text(line, 14, y)
-          y += 5
-        }
-        y += 3
-      }
+      writeSection('Patient', lines, false)
     }
     if (clinicalBld && clinicalBld.trim()) {
-      pdf.setTextColor(15, 25, 40)
-      pdf.setFont('helvetica', 'bold')
-      pdf.setFontSize(11)
-      pdf.text('Klinische Beinlängendifferenz', 14, y)
-      y += 5.5
-      pdf.setFont('helvetica', 'normal')
-      pdf.setFontSize(9.5)
-      pdf.setTextColor(45, 55, 70)
-      pdf.text(clinicalBld, 14, y)
-      y += 8
+      writeSection('Klinische Beinlängendifferenz', [clinicalBld], false)
     }
     // (Cave-Inhalte — Allergien/Antikoagulation — stehen in „Planung &
     // Organisation" und rot in der Kopfzeile von Seite 1.)
-
-    const writeSection = (title: string, lines: string[]) => {
-      if (lines.length === 0) return
-      pdf.setTextColor(15, 25, 40)
-      pdf.setFont('helvetica', 'bold')
-      pdf.setFontSize(11)
-      // Zentrale Zeichenabsicherung (pdfText.ts): ohne sie machte schon ein
-      // echtes Minus oder ein „β" die ganze Zeile unlesbar.
-      pdf.text(pdfSicher(title), 14, y)
-      y += 5.5
-      pdf.setFont('helvetica', 'normal')
-      pdf.setFontSize(9.5)
-      pdf.setTextColor(45, 55, 70)
-      for (const line of lines) {
-        if (y > 285) {
-          pdf.addPage('a4', 'portrait')
-          y = 18
-        }
-        pdf.text(pdfSicher(line), 14, y)
-        y += 5
-      }
-      y += 3
-    }
 
     // Kalibrierung — nur vermerken, WIE kalibriert wurde (ausgemessen vs.
     // Vergrößerungsfaktor); keine technische Skalierung mehr.
@@ -676,14 +677,14 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
         const mag =
           calibration.magnificationFactor &&
           calibration.magnificationFactor !== 1
-            ? ` · Vergrößerung ${calibration.magnificationFactor.toFixed(2)}×`
+            ? ` · Vergrößerung ${calibration.magnificationFactor.toFixed(2).replace('.', dezimalTrenner())}×`
             : ''
         lines.push(
           `Ausgemessen — Referenz-Strecke ${calibration.referenceMm} mm${mag}`,
         )
       } else {
         lines.push(
-          `Vergrößerungsfaktor ${calibration.magnificationFactor?.toFixed(2) ?? '1.00'}× (aus PixelSpacing)`,
+          `Vergrößerungsfaktor ${calibration.magnificationFactor?.toFixed(2).replace('.', dezimalTrenner()) ?? `1${dezimalTrenner()}00`}× (aus PixelSpacing)`,
         )
       }
       writeSection('Kalibrierung', lines)
@@ -692,19 +693,19 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
     // Planung & Organisation (OP-Termin, Klinik, Versicherung, Reha …).
     {
       const planningLines: string[] = [
-        `Krankenhaus: ${planning.hospital || '–'}`,
-        `OP-Termin: ${opTermin}`,
-        `Versicherung: ${planning.insurance || '–'}`,
-        `Größe/Gewicht: ${groesseGewicht}  ·  BMI ${bmiText}`,
-        `Reha: ${rehaText}`,
+        t('Krankenhaus: {0}', { 0: hospitalText }),
+        t('OP-Termin: {0}', { 0: opTermin }),
+        t('Versicherung: {0}', { 0: insuranceText }),
+        t('Größe/Gewicht: {0} · BMI {1}', { 0: groesseGewicht, 1: bmiText }),
+        t('Reha: {0}', { 0: rehaText }),
       ]
       if (planning.allergies.trim())
-        planningLines.push(`Allergien: ${planning.allergies.trim()}`)
+        planningLines.push(t('Allergien: {0}', { 0: planning.allergies.trim() }))
       if (planning.anticoagulation.trim())
-        planningLines.push(`Antikoagulation: ${planning.anticoagulation.trim()}`)
+        planningLines.push(t('Antikoagulation: {0}', { 0: planning.anticoagulation.trim() }))
       if (planning.other.trim())
-        planningLines.push(`Sonstiges: ${planning.other.trim()}`)
-      writeSection('Planung & Organisation', planningLines)
+        planningLines.push(t('Sonstiges: {0}', { 0: planning.other.trim() }))
+      writeSection('Planung & Organisation', planningLines, false)
     }
 
     // Hüft-Messungen bewusst NICHT mehr im PDF (auf Wunsch entfernt) — die
@@ -730,7 +731,9 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
         if (!recipe) continue
         if (m.points.length < recipe.steps.length) {
           lines.push(
-            `• ${recipe.label}: unvollständig (${m.points.length}/${recipe.steps.length} Punkte)`,
+            t('• {0}: unvollständig ({1}/{2} Punkte)', {
+              0: translateText(recipe.label), 1: m.points.length, 2: recipe.steps.length,
+            }),
           )
           continue
         }
@@ -738,14 +741,14 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
           const { values } = recipe.compute(m.points, factor)
           if (values.length <= 2) {
             lines.push(
-              `• ${recipe.label}: ${values
-                .map((v) => `${v.label} ${v.value}`)
+              `• ${translateText(recipe.label)}: ${values
+                .map((v) => `${translateText(v.label)} ${translateText(v.value)}`)
                 .join(' | ')}`,
             )
           } else {
             // Viele Werte (Vollvermessung) → je Zeile, eingerückt.
-            lines.push(`• ${recipe.label}:`)
-            for (const v of values) lines.push(`   ${v.label}: ${v.value}`)
+            lines.push(`• ${translateText(recipe.label)}:`)
+            for (const v of values) lines.push(`   ${translateText(v.label)}: ${translateText(v.value)}`)
           }
           // CPAK-Klassifikation aus der Vollvermessung.
           if (m.kind === 'workflow') {
@@ -753,15 +756,18 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
             if (raw) {
               const c = computeCpak(raw.mLDFA, raw.mMPTA)
               lines.push(
-                `   CPAK: Typ ${c.type} (${c.alignment} / ${c.jlo}) · aHKA ${c.aHKA.toFixed(1)}° · JLO ${c.JLO.toFixed(1)}°`,
+                `   ${t('CPAK: Typ {0} ({1} / {2}) · aHKA {3}° · JLO {4}°', {
+                  0: c.type, 1: t(c.alignment), 2: t(c.jlo),
+                  3: c.aHKA.toFixed(1).replace('.', dezimalTrenner()), 4: c.JLO.toFixed(1).replace('.', dezimalTrenner()),
+                })}`,
               )
             }
           }
         } catch {
-          lines.push(`• ${recipe.label}: Wert nicht berechenbar`)
+          lines.push(t('• {0}: Wert nicht berechenbar', { 0: translateText(recipe.label) }))
         }
       }
-      writeSection('Knie-Messungen', lines)
+      writeSection('Knie-Messungen', lines, false)
     }
 
     // Deformitätsanalyse + Umstellungsosteotomie (Knie) — dieselbe
@@ -794,22 +800,25 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
       for (const m of shoulderMeasurements) {
         const recipe = getShoulderRecipe(m.kind)
         if (!recipe) continue
-        const seite = m.side === 'R' ? 'rechts' : 'links'
+        const seite = t(m.side === 'R' ? 'rechts' : 'links')
         if (m.points.length < recipe.steps.length) {
           lines.push(
-            `• ${recipe.label} (${seite}): unvollständig (${m.points.length}/${recipe.steps.length} Punkte)`,
+            t('• {0} ({1}): unvollständig ({2}/{3} Punkte)', {
+              0: translateText(recipe.label), 1: seite,
+              2: m.points.length, 3: recipe.steps.length,
+            }),
           )
           continue
         }
         try {
           const { values } = recipe.compute(m.points, factor)
-          lines.push(`• ${recipe.label} (${seite}):`)
-          for (const v of values) lines.push(`   ${v.label}: ${v.value}`)
+          lines.push(`• ${translateText(recipe.label)} (${seite}):`)
+          for (const v of values) lines.push(`   ${translateText(v.label)}: ${translateText(v.value)}`)
         } catch {
-          lines.push(`• ${recipe.label} (${seite}): Wert nicht berechenbar`)
+          lines.push(t('• {0} ({1}): Wert nicht berechenbar', { 0: translateText(recipe.label), 1: seite }))
         }
       }
-      writeSection('Schulter-Messungen', lines)
+      writeSection('Schulter-Messungen', lines, false)
     }
 
     // Pfannen — mit klinischer Inklination statt SVG-Rotation. Die
@@ -829,12 +838,15 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
                 referenceLine[1],
               )
             : null
-          const inclText = incl != null ? `Inklination ${incl.toFixed(1)}°` : 'Inklination (keine Referenzlinie)'
+          const inclText = incl != null
+            ? t('Inklination {0}°', { 0: incl.toFixed(1).replace('.', dezimalTrenner()) })
+            : t('Inklination (keine Referenzlinie)')
           return (
             `• ${c.side}: ${cupDisplayName(c.catalogIndex, c.sizeIndex)}` +
             ` | ${inclText}`
           )
         }),
+        false,
       )
     }
 
@@ -860,18 +872,19 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
           )
           const alignText =
             align.label === 'Neutral'
-              ? 'Achse neutral (0°)'
-              : `${align.degrees.toFixed(1)}° ${align.label}`
+              ? t('Achse neutral (0°)')
+              : `${align.degrees.toFixed(1).replace('.', dezimalTrenner())}° ${t(align.label)}`
           const refNote =
             referenceAngleDeg != null
-              ? ' (vs. Femur-Achse)'
-              : ' (vs. Vertikale)'
+              ? ` ${t('(vs. Femur-Achse)')}`
+              : ` ${t('(vs. Vertikale)')}`
           return (
             `• ${s.side}: ${stemDisplayName(s.catalogIndex, s.sizeIndex)}` +
-            ` | Halslänge ${head >= 0 ? '+' : ''}${head} mm` +
+            ` ${t('| Halslänge {0}{1} mm', { 0: head >= 0 ? '+' : '', 1: head })}` +
             ` | ${alignText}${refNote}`
           )
         }),
+        false,
       )
     }
 
@@ -881,17 +894,18 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
     if (shoulderTemplates.length > 0) {
       writeSection(
         'Schulter-Schablonen',
-        shoulderTemplates.map((t) => {
+        shoulderTemplates.map((template) => {
           const familie = SHOULDER_IMPLANT_FAMILIES.find(
-            (f) => f.kind === t.kind,
+            (f) => f.kind === template.kind,
           )
-          const seite = t.side === 'R' ? 'rechts' : 'links'
+          const seite = t(template.side === 'R' ? 'rechts' : 'links')
           return (
-            `• ${familie?.label ?? t.kind} (${seite})` +
-            ` | Gr. ${shoulderSizeLabel(t.kind, t.sizeIndex)}` +
-            ` | Drehung ${t.rotationDeg.toFixed(1)}°`
+            `• ${familie?.label ?? template.kind} (${seite})` +
+            ` ${t('| Gr. {0}', { 0: shoulderSizeLabel(template.kind, template.sizeIndex) })}` +
+            ` ${t('| Drehung {0}°', { 0: template.rotationDeg.toFixed(1).replace('.', dezimalTrenner()) })}`
           )
         }),
+        false,
       )
     }
 
@@ -908,13 +922,14 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
           // lieber die Einheit offenlassen als eine falsche behaupten.
           const strecke =
             factor === 1
-              ? `${betrag.toFixed(1)} (unkalibriert)`
-              : `${betrag.toFixed(1)} mm`
+              ? `${betrag.toFixed(1).replace('.', dezimalTrenner())} (${t('unkalibriert')})`
+              : `${betrag.toFixed(1).replace('.', dezimalTrenner())} mm`
           return (
-            `• Fragment ${i + 1} | Verschiebung ${strecke}` +
-            ` | Drehung ${f.rotationDeg.toFixed(1)}°`
+            t('• Fragment {0} | Verschiebung {1}', { 0: i + 1, 1: strecke }) +
+            ` ${t('| Drehung {0}°', { 0: f.rotationDeg.toFixed(1).replace('.', dezimalTrenner()) })}`
           )
         }),
+        false,
       )
     }
 
@@ -932,16 +947,20 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
       const opSide = operatedSideOf(correction.perSide) ?? 'R'
       const postopLLD = preopLLD + correction.totalSigned
       const lines: string[] = []
-      lines.push(`Prä-OP: ${formatLldForSide(preopLLD, opSide)}`)
+      lines.push(t('Prä-OP: {0}', { 0: translateText(formatLldForSide(preopLLD, opSide)) }))
       for (const c of correction.perSide) {
         // Seite ausgeschrieben wie in den Nachbarzeilen (Prä-/Post-OP) und
         // im Messungen-Panel — „Korrektur R" war die einzige Abkürzung.
         lines.push(
-          `Korrektur ${c.side === 'R' ? 'rechts' : 'links'}: ${c.mm >= 0 ? '+' : ''}${(c.mm / 10).toFixed(2).replace('.', ',')} cm`,
+          t('Korrektur {0}: {1}{2} cm', {
+            0: t(c.side === 'R' ? 'rechts' : 'links'),
+            1: c.mm >= 0 ? '+' : '',
+            2: (c.mm / 10).toFixed(2).replace('.', dezimalTrenner()),
+          }),
         )
       }
-      lines.push(`Post-OP: ${formatLldForSide(postopLLD, opSide)}`)
-      writeSection('Beinlängen-Bilanz', lines)
+      lines.push(t('Post-OP: {0}', { 0: translateText(formatLldForSide(postopLLD, opSide)) }))
+      writeSection('Beinlängen-Bilanz', lines, false)
     }
 
     // Notizen
@@ -949,6 +968,7 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
       writeSection(
         'Notizen',
         notes.map((n, i) => `• [${i + 1}] ${n.text}`),
+        false,
       )
     }
 
@@ -969,7 +989,7 @@ export async function exportPlanPdf(viewportEls: HTMLElement[]): Promise<void> {
     pdf.setFontSize(7)
     pdf.setTextColor(150, 150, 150)
     pdf.text(
-      'Skizzier-Tool ohne CE-Kennzeichnung — keine alleinige Grundlage für klinische Entscheidungen',
+      pdfSicher(t('Skizzier-Tool ohne CE-Kennzeichnung — keine alleinige Grundlage für klinische Entscheidungen')),
       pw / 2,
       292,
       { align: 'center' },

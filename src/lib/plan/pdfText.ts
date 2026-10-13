@@ -13,6 +13,9 @@
  * Bekannte Zeichen werden sinnvoll ersetzt; alles andere außerhalb von
  * Latin-1 wird zu „?" — lieber ein sichtbares Fragezeichen als eine
  * unlesbare Zeile.
+ * Französisch: Ligaturen werden lesbar aufgelöst. Weitere Sprachen mit
+ * nicht-lateinischer Schrift benötigen eine eingebettete Unicode-Schrift;
+ * die Browser-Oberfläche hat diese Einschränkung nicht.
  */
 const ERSATZ: [RegExp, string][] = [
   [/[−‒–—―]/g, '-'], // Minus, Gedankenstriche
@@ -29,6 +32,8 @@ const ERSATZ: [RegExp, string][] = [
   [/Δ/g, 'Delta '],
   [/β/g, 'beta'],
   [/α/g, 'alpha'],
+  [/œ/g, 'oe'],
+  [/Œ/g, 'OE'],
   [/[   ]/g, ' '], // schmale Leerzeichen
 ]
 

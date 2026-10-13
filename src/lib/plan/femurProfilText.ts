@@ -1,3 +1,4 @@
+import { dezimalTrenner } from '../zahlFormat'
 /**
  * Textzeilen des Femurprofils für den PDF-Abschnitt.
  *
@@ -20,6 +21,7 @@ import {
 import type { FemurProfileReview } from '../../state/hipStore'
 import type { Types } from '@cornerstonejs/core'
 import { pdfSicher as pdfSicherZentral } from './pdfText'
+import { t, translateText } from '../../i18n'
 
 /** Klartext der Override-Gründe. Bewusst hier gespiegelt statt aus dem
  *  Store importiert — der Formatter soll ohne Store-Kette laufen. */
@@ -52,7 +54,7 @@ function zahl(v: number | null, nachkomma: number, einheit = ''): string {
   if (v == null) return '—'
   const s = v.toFixed(nachkomma)
   // Grad ohne Komma-Umstellung (wie in der Werteliste), sonst deutsch.
-  return einheit === '°' ? `${s}°` : `${s.replace('.', ',')}${einheit}`
+  return einheit === '°' ? `${s}°` : `${s.replace('.', dezimalTrenner())}${einheit}`
 }
 
 /**
@@ -115,7 +117,7 @@ export function femurProfilPdfZeilen(
   } else {
     zeilen.push(
       `• Dorr-Vorschlag: ${dorr?.suggested}${
-        dorr?.borderline ? ` (Grenzbereich ${dorr.borderline})` : ''
+        dorr?.borderline ? ` (${t('Grenzbereich')} ${dorr.borderline})` : ''
       } — ärztlich nicht bestätigt`,
     )
   }
@@ -160,5 +162,5 @@ export function femurProfilPdfZeilen(
   zeilen.push('   Planungshinweis - keine autonome Implantatentscheidung.')
   // EINE Stelle fuer die Zeichen-Sicherung: so kann keine kuenftige Zeile
   // (und kein Warntext aus der Geometrie) sie versehentlich umgehen.
-  return zeilen.map(pdfSicher)
+  return zeilen.map((zeile) => pdfSicher(translateText(zeile)))
 }
