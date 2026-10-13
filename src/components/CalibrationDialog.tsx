@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useState } from 'react'
 import { useViewerStore } from '../state/viewerStore'
 import { applyCalibration, cancelCalibration } from '../lib/cornerstone/viewer'
@@ -30,15 +31,10 @@ export function CalibrationDialog() {
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
       <div className="w-96 rounded-lg border border-neutral-700 bg-neutral-900 shadow-xl">
-        <div className="border-b border-neutral-700 px-4 py-3 text-sm font-semibold">
-          Kalibrierung festlegen
-        </div>
+        <div className="border-b border-neutral-700 px-4 py-3 text-sm font-semibold">{translate("Kalibrierung festlegen")}</div>
 
         <div className="space-y-4 p-4 text-sm">
-          <p className="text-neutral-400">
-            Gib die bekannte reale Länge der gezeichneten Strecke ein. Alle
-            Messungen werden anschließend in echten Millimetern angezeigt.
-          </p>
+          <p className="text-neutral-400">{translate("Gib die bekannte reale Länge der gezeichneten Strecke ein. Alle Messungen werden anschließend in echten Millimetern angezeigt.")}</p>
 
           <div className="flex gap-2">
             {PRESETS.map((p) => (
@@ -52,15 +48,13 @@ export function CalibrationDialog() {
                     : 'border-neutral-700 text-neutral-300 hover:bg-neutral-800',
                 ].join(' ')}
               >
-                {p.label}
+                {translate(p.label)}
               </button>
             ))}
           </div>
 
           <div>
-            <label className="mb-1 block text-xs text-neutral-500">
-              Bekannte Länge der Strecke
-            </label>
+            <label className="mb-1 block text-xs text-neutral-500">{translate("Bekannte Länge der Strecke")}</label>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -72,12 +66,9 @@ export function CalibrationDialog() {
                 onKeyDown={(e) => e.key === 'Enter' && confirm()}
                 className="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 text-neutral-100 outline-none focus:border-sky-600"
               />
-              <span className="text-neutral-400">mm</span>
+              <span className="text-neutral-400">{translate("mm")}</span>
             </div>
-            <p className="mt-2 text-[11px] leading-snug text-neutral-500">
-              Die Röntgenvergrößerung ist über die ausgemessene Strecke
-              bereits berücksichtigt — kein zusätzlicher Faktor nötig.
-            </p>
+            <p className="mt-2 text-[11px] leading-snug text-neutral-500">{translate("Die Röntgenvergrößerung ist über die ausgemessene Strecke bereits berücksichtigt — kein zusätzlicher Faktor nötig.")}</p>
           </div>
         </div>
 
@@ -85,16 +76,12 @@ export function CalibrationDialog() {
           <button
             onClick={cancelCalibration}
             className="rounded px-3 py-1.5 text-sm text-neutral-300 transition hover:bg-neutral-800"
-          >
-            Abbrechen
-          </button>
+          >{translate("Abbrechen")}</button>
           <button
             onClick={confirm}
             disabled={!valid}
             className="rounded bg-sky-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-500"
-          >
-            Übernehmen
-          </button>
+          >{translate("Übernehmen")}</button>
         </div>
       </div>
     </div>

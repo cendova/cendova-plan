@@ -1,3 +1,5 @@
+import { dezimalTrenner } from '../lib/zahlFormat'
+import { translate } from '../i18n'
 import { benoetigteSlots, useKneeOsteotomieStore } from '../state/kneeOsteotomieStore'
 import { bereiteOsteotomieSetzenVor } from '../lib/toolControls'
 import {
@@ -31,10 +33,7 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
   if (!vorher) {
     return (
       <div className="flex flex-col gap-1.5 px-1">
-        <p className="text-[11px] leading-snug text-neutral-500">
-          Voraussetzung ist die Vollvermessung (Abschnitt 3): Achsen, Plateau und
-          Traglinie kommen von dort.
-          {plan && ' Die begonnene Planung bleibt erhalten und rechnet wieder, sobald die Vollvermessung sichtbar ist.'}
+        <p className="text-[11px] leading-snug text-neutral-500">{translate("Voraussetzung ist die Vollvermessung (Abschnitt 3): Achsen, Plateau und Traglinie kommen von dort.")}{translate(plan && ' Die begonnene Planung bleibt erhalten und rechnet wieder, sobald die Vollvermessung sichtbar ist.')}
         </p>
         {/* Auch ohne (sichtbare) Vollvermessung muss sich eine begonnene
             Planung verwerfen lassen (Review 29.09.2026). */}
@@ -42,9 +41,7 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
           <button
             onClick={() => st().verwerfen()}
             className="self-start rounded bg-neutral-800 px-2 py-1.5 text-xs text-neutral-400 transition hover:bg-neutral-700 hover:text-neutral-200"
-          >
-            Planung verwerfen
-          </button>
+          >{translate("Planung verwerfen")}</button>
         )}
       </div>
     )
@@ -55,9 +52,9 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
     return (
       <div className="flex flex-col gap-1.5 px-1">
         <p className="text-[11px] leading-snug text-neutral-400">
-          {analyse?.vorschlag
+          {translate(analyse?.vorschlag
             ? `Vorauswahl: ${osteotomieTyp(typ).kurz}. ${analyse.begruendung}`
-            : analyse?.begruendung}
+            : analyse?.begruendung)}
         </p>
         <button
           disabled={!hasImage}
@@ -66,9 +63,7 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
             st().starte(typ, analyse?.zielWblProzent ?? ZIEL_VARUS)
           }}
           className="rounded border border-violet-900/60 bg-violet-950/30 px-3 py-2 text-left text-sm text-violet-200 transition hover:bg-violet-900/40 disabled:opacity-50"
-        >
-          Osteotomie planen
-        </button>
+        >{translate("Osteotomie planen")}</button>
       </div>
     )
   }
@@ -85,7 +80,7 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
   return (
     <div className="flex flex-col gap-2 px-1 text-[11px] text-neutral-300">
       <label className="flex flex-col gap-0.5">
-        <span className="text-neutral-500">Typ</span>
+        <span className="text-neutral-500">{translate("Typ")}</span>
         <select
           value={plan.typ}
           onChange={(e) => st().setTyp(e.target.value as OsteotomieTyp)}
@@ -93,17 +88,16 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
         >
           {OSTEOTOMIE_TYPEN.map((t) => (
             <option key={t.typ} value={t.typ}>
-              {t.label}
-              {analyse?.vorschlag === t.typ ? ' · Vorauswahl' : ''}
+              {translate(t.label)}
+              {translate(analyse?.vorschlag === t.typ ? ' · Vorauswahl' : '')}
             </option>
           ))}
         </select>
       </label>
 
       <div className="flex flex-col gap-0.5">
-        <span className="text-neutral-500">
-          Ziel der Traglinie (% der Plateaubreite, 0 % = medial) · jetzt{' '}
-          {vorher.wblProzent != null ? `${vorher.wblProzent.toFixed(1).replace('.', ',')} %` : '—'}
+        <span className="text-neutral-500">{translate("Ziel der Traglinie (% der Plateaubreite, 0 % = medial) · jetzt")}{translate(' ')}
+          {translate(vorher.wblProzent != null ? `${vorher.wblProzent.toFixed(1).replace('.', dezimalTrenner())} %` : '—')}
         </span>
         <div className="flex items-center gap-1.5">
           <input
@@ -132,7 +126,7 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
           {SCHNELLWAHL.map((s) => (
             <button
               key={s.label}
-              title={s.titel}
+              title={translate(s.titel)}
               onClick={() => st().setZiel(s.wert)}
               className={[
                 'rounded px-1.5 py-0.5 text-[10px] transition',
@@ -141,11 +135,11 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
                   : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700',
               ].join(' ')}
             >
-              {s.label} %
+              {translate(s.label)} %
             </button>
           ))}
           <button
-            title="Neutrale Traglinie (Plateaumitte)"
+            title={translate("Neutrale Traglinie (Plateaumitte)")}
             onClick={() => st().setZiel(50)}
             className={[
               'rounded px-1.5 py-0.5 text-[10px] transition',
@@ -153,17 +147,13 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
                 ? 'bg-violet-700/50 text-violet-100'
                 : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700',
             ].join(' ')}
-          >
-            50 % neutral
-          </button>
+          >{translate("50 % neutral")}</button>
         </div>
       </div>
 
       {plan.typ === 'dlo' && (
         <label className="flex items-center justify-between gap-2">
-          <span className="text-neutral-500" title="Der Femur wird auf diesen mLDFA korrigiert, die Tibia übernimmt den Rest bis zum Traglinien-Ziel (Schröter 2019).">
-            Ziel-mLDFA femoral
-          </span>
+          <span className="text-neutral-500" title={translate("Der Femur wird auf diesen mLDFA korrigiert, die Tibia übernimmt den Rest bis zum Traglinien-Ziel (Schröter 2019).")}>{translate("Ziel-mLDFA femoral")}</span>
           <span className="flex items-center gap-1">
             <input
               type="number"
@@ -184,15 +174,13 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
 
       {plan.typ === 'htoOeffnend' && (
         <label className="flex flex-col gap-0.5">
-          <span className="text-neutral-500" title="Ryu et al. 2021: geplanter Winkel = Miniaci-Winkel − ⅓ ΔJLCA. ΔJLCA = JLCA in der Valgusstress-Aufnahme minus JLCA im Stand (Vorzeichen: Apex lateral positiv).">
-            Laxitätskorrektur: ΔJLCA (Valgusstress − Stand)
-          </span>
+          <span className="text-neutral-500" title={translate("Ryu et al. 2021: geplanter Winkel = Miniaci-Winkel − ⅓ ΔJLCA. ΔJLCA = JLCA in der Valgusstress-Aufnahme minus JLCA im Stand (Vorzeichen: Apex lateral positiv).")}>{translate("Laxitätskorrektur: ΔJLCA (Valgusstress − Stand)")}</span>
           <span className="flex items-center gap-1">
             <input
               type="number"
               step={0.5}
               min={0}
-              placeholder="aus"
+              placeholder={translate("aus")}
               value={plan.deltaJlca ?? ''}
               onChange={(e) => {
                 const roh = e.target.value.trim()
@@ -201,7 +189,7 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
               }}
               className="w-16 rounded border border-neutral-700 bg-neutral-900 px-1 py-0.5 text-right tabular-nums"
             />
-            ° <span className="text-neutral-500">leer = ohne Korrektur</span>
+            ° <span className="text-neutral-500">{translate("leer = ohne Korrektur")}</span>
           </span>
         </label>
       )}
@@ -209,8 +197,8 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
       <div className="flex flex-col gap-0.5 rounded bg-neutral-900/60 p-1.5 text-[10px] leading-snug text-neutral-400">
         {knochen.map((k) => (
           <span key={k}>
-            <span className="text-neutral-300">{k}:</span>{' '}
-            {scharnierHinweis(k, erwarteteKeilArt(plan.typ, k), richtung)}
+            <span className="text-neutral-300">{translate(k)}:</span>{translate(' ')}
+            {translate(scharnierHinweis(k, erwarteteKeilArt(plan.typ, k), richtung))}
           </span>
         ))}
       </div>
@@ -221,22 +209,18 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
             type="checkbox"
             checked={plan.bildSimulation}
             onChange={(e) => st().setBildSimulation(e.target.checked)}
-          />
-          Bildsimulation
-        </label>
+          />{translate("Bildsimulation")}</label>
         <label className="flex items-center gap-1">
           <input
             type="checkbox"
             checked={plan.sichtbar}
             onChange={(e) => st().setSichtbar(e.target.checked)}
-          />
-          im Bild zeigen
-        </label>
+          />{translate("im Bild zeigen")}</label>
       </div>
 
       {ergebnis && !ergebnis.ok && (
         <p className="rounded border border-amber-900/60 bg-amber-950/30 p-1.5 text-[10px] text-amber-200">
-          {ergebnis.fehler}
+          {translate(ergebnis.fehler)}
         </p>
       )}
 
@@ -259,14 +243,12 @@ export function KneeOsteotomieSteuerung({ hasImage }: { hasImage: boolean }) {
               : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700',
           ].join(' ')}
         >
-          {setzen ? 'Setzen beenden' : unvollstaendig ? 'Fehlende Punkte setzen' : 'Punkte neu setzen'}
+          {translate(setzen ? 'Setzen beenden' : unvollstaendig ? 'Fehlende Punkte setzen' : 'Punkte neu setzen')}
         </button>
         <button
           onClick={() => st().verwerfen()}
           className="rounded bg-neutral-800 px-2 py-1.5 text-xs text-neutral-400 transition hover:bg-neutral-700 hover:text-neutral-200"
-        >
-          Verwerfen
-        </button>
+        >{translate("Verwerfen")}</button>
       </div>
     </div>
   )

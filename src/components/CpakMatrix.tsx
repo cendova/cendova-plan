@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 /**
  * CPAK-Schaubild: 3×3-Matrix der 9 MacDessi-Typen mit einem Punkt für die
  * aktuelle Knie-Konstitution. Wird im MeasurementPanel angezeigt, wenn
@@ -115,10 +116,9 @@ export function CpakMatrix({
     <Karte
       titel="CPAK-Klassifikation"
       kennung={
-        <>
-          Typ {result.type}
+        <>{translate("Typ ")}{translate(result.type)}
           {planned && planned.cpak.type !== result.type && (
-            <span className="text-emerald-300"> → {planned.cpak.type}</span>
+            <span className="text-emerald-300"> → {translate(planned.cpak.type)}</span>
           )}
         </>
       }
@@ -126,12 +126,10 @@ export function CpakMatrix({
         planned ? (
           <span className="flex items-center gap-3">
             <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-full border border-amber-500 bg-slate-900" />
-              gemessen
-            </span>
+              <span className="inline-block h-2 w-2 rounded-full border border-amber-500 bg-slate-900" />{translate("gemessen")}</span>
             <span className="flex items-center gap-1">
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
-              {planned.quelle === 'osteotomie' ? 'nach Osteotomie' : 'geplant (Implantate)'}
+              {translate(planned.quelle === 'osteotomie' ? 'nach Osteotomie' : 'geplant (Implantate)')}
             </span>
           </span>
         ) : undefined
@@ -188,24 +186,24 @@ export function CpakMatrix({
             fontSize={12}
             fontWeight={c.type === result.type ? 700 : 400}
           >
-            {c.type}
+            {translate(c.type)}
           </text>
         ))}
 
         {/* Spalten-Header (oben) */}
-        <text x={colCenters[0]} y={PAD_TOP - 8} textAnchor="middle" fontSize={9} className="fill-neutral-400">Varus</text>
-        <text x={colCenters[1]} y={PAD_TOP - 8} textAnchor="middle" fontSize={9} className="fill-neutral-400">Neutral</text>
-        <text x={colCenters[2]} y={PAD_TOP - 8} textAnchor="middle" fontSize={9} className="fill-neutral-400">Valgus</text>
+        <text x={colCenters[0]} y={PAD_TOP - 8} textAnchor="middle" fontSize={9} className="fill-neutral-400">{translate("Varus")}</text>
+        <text x={colCenters[1]} y={PAD_TOP - 8} textAnchor="middle" fontSize={9} className="fill-neutral-400">{translate("Neutral")}</text>
+        <text x={colCenters[2]} y={PAD_TOP - 8} textAnchor="middle" fontSize={9} className="fill-neutral-400">{translate("Valgus")}</text>
 
         {/* Zeilen-Header (links) */}
-        <text x={PAD_LEFT - 4} y={rowCenters[0] + 3} textAnchor="end" fontSize={9} className="fill-neutral-400">Ap. dist</text>
-        <text x={PAD_LEFT - 4} y={rowCenters[1] + 3} textAnchor="end" fontSize={9} className="fill-neutral-400">Neutral</text>
-        <text x={PAD_LEFT - 4} y={rowCenters[2] + 3} textAnchor="end" fontSize={9} className="fill-neutral-400">Ap. prox</text>
+        <text x={PAD_LEFT - 4} y={rowCenters[0] + 3} textAnchor="end" fontSize={9} className="fill-neutral-400">{translate("Ap. dist")}</text>
+        <text x={PAD_LEFT - 4} y={rowCenters[1] + 3} textAnchor="end" fontSize={9} className="fill-neutral-400">{translate("Neutral")}</text>
+        <text x={PAD_LEFT - 4} y={rowCenters[2] + 3} textAnchor="end" fontSize={9} className="fill-neutral-400">{translate("Ap. prox")}</text>
 
         {/* Schwellen-Beschriftung (unter X-Achse) */}
         <text x={xVarusBorder} y={PAD_TOP + PLOT_H + 11} textAnchor="middle" fontSize={8} className="fill-neutral-500">−2°</text>
         <text x={xValgusBorder} y={PAD_TOP + PLOT_H + 11} textAnchor="middle" fontSize={8} className="fill-neutral-500">+2°</text>
-        <text x={PAD_LEFT + PLOT_W / 2} y={PAD_TOP + PLOT_H + 23} textAnchor="middle" fontSize={9} className="fill-neutral-500">aHKA = mMPTA − mLDFA</text>
+        <text x={PAD_LEFT + PLOT_W / 2} y={PAD_TOP + PLOT_H + 23} textAnchor="middle" fontSize={9} className="fill-neutral-500">{translate("aHKA = mMPTA − mLDFA")}</text>
 
         {/* Verbindungslinie prä-OP → geplant (zeigt die OP-Korrektur). */}
         {planned && plannedX != null && plannedY != null && (

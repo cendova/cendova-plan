@@ -1,3 +1,5 @@
+import { dezimalTrenner } from '../lib/zahlFormat'
+import { translate } from '../i18n'
 /**
  * Overlay für platzierte Knie-Schablonen. Rendert die Master-Konturen
  * (aus `renderKneeTemplate`) als SVG-Polygone und bietet einfache
@@ -52,7 +54,7 @@ import { resektionsFarbe } from '../lib/knee/resektionsFarbe'
 
 type Vp = NonNullable<ReturnType<typeof getViewport>>
 
-const fmtMm = (mm: number): string => `${mm.toFixed(1).replace('.', ',')}`
+const fmtMm = (mm: number): string => `${mm.toFixed(1).replace('.', dezimalTrenner())}`
 
 interface ResectionRender {
   aPre: { x: number; y: number }
@@ -640,7 +642,7 @@ export function KneeTemplateOverlay({
             {/* Resektionslinie (distale Femurresektion bzw. Baseplate) — läuft
                 bis zu den Implantaträndern; die zwei Punkte markieren die
                 med/lat Resektionsstellen an den Kondylen. Welt-Koordinaten. */}
-            {vResection && (() => {
+            {translate(vResection && (() => {
               const p0 = w2c(vResection.line[0])
               const p1 = w2c(vResection.line[1])
               const med = w2c(vResection.med)
@@ -661,7 +663,7 @@ export function KneeTemplateOverlay({
                   <circle cx={lat[0]} cy={lat[1]} r={3.5} fill="#FFC400" className="pointer-events-none" />
                 </>
               )
-            })()}
+            })())}
 
             {/* Mittelpunkt-Anker — zur visuellen Orientierung */}
             <circle

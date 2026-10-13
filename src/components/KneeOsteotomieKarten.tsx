@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import type { WorkflowRaw } from '../lib/knee/recipes'
 import type { PlannedCpak } from '../lib/knee/resection'
 import type { PaleyWinkel, WinkelBewertung } from '../lib/knee/deformitaet'
@@ -135,12 +136,12 @@ export function KneeBeinachseKarte({ implantat }: { implantat: PlannedCpak | nul
         quelle || (analyse && analyse.lokalisation.length > 0) || fehltPaley ? (
           <>
             {analyse && analyse.lokalisation.length > 0 && (
-              <div>Lokalisation: {analyse.lokalisation.join(' · ')}</div>
+              <div>{translate("Lokalisation: ")}{translate(analyse.lokalisation.join(' · '))}</div>
             )}
-            {quelle && <div>{quelle}</div>}
+            {quelle && <div>{translate(quelle)}</div>}
             {fehltPaley && (
               <Hint>
-                <div>mLPFA/mLDTA als Einzelmessung ergänzbar (Abschnitt 4).</div>
+                <div>{translate("mLPFA/mLDTA als Einzelmessung ergänzbar (Abschnitt 4).")}</div>
               </Hint>
             )}
           </>
@@ -170,32 +171,23 @@ export function KneeOsteotomieKarte() {
       titel="Osteotomie"
       kennung={osteotomieTyp(plan.typ).kurz}
       fuss={
-        <>
-          Achswerte vorher/nachher: siehe „Beinachse". Geometrische Simulation auf der
-          AP-Ganzbeinaufnahme (Miniaci); Slope, Rotation und Patellahöhe sind nicht abgebildet.
-          Planungshinweis — keine autonome Therapieentscheidung.
-        </>
+        <>{translate("Achswerte vorher/nachher: siehe „Beinachse\". Geometrische Simulation auf der AP-Ganzbeinaufnahme (Miniaci); Slope, Rotation und Patellahöhe sind nicht abgebildet. Planungshinweis — keine autonome Therapieentscheidung.")}</>
       }
     >
       <Kennwerte zeilen={zeilen} />
       {/* Ohne Kalibrierung rechnet die Planung mit Maßstab 1 — Winkel
           stimmen, Längen nicht. */}
       {!kalibriert && (
-        <Hinweis stufe="caution">
-          Bild nicht kalibriert: Öffnung/Keilbasis, Schnittlänge und Beinlänge
-          sind nicht maßstabsgetreu (Winkel unberührt).
-        </Hinweis>
+        <Hinweis stufe="caution">{translate("Bild nicht kalibriert: Öffnung/Keilbasis, Schnittlänge und Beinlänge sind nicht maßstabsgetreu (Winkel unberührt).")}</Hinweis>
       )}
       {ergebnis.jlcaKorrekturGrad > 0 && (
-        <div className="mt-1 text-[10px] text-neutral-400">
-          Laxitätskorrektur eingerechnet — ohne sie wären {grad(ergebnis.zielWinkelOhneKorrektur)} nötig.
-        </div>
+        <div className="mt-1 text-[10px] text-neutral-400">{translate("Laxitätskorrektur eingerechnet — ohne sie wären ")}{translate(grad(ergebnis.zielWinkelOhneKorrektur))}{translate(" nötig.")}</div>
       )}
       {/* Ohne Belegzeile: Die Belege sind die Vorher/Nachher-Werte, und die
           stehen schon in der Beinachse (im PDF bleiben sie beim Hinweis). */}
       {ergebnis.hinweise.map((h) => (
         <Hinweis key={h.code + h.text} stufe={h.severity}>
-          {h.text}
+          {translate(h.text)}
         </Hinweis>
       ))}
     </Karte>

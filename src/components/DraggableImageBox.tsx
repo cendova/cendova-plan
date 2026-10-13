@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useState } from 'react'
 import type { Types } from '@cornerstonejs/core'
 import { getViewport } from '../lib/cornerstone/viewer'
@@ -85,7 +86,7 @@ export function DraggableImageBox({
           const color = typeof ln === 'string' ? undefined : ln.color
           return (
             <div key={i} className="whitespace-pre" style={color ? { color } : undefined}>
-              {text}
+              {translate(text)}
             </div>
           )
         })}

@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useState } from 'react'
 import { resetPlanning } from '../lib/cornerstone/viewer'
 import { useViewerStore } from '../state/viewerStore'
@@ -17,30 +18,23 @@ export function ResetPlanningButton() {
     <>
       <ToolIconButton
         icon={<IconReset />}
-        title="Planung zurücksetzen … (Bild + Kalibrierung bleiben)"
+        title={translate("Planung zurücksetzen … (Bild + Kalibrierung bleiben)")}
         disabled={!hasImage}
         onClick={() => setOpen(true)}
       />
       <ConfirmDialog
         open={open}
-        title="Planung zurücksetzen?"
-        confirmLabel="Alles löschen"
+        title={translate("Planung zurücksetzen?")}
+        confirmLabel={translate("Alles löschen")}
         onCancel={() => setOpen(false)}
         onConfirm={() => {
           resetPlanning()
           setOpen(false)
           setStatus('Planung zurückgesetzt — Bild und Kalibrierung bleiben.')
         }}
-      >
-        Alle Messungen (beide Bilder), Schablonen, Notizen,
-        Osteophyten-Markierungen und Planungsdaten werden gelöscht —{' '}
-        <span className="font-semibold text-neutral-100">
-          auch Rückgängig hilft danach nicht mehr.
-        </span>{' '}
-        Bild und Kalibrierung bleiben erhalten.{' '}
-        <span className="font-semibold text-neutral-100">
-          Tipp: Vorher den Plan speichern (Disketten-Symbol).
-        </span>
+      >{translate("Alle Messungen (beide Bilder), Schablonen, Notizen, Osteophyten-Markierungen und Planungsdaten werden gelöscht —")}{translate(' ')}
+        <span className="font-semibold text-neutral-100">{translate("auch Rückgängig hilft danach nicht mehr.")}</span>{translate(' ')}{translate("Bild und Kalibrierung bleiben erhalten.")}{translate(' ')}
+        <span className="font-semibold text-neutral-100">{translate("Tipp: Vorher den Plan speichern (Disketten-Symbol).")}</span>
       </ConfirmDialog>
     </>
   )

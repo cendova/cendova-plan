@@ -1,3 +1,4 @@
+import { t, translate } from '../i18n'
 /**
  * Universelle Bildbearbeitungs-Tools in der oberen Header-Leiste.
  * Enthält: Bild laden (Datei/Ordner), Pan/Zoom/WindowLevel,
@@ -95,7 +96,7 @@ export function HeaderTools() {
     const result = await importTemplatePackage(fl[0])
     setStatus(
       result.ok
-        ? `Schablonen-Paket „${result.name}" geladen (${result.imageCount} Bilder) — bleibt dauerhaft gespeichert.`
+        ? t('Schablonen-Paket „{0}" geladen ({1} Bilder) — bleibt dauerhaft gespeichert.', { 0: result.name, 1: result.imageCount })
         : `Paket-Fehler: ${result.error}`,
     )
   }
@@ -194,7 +195,7 @@ export function HeaderTools() {
       <div className="relative">
         <ToolIconButton
           icon={<IconOpen />}
-          title="Bild laden …"
+          title={translate("Bild laden …")}
           onClick={() => setOpenMenu((v) => !v)}
         />
         {openMenu && (
@@ -210,14 +211,14 @@ export function HeaderTools() {
                   fileInputRef.current?.click()
                   setOpenMenu(false)
                 }}
-                label="DICOM-Datei wählen …"
+                label={translate("DICOM-Datei wählen …")}
               />
               <MenuItem
                 onClick={() => {
                   folderInputRef.current?.click()
                   setOpenMenu(false)
                 }}
-                label="DICOM-Ordner wählen …"
+                label={translate("DICOM-Ordner wählen …")}
               />
             </div>
           </>
@@ -254,25 +255,25 @@ export function HeaderTools() {
           als JSON). Bild bleibt davon unberührt — also separat von oben. */}
       <ToolIconButton
         icon={<IconSave />}
-        title="Plan speichern (JSON)"
+        title={translate("Plan speichern (JSON)")}
         disabled={!hasImage}
         onClick={handlePlanSave}
       />
       <ToolIconButton
         icon={<IconOpenPlan />}
-        title="Plan laden (JSON)"
+        title={translate("Plan laden (JSON)")}
         onClick={() => planInputRef.current?.click()}
       />
       {/* Planungsdaten sind reine Texteingaben — auch OHNE geladenes Bild
           sinnvoll (z. B. Termin/Klinik vorab erfassen, UX-Befund P2-10). */}
       <ToolIconButton
         icon={<IconClipboard />}
-        title="Planungsdaten (OP-Termin, Klinik, Versicherung, Reha …)"
+        title={translate("Planungsdaten (OP-Termin, Klinik, Versicherung, Reha …)")}
         onClick={() => usePlanningStore.getState().setDialogOpen(true)}
       />
       <ToolIconButton
         icon={<IconPdf />}
-        title="Plan als PDF exportieren"
+        title={translate("Plan als PDF exportieren")}
         disabled={!hasImage}
         onClick={handlePdfExport}
       />
@@ -293,9 +294,9 @@ export function HeaderTools() {
         <ToolIconButton
           icon={<IconPackage />}
           title={
-            pkgInfo
-              ? `Schablonen-Paket: ${pkgInfo.name} (${pkgInfo.imageCount} Bilder)`
-              : 'Schablonen-Paket importieren …'
+            translate(pkgInfo
+              ? t('Schablonen-Paket: {0} ({1} Bilder)', { 0: pkgInfo.name, 1: pkgInfo.imageCount })
+              : 'Schablonen-Paket importieren …')
           }
           active={openPkgMenu}
           statusDot={pkgInfo ? 'bg-emerald-500' : undefined}
@@ -309,16 +310,16 @@ export function HeaderTools() {
             />
             <div className="absolute left-0 top-full z-20 mt-1 w-60 rounded border border-neutral-700 bg-neutral-950 py-1 shadow-lg">
               <div className="px-3 py-1.5 text-[11px] leading-snug text-neutral-500">
-                {pkgInfo
-                  ? `Aktiv: ${pkgInfo.name} (${pkgInfo.imageCount} Bilder)`
-                  : 'Kein Paket geladen — eingebaute Schablonen aktiv.'}
+                {translate(pkgInfo
+                  ? t('Aktiv: {0} ({1} Bilder)', { 0: pkgInfo.name, 1: pkgInfo.imageCount })
+                  : 'Kein Paket geladen — eingebaute Schablonen aktiv.')}
               </div>
               <MenuItem
                 onClick={() => {
                   pkgInputRef.current?.click()
                   setOpenPkgMenu(false)
                 }}
-                label="Paket importieren (.zip) …"
+                label={translate("Paket importieren (.zip) …")}
               />
               {pkgInfo && (
                 <>
@@ -330,18 +331,18 @@ export function HeaderTools() {
                       const r = await exportTemplatePackage()
                       setStatus(
                         r.ok
-                          ? `Paket exportiert: ${r.fileName} (${r.imageCount} Bilder) — auf anderen Rechnern einfach importieren.`
+                          ? t('Paket exportiert: {0} ({1} Bilder) — auf anderen Rechnern einfach importieren.', { 0: r.fileName, 1: r.imageCount })
                           : `Export-Fehler: ${r.error}`,
                       )
                     }}
-                    label="Paket exportieren (.zip) …"
+                    label={translate("Paket exportieren (.zip) …")}
                   />
                   <MenuItem
                     onClick={() => {
                       setOpenPkgMenu(false)
                       setConfirmPkgRemove(true)
                     }}
-                    label="Alle Schablonen entfernen …"
+                    label={translate("Alle Schablonen entfernen …")}
                   />
                 </>
               )}
@@ -350,8 +351,8 @@ export function HeaderTools() {
         )}
         <ConfirmDialog
           open={confirmPkgRemove}
-          title="Alle importierten Schablonen entfernen?"
-          confirmLabel="Entfernen"
+          title={translate("Alle importierten Schablonen entfernen?")}
+          confirmLabel={translate("Entfernen")}
           onCancel={() => setConfirmPkgRemove(false)}
           onConfirm={async () => {
             setConfirmPkgRemove(false)
@@ -360,13 +361,7 @@ export function HeaderTools() {
               'Alle importierten Schablonen entfernt — eingebaute Schablonen aktiv.',
             )
           }}
-        >
-          Entfernt den GESAMTEN importierten Bestand — auch Schablonen aus
-          früher importierten Paketen (Hüfte, Knie, Schulter), da mehrere
-          Pakete beim Import zu einem verschmelzen. Die lokale Sicherung
-          wird ebenfalls gelöscht. Vorher „Paket exportieren" sichert alles
-          in eine ZIP-Datei.
-        </ConfirmDialog>
+        >{translate("Entfernt den GESAMTEN importierten Bestand — auch Schablonen aus früher importierten Paketen (Hüfte, Knie, Schulter), da mehrere Pakete beim Import zu einem verschmelzen. Die lokale Sicherung wird ebenfalls gelöscht. Vorher „Paket exportieren\" sichert alles in eine ZIP-Datei.")}</ConfirmDialog>
         <input
           ref={pkgInputRef}
           type="file"
@@ -384,21 +379,21 @@ export function HeaderTools() {
 
       <ToolIconButton
         icon={<IconWindowLevel />}
-        title="Fenstereinstellung (Helligkeit/Kontrast)"
+        title={translate("Fenstereinstellung (Helligkeit/Kontrast)")}
         active={leftToolIsLive && leftTool === 'WindowLevel'}
         disabled={!hasImage}
         onClick={() => pickLeftTool('WindowLevel')}
       />
       <ToolIconButton
         icon={<IconPan />}
-        title="Verschieben"
+        title={translate("Verschieben")}
         active={leftToolIsLive && leftTool === 'Pan'}
         disabled={!hasImage}
         onClick={() => pickLeftTool('Pan')}
       />
       <ToolIconButton
         icon={<IconZoom />}
-        title="Zoom"
+        title={translate("Zoom")}
         active={leftToolIsLive && leftTool === 'Zoom'}
         disabled={!hasImage}
         onClick={() => pickLeftTool('Zoom')}
@@ -410,14 +405,14 @@ export function HeaderTools() {
           Schritt 1 (siehe Toolbar → CalibrationButton). */}
       <ToolIconButton
         icon={<IconLength />}
-        title="Länge messen"
+        title={translate("Länge messen")}
         active={leftToolIsLive && leftTool === 'Length'}
         disabled={!hasImage}
         onClick={() => pickLeftTool('Length')}
       />
       <ToolIconButton
         icon={<IconAngle />}
-        title="Winkel messen"
+        title={translate("Winkel messen")}
         active={leftToolIsLive && leftTool === 'Angle'}
         disabled={!hasImage}
         onClick={() => pickLeftTool('Angle')}
@@ -427,7 +422,7 @@ export function HeaderTools() {
 
       <ToolIconButton
         icon={<IconNote />}
-        title="Textnotiz platzieren"
+        title={translate("Textnotiz platzieren")}
         active={notePlacing}
         disabled={!hasImage}
         onClick={toggleNoteTool}
@@ -439,7 +434,7 @@ export function HeaderTools() {
           Nutzer; Einstellung bleibt gespeichert (Debug-Befund G1). */}
       <ToolIconButton
         icon={<IconHelp />}
-        title={showHints ? 'Hilfetexte ausblenden' : 'Hilfetexte einblenden'}
+        title={translate(showHints ? 'Hilfetexte ausblenden' : 'Hilfetexte einblenden')}
         active={showHints}
         onClick={toggleHints}
       />
@@ -450,7 +445,7 @@ export function HeaderTools() {
           Neutraler öffentlicher Stand, lokal personalisierbar. */}
       <ToolIconButton
         icon={<IconSettings />}
-        title="Einrichtung personalisieren (Kopfzeile, Standorte, Planer)"
+        title={translate("Einrichtung personalisieren (Kopfzeile, Standorte, Planer)")}
         onClick={() => useOrgProfileStore.getState().setDialogOpen(true)}
       />
 
@@ -468,7 +463,7 @@ function MenuItem({ label, onClick }: { label: string; onClick: () => void }) {
       onClick={onClick}
       className="block w-full px-3 py-1.5 text-left text-xs text-neutral-300 transition hover:bg-neutral-800 hover:text-sky-300"
     >
-      {label}
+      {translate(label)}
     </button>
   )
 }

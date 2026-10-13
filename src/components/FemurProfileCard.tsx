@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useState } from 'react'
 import type { Types } from '@cornerstonejs/core'
 import {
@@ -84,7 +85,7 @@ export function FemurProfileCard({
         norm: abweichend ? (
           `Vorschlag war ${review?.dorrSuggested}`
         ) : !bestaetigt && dorr.borderline ? (
-          <span className="text-amber-400">Grenzbereich {dorr.borderline}</span>
+          <span className="text-amber-400">{translate("Grenzbereich ")}{translate(dorr.borderline)}</span>
         ) : undefined,
       }
     : null
@@ -119,19 +120,15 @@ export function FemurProfileCard({
               frühere Checkliste, damit Anspruch und Dokumentation nicht
               auseinanderlaufen. */}
           <details>
-            <summary className="cursor-pointer select-none hover:text-neutral-300">
-              Voraussetzungen der Aufnahme für Dorr/CPAH
-            </summary>
+            <summary className="cursor-pointer select-none hover:text-neutral-300">{translate("Voraussetzungen der Aufnahme für Dorr/CPAH")}</summary>
             <ul className="mt-0.5 list-inside list-disc">
               {FEMUR_PROFILE_QUALITAETS_KRITERIEN.map((k) => (
-                <li key={k.feld}>{k.voraussetzung ?? k.frage}</li>
+                <li key={k.feld}>{translate(k.voraussetzung ?? k.frage)}</li>
               ))}
             </ul>
-            <div className="mt-0.5">
-              Ärztlich vorab zu beurteilen — das Programm erkennt sie nicht selbst.
-            </div>
+            <div className="mt-0.5">{translate("Ärztlich vorab zu beurteilen — das Programm erkennt sie nicht selbst.")}</div>
           </details>
-          <div className="mt-0.5">Planungshinweis — keine autonome Implantatentscheidung.</div>
+          <div className="mt-0.5">{translate("Planungshinweis — keine autonome Implantatentscheidung.")}</div>
         </>
       }
     >
@@ -142,9 +139,7 @@ export function FemurProfileCard({
           <Kennwerte zeilen={[dorrZeile]} />
         </div>
       ) : (
-        <div className="mb-1 text-[11px] text-neutral-400">
-          Dorr/CPAH: nicht zuverlässig bestimmbar
-        </div>
+        <div className="mb-1 text-[11px] text-neutral-400">{translate("Dorr/CPAH: nicht zuverlässig bestimmbar")}</div>
       )}
       <Kennwerte zeilen={rohwerte} />
 
@@ -154,23 +149,17 @@ export function FemurProfileCard({
           Mehr Schaft-Bezug gibt es hier bewusst NICHT (Entscheidung
           16.09.2026): Die Implantatwahl bleibt beim planenden Chirurgen. */}
       {cpah && cpah.type >= 7 && (
-        <Hinweis stufe="warning">
-          Dorr C: zementierte Fixation/Alternative aktiv prüfen.
-          Geometrischer Fit hebt das Frakturrisiko nicht auf.
-        </Hinweis>
+        <Hinweis stufe="warning">{translate("Dorr C: zementierte Fixation/Alternative aktiv prüfen. Geometrischer Fit hebt das Frakturrisiko nicht auf.")}</Hinweis>
       )}
 
       {/* Warum keine Klasse? Nur noch bei älteren Plänen, deren gespeicherte
           Checkliste offene Kriterien trägt — deren Entscheidung bleibt. */}
       {!darfKlassifizieren && quality && (
         <Hinweis stufe="caution">
-          <span className="font-semibold">
-            Bildqualität laut gespeicherter Checkliste nicht bestätigt — Rohwerte
-            bleiben, Klasse nicht:
-          </span>
+          <span className="font-semibold">{translate("Bildqualität laut gespeicherter Checkliste nicht bestätigt — Rohwerte bleiben, Klasse nicht:")}</span>
           <ul className="mt-0.5 list-inside list-disc opacity-80">
             {quality.exclusionReasons.map((g) => (
-              <li key={g}>{g}</li>
+              <li key={g}>{translate(g)}</li>
             ))}
           </ul>
         </Hinweis>
@@ -179,7 +168,7 @@ export function FemurProfileCard({
       {/* Mess-Warnungen der Geometrie (vertauschte Punkte o. Ä.). */}
       {raw.warnings.map((w) => (
         <Hinweis key={w} stufe="caution">
-          {w}
+          {translate(w)}
         </Hinweis>
       ))}
 
@@ -269,18 +258,15 @@ function DorrBestaetigung({
     <div className="mt-1.5 border-t border-neutral-800 pt-1.5">
       {veraltet && (
         <div className="mb-1.5 *:mt-0">
-          <Hinweis stufe="caution">
-            Die Punkte wurden nach der Bestätigung verändert — der Vorschlag
-            lautet jetzt {vorschlag}, bestätigt wurde gegen{' '}
-            {review?.dorrSuggested}. Bitte erneut prüfen.
-          </Hinweis>
+          <Hinweis stufe="caution">{translate("Die Punkte wurden nach der Bestätigung verändert — der Vorschlag lautet jetzt ")}{translate(vorschlag)}{translate(", bestätigt wurde gegen")}{translate(' ')}
+            {translate(review?.dorrSuggested)}{translate(". Bitte erneut prüfen.")}</Hinweis>
         </div>
       )}
 
       {!offen ? (
         <div className="flex items-center justify-between gap-2">
           <span className="text-[10px] text-neutral-500">
-            {review?.dorrFinal
+            {translate(review?.dorrFinal
               ? `Bestätigt${
                   review.overrideReason
                     ? ` · ${
@@ -290,19 +276,19 @@ function DorrBestaetigung({
                       }`
                     : ''
                 }`
-              : 'Noch nicht ärztlich bestätigt'}
+              : 'Noch nicht ärztlich bestätigt')}
           </span>
           <button
             onClick={() => setOffen(true)}
             className="rounded border border-neutral-700 px-2 py-0.5 text-[10px] text-neutral-300 transition hover:bg-neutral-800"
           >
-            {review?.dorrFinal ? 'Ändern' : 'Bestätigen'}
+            {translate(review?.dorrFinal ? 'Ändern' : 'Bestätigen')}
           </button>
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1">
-            <span className="text-[10px] text-neutral-500">Dorr:</span>
+            <span className="text-[10px] text-neutral-500">{translate("Dorr:")}</span>
             {(['A', 'B', 'C'] as const).map((t) => (
               <button
                 key={t}
@@ -314,9 +300,9 @@ function DorrBestaetigung({
                     : 'border-neutral-700 text-neutral-300 hover:bg-neutral-800',
                 ].join(' ')}
               >
-                {t}
+                {translate(t)}
                 {t === vorschlag && (
-                  <span className="ml-0.5 text-neutral-500">·V</span>
+                  <span className="ml-0.5 text-neutral-500">{translate("·V")}</span>
                 )}
               </button>
             ))}
@@ -324,9 +310,7 @@ function DorrBestaetigung({
 
           {abweichend && (
             <label className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-amber-400">
-                Abweichung vom Vorschlag {vorschlag} — Grund erforderlich:
-              </span>
+              <span className="text-[10px] text-amber-400">{translate("Abweichung vom Vorschlag ")}{translate(vorschlag)}{translate(" — Grund erforderlich:")}</span>
               <select
                 value={grund}
                 onChange={(e) =>
@@ -334,10 +318,10 @@ function DorrBestaetigung({
                 }
                 className="rounded border border-neutral-700 bg-neutral-900 px-1.5 py-1 text-[11px] text-neutral-200"
               >
-                <option value="">— bitte wählen —</option>
+                <option value="">{translate("— bitte wählen —")}</option>
                 {FEMUR_PROFILE_OVERRIDE_REASONS.map((r) => (
                   <option key={r.wert} value={r.wert}>
-                    {r.text}
+                    {translate(r.text)}
                   </option>
                 ))}
               </select>
@@ -349,29 +333,23 @@ function DorrBestaetigung({
               <button
                 onClick={zuruecknehmen}
                 className="rounded px-2 py-0.5 text-[10px] text-neutral-400 transition hover:bg-neutral-800"
-              >
-                Zurücknehmen
-              </button>
+              >{translate("Zurücknehmen")}</button>
             )}
             <button
               onClick={() => setOffen(false)}
               className="rounded px-2 py-0.5 text-[10px] text-neutral-400 transition hover:bg-neutral-800"
-            >
-              Abbrechen
-            </button>
+            >{translate("Abbrechen")}</button>
             <button
               onClick={speichern}
               disabled={!speicherbar}
-              title={speicherbar ? undefined : 'Erst einen Grund wählen.'}
+              title={translate(speicherbar ? undefined : 'Erst einen Grund wählen.')}
               className={[
                 'rounded px-2 py-0.5 text-[10px] font-semibold text-white transition',
                 speicherbar
                   ? 'bg-violet-700 hover:bg-violet-600'
                   : 'cursor-not-allowed bg-neutral-700 opacity-50',
               ].join(' ')}
-            >
-              Speichern
-            </button>
+            >{translate("Speichern")}</button>
           </div>
         </div>
       )}

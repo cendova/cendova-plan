@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 /**
  * Gemeinsamer Kern der Mess-Overlays (Hüfte + Knie) — Audit-Befund C3:
  * die beiden Overlays waren zu ~90 % identisch (Interaktions-Effekt,
@@ -432,7 +433,7 @@ export function MeasurementSvg<M extends OverlayMeasurement>({
 
       {/* Hilfsgeometrie der laufenden Platzierung (z. B. die 10-cm-Linie
           des Femurprofils) — derselbe Zeichenpfad wie fertige Messungen. */}
-      {draftGeometry?.lines.map((ln, i) => {
+      {translate(draftGeometry?.lines.map((ln, i) => {
         const a = w2c(ln.from)
         const b = w2c(ln.to)
         return (
@@ -447,8 +448,8 @@ export function MeasurementSvg<M extends OverlayMeasurement>({
             strokeDasharray={ln.dashed ? '5 4' : undefined}
           />
         )
-      })}
-      {draftGeometry?.circles.map((ci, i) => {
+      }))}
+      {translate(draftGeometry?.circles.map((ci, i) => {
         const c = w2c(ci.center)
         return (
           <circle
@@ -461,12 +462,12 @@ export function MeasurementSvg<M extends OverlayMeasurement>({
             strokeWidth={1.5}
           />
         )
-      })}
+      }))}
 
       {/* Laufende Platzierung */}
       {draftPoints.length > 0 && (
         <g>
-          {draftLineGroups?.map(([i0, i1], gi) => {
+          {translate(draftLineGroups?.map(([i0, i1], gi) => {
             if (i0 >= draftPoints.length || i1 >= draftPoints.length) {
               return null
             }
@@ -484,7 +485,7 @@ export function MeasurementSvg<M extends OverlayMeasurement>({
                 strokeDasharray="4 3"
               />
             )
-          })}
+          }))}
           {draftPoints.map((p, i) => {
             const c = w2c(p)
             return (
@@ -535,7 +536,7 @@ export function OverlayLabels<M extends OverlayMeasurement>({
           <BoundLabel
             key={m.id}
             m={m}
-            text={label.text}
+            text={translate(label.text)}
             anchor={label.at}
             vp={vp}
             adapter={adapter}
@@ -563,7 +564,7 @@ function BoundLabel<M extends OverlayMeasurement>({
   return (
     <MeasurementLabel
       measurement={m}
-      text={text}
+      text={translate(text)}
       anchor={anchor}
       vp={vp}
       store={{
@@ -608,7 +609,7 @@ export function StepPrompt({
       ].join(' ')}
     >
       <span>
-        {recipeLabel} · Schritt {stepIndex}/{stepCount}: {prompt}
+        {translate(recipeLabel)}{translate(" · Schritt ")}{translate(stepIndex)}/{translate(stepCount)}: {translate(prompt)}
       </span>
       {showBack && (
         <button
@@ -619,13 +620,9 @@ export function StepPrompt({
               ? 'bg-violet-800/80 hover:bg-violet-800'
               : 'bg-amber-800/80 hover:bg-amber-800',
           ].join(' ')}
-        >
-          ← Zurück
-        </button>
+        >{translate("← Zurück")}</button>
       )}
-      <span className={isViolet ? 'text-violet-200' : 'text-amber-200'}>
-        Esc: Abbruch
-      </span>
+      <span className={isViolet ? 'text-violet-200' : 'text-amber-200'}>{translate("Esc: Abbruch")}</span>
     </div>
   )
 }

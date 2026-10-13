@@ -1,3 +1,4 @@
+import { t, translate } from '../i18n'
 import { useState } from 'react'
 import { useTemplateStore } from '../state/templateStore'
 import { useTemplatePackageStore } from '../state/templatePackageStore'
@@ -118,22 +119,18 @@ export function TemplatesPanel() {
     // Schablonen waren die letzten Einträge nicht mehr erreichbar.
     <div className="flex max-h-[45%] min-h-0 flex-col">
       <div className="flex shrink-0 items-center justify-between border-y border-neutral-700 px-3 py-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-          Schablonen
-        </span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">{translate("Schablonen")}</span>
         {hasAny && (
           <button
             onClick={() => setConfirmClear(true)}
             className="text-[11px] text-neutral-500 transition hover:text-red-400"
-          >
-            Alle löschen
-          </button>
+          >{translate("Alle löschen")}</button>
         )}
       </div>
       <ConfirmDialog
         open={confirmClear}
-        title="Alle Schablonen löschen?"
-        confirmLabel="Alle löschen"
+        title={translate("Alle Schablonen löschen?")}
+        confirmLabel={translate("Alle löschen")}
         onCancel={() => setConfirmClear(false)}
         onConfirm={() => {
           // „Alle" heisst alles, was die Liste zeigt — wie clearAll() im
@@ -145,9 +142,7 @@ export function TemplatesPanel() {
           removeAllShoulder()
           setConfirmClear(false)
         }}
-      >
-        Alle platzierten Schablonen werden entfernt.
-      </ConfirmDialog>
+      >{translate("Alle platzierten Schablonen werden entfernt.")}</ConfirmDialog>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {/* Seit Schritt 7 liefert das Paket auch Schulter-Schablonen — der
@@ -159,11 +154,11 @@ export function TemplatesPanel() {
                 hier immer „Pfanne/Schaft hinzufügen" — im Knie-Tab gibt es
                 die aber gar nicht. */}
             <p className="px-1 py-1 text-xs text-neutral-500">
-              {planningMode === 'hip'
+              {translate(planningMode === 'hip'
                 ? 'Noch keine Schablonen platziert. „Pfanne hinzufügen" oder „Schaft hinzufügen" in der linken Leiste.'
                 : planningMode === 'shoulder'
                   ? 'Noch keine Schablonen platziert. Humerus- oder Glenoid-Komponente in der linken Leiste auswählen.'
-                  : 'Noch keine Schablonen platziert. Femur- oder Tibiakomponente in der linken Leiste auswählen.'}
+                  : 'Noch keine Schablonen platziert. Femur- oder Tibiakomponente in der linken Leiste auswählen.')}
             </p>
           </Hint>
         )}
@@ -178,8 +173,11 @@ export function TemplatesPanel() {
                   key={cup.id}
                   id={cup.id}
                   badge={`P${cup.id.replace(/[^0-9]/g, '')}`}
-                  title={`${entry?.family ?? 'Pfanne'} · ${cup.side === 'R' ? 'rechts' : 'links'}`}
-                  subtitle={`⌀ ${mm(diameter, 0)}`}
+                  title={t('{0} · {1}', {
+                    0: entry?.family ?? translate('Pfanne'),
+                    1: translate(cup.side === 'R' ? 'rechts' : 'links'),
+                  })}
+                  subtitle={translate(`⌀ ${mm(diameter, 0)}`)}
                   selected={cup.id === selectedId}
                   visible={cup.visible !== false}
                   onSelect={waehleHueft}
@@ -197,8 +195,15 @@ export function TemplatesPanel() {
                   key={stem.id}
                   id={stem.id}
                   badge={`S${stem.id.replace(/[^0-9]/g, '')}`}
-                  title={`${entry?.family ?? 'Schaft'} ${entry?.variant ?? ''} · ${stem.side === 'R' ? 'rechts' : 'links'}`}
-                  subtitle={`Gr. ${size?.size ?? '?'} · Kopf ${mmMitVorzeichen(offset, 0)}`}
+                  title={t('{0} {1} · {2}', {
+                    0: entry?.family ?? translate('Schaft'),
+                    1: entry?.variant ?? '',
+                    2: translate(stem.side === 'R' ? 'rechts' : 'links'),
+                  })}
+                  subtitle={t('Gr. {0} · Kopf {1}', {
+                    0: size?.size ?? '?',
+                    1: mmMitVorzeichen(offset, 0),
+                  })}
                   selected={stem.id === selectedId}
                   visible={stem.visible !== false}
                   onSelect={waehleHueft}
@@ -224,10 +229,17 @@ export function TemplatesPanel() {
                   key={haupt.groupId}
                   id={haupt.id}
                   badge={`${kuerzel}${haupt.id.replace(/[^0-9]/g, '')}`}
-                  title={`${familie ? ohneTibiaVariantenZusatz(familie.label) : 'Schablone'} · ${haupt.side === 'R' ? 'rechts' : 'links'}`}
-                  subtitle={`Gr. ${sizeLabelFor(haupt.kind, haupt.sizeIndex) || '?'}${
-                    inlay != null ? ` · Inlay ${mm(inlay, Number.isInteger(inlay) ? 0 : 1)}` : ''
-                  }`}
+                  title={t('{0} · {1}', {
+                    0: familie ? ohneTibiaVariantenZusatz(familie.label) : translate('Schablone'),
+                    1: translate(haupt.side === 'R' ? 'rechts' : 'links'),
+                  })}
+                  subtitle={t('{0} {1}{2}', {
+                    0: translate('Gr.'),
+                    1: sizeLabelFor(haupt.kind, haupt.sizeIndex) || '?',
+                    2: inlay != null
+                      ? ' ' + t('· Inlay {0}', { 0: mm(inlay, Number.isInteger(inlay) ? 0 : 1) })
+                      : '',
+                  })}
                   selected={ausgewaehlt}
                   visible={sichtbar}
                   onSelect={waehleKnie}
@@ -247,8 +259,14 @@ export function TemplatesPanel() {
                   key={haupt.groupId}
                   id={haupt.id}
                   badge={`${kuerzel}${haupt.id.replace(/[^0-9]/g, '')}`}
-                  title={`${familie?.label ?? 'Schablone'} · ${haupt.side === 'R' ? 'rechts' : 'links'}`}
-                  subtitle={`Gr. ${shoulderSizeLabel(haupt.kind, haupt.sizeIndex)}`}
+                  title={t('{0} · {1}', {
+                    0: familie?.label ?? translate('Schablone'),
+                    1: translate(haupt.side === 'R' ? 'rechts' : 'links'),
+                  })}
+                  subtitle={t('{0} {1}', {
+                    0: translate('Gr.'),
+                    1: shoulderSizeLabel(haupt.kind, haupt.sizeIndex),
+                  })}
                   selected={ausgewaehlt}
                   visible={sichtbar}
                   onSelect={waehleSchulter}
@@ -297,7 +315,7 @@ function TemplateRow({
       ].join(' ')}
     >
       <span className="w-7 shrink-0 text-[11px] font-semibold leading-5 text-sky-400">
-        {badge}
+        {translate(badge)}
       </span>
       <div
         className={[
@@ -305,10 +323,10 @@ function TemplateRow({
           visible ? '' : 'opacity-50',
         ].join(' ')}
       >
-        <span className="truncate text-[11px] leading-5 text-neutral-300" title={title}>
-          {title}
+        <span className="truncate text-[11px] leading-5 text-neutral-300" title={translate(title)}>
+          {translate(title)}
         </span>
-        <span className="text-xs tabular-nums text-neutral-100">{subtitle}</span>
+        <span className="text-xs tabular-nums text-neutral-100">{translate(subtitle)}</span>
       </div>
       <button
         onClick={(e) => {
@@ -316,7 +334,7 @@ function TemplateRow({
           onToggleVisible(id, !visible)
         }}
         className="mt-0.5 shrink-0 text-neutral-500 transition hover:text-sky-300"
-        title={visible ? 'Im Bild ausblenden' : 'Im Bild einblenden'}
+        title={translate(visible ? 'Im Bild ausblenden' : 'Im Bild einblenden')}
       >
         <EyeIcon off={!visible} />
       </button>
@@ -326,7 +344,7 @@ function TemplateRow({
           onRemove(id)
         }}
         className="shrink-0 text-xs leading-5 text-neutral-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
-        title="Schablone entfernen"
+        title={translate("Schablone entfernen")}
       >
         ✕
       </button>

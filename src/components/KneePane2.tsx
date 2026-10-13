@@ -1,3 +1,5 @@
+import { dezimalTrenner } from '../lib/zahlFormat'
+import { translate } from '../i18n'
 import { useEffect, useRef, useState } from 'react'
 import {
   setupViewport2,
@@ -117,25 +119,22 @@ export function KneePane2({ roleLabel }: { roleLabel: string }) {
         data-overlay-ui
         className="flex items-center gap-2 border-b border-neutral-800 bg-neutral-950/90 px-2 py-1 text-xs"
       >
-        <span className="font-semibold text-neutral-200">{roleLabel}</span>
-        {isActive && <span className="text-[11px] font-medium text-sky-400">· aktiv</span>}
+        <span className="font-semibold text-neutral-200">{translate(roleLabel)}</span>
+        {isActive && <span className="text-[11px] font-medium text-sky-400">{translate("· aktiv")}</span>}
 
         <div className="ml-auto flex items-center gap-1.5">
           {/* Tibialer Slope — Wert-Chip (Messung startet in der Toolbar
               unter „3 · Einzel-Messungen"). */}
           {hasImage && slope && (
             <>
-              <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-violet-200">
-                Slope {slope.value.toFixed(1).replace('.', ',')}°
+              <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-violet-200">{translate("Slope ")}{translate(slope.value.toFixed(1).replace('.', dezimalTrenner()))}°
               </span>
               <button
                 type="button"
                 onClick={resetSlope}
-                title="Slope-Messung verwerfen"
+                title={translate("Slope-Messung verwerfen")}
                 className="rounded px-1 py-0.5 text-[11px] text-neutral-400 transition hover:bg-neutral-800 hover:text-neutral-200"
-              >
-                Zurücksetzen
-              </button>
+              >{translate("Zurücksetzen")}</button>
             </>
           )}
           {/* Vollbild-Umschalter (Doppelpfeil) fürs seitliche Pane. */}
@@ -170,7 +169,7 @@ export function KneePane2({ roleLabel }: { roleLabel: string }) {
             data-pdf-hide
             className="absolute inset-x-2 top-2 z-20 rounded border border-red-800/70 bg-red-950/85 px-2 py-1 text-[11px] leading-snug text-red-200"
           >
-            {status}
+            {translate(status)}
           </div>
         )}
 
@@ -189,10 +188,8 @@ export function KneePane2({ roleLabel }: { roleLabel: string }) {
             className="absolute inset-0 flex flex-col items-center justify-center text-neutral-600 transition hover:text-neutral-400"
           >
             <div className="mb-2 text-4xl">⊞</div>
-            <p className="text-xs">{status}</p>
-            <p className="mt-1 text-[11px] text-neutral-700">
-              Seitliches Bild, -Ordner oder -ZIP laden — oder hierher ziehen
-            </p>
+            <p className="text-xs">{translate(status)}</p>
+            <p className="mt-1 text-[11px] text-neutral-700">{translate("Seitliches Bild, -Ordner oder -ZIP laden — oder hierher ziehen")}</p>
           </button>
         )}
         <input
@@ -214,9 +211,7 @@ export function KneePane2({ roleLabel }: { roleLabel: string }) {
             data-pdf-hide
             className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center px-3"
           >
-            <span className="rounded bg-neutral-900/85 px-2.5 py-1 text-center text-[11px] font-medium text-neutral-200 shadow">
-              Tibialer Slope: Schaftachse · Scheitel am Plateau · Plateau (3 Punkte)
-            </span>
+            <span className="rounded bg-neutral-900/85 px-2.5 py-1 text-center text-[11px] font-medium text-neutral-200 shadow">{translate("Tibialer Slope: Schaftachse · Scheitel am Plateau · Plateau (3 Punkte)")}</span>
           </div>
         )}
 

@@ -1,3 +1,5 @@
+import { dezimalTrenner } from '../lib/zahlFormat'
+import { translate } from '../i18n'
 import { useEffect } from 'react'
 import {
   usePlanningStore,
@@ -71,13 +73,11 @@ export function PlanningDataDialog() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
-          <h2 className="text-sm font-semibold text-neutral-100">
-            Planungsdaten
-          </h2>
+          <h2 className="text-sm font-semibold text-neutral-100">{translate("Planungsdaten")}</h2>
           <button
             onClick={() => s.setDialogOpen(false)}
             className="rounded p-1 text-neutral-400 transition hover:bg-neutral-800 hover:text-neutral-100"
-            aria-label="Schließen"
+            aria-label={translate("Schließen")}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path
@@ -92,7 +92,7 @@ export function PlanningDataDialog() {
 
         <div className="max-h-[70vh] space-y-3 overflow-y-auto px-4 py-4">
           {/* OP-Termin + „noch unklar" */}
-          <Field label="OP-Termin">
+          <Field label={translate("OP-Termin")}>
             <div className="flex items-center gap-3">
               <input
                 type="date"
@@ -119,46 +119,42 @@ export function PlanningDataDialog() {
                     })
                   }
                   className="accent-sky-600"
-                />
-                noch unklar
-              </label>
+                />{translate("noch unklar")}</label>
             </div>
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Krankenhaus">
+            <Field label={translate("Krankenhaus")}>
               <Select
                 value={s.hospital}
                 onChange={(v) => s.setField('hospital', v)}
               >
-                <option value="">– bitte wählen –</option>
+                <option value="">{translate("– bitte wählen –")}</option>
                 {hospitalOptions.map((h) => (
                   <option key={h} value={h}>
                     {h}
                   </option>
                 ))}
                 {/* Generische, immer verfügbare Option. */}
-                <option value="unklar">noch unklar</option>
+                <option value="unklar">{translate("noch unklar")}</option>
               </Select>
               {hospitalOptions.length === 0 && (
                 <button
                   type="button"
                   onClick={() => openOrgProfile(true)}
                   className="mt-1 text-[11px] text-neutral-500 underline decoration-dotted transition hover:text-sky-300"
-                >
-                  Standorte hinterlegen (Einrichtung ⚙)
-                </button>
+                >{translate("Standorte hinterlegen (Einrichtung ⚙)")}</button>
               )}
             </Field>
-            <Field label="Versicherung">
+            <Field label={translate("Versicherung")}>
               <Select
                 value={s.insurance}
                 onChange={(v) => s.setField('insurance', v as Insurance)}
               >
-                <option value="">– bitte wählen –</option>
+                <option value="">{translate("– bitte wählen –")}</option>
                 {INSURANCES.map((i) => (
                   <option key={i} value={i}>
-                    {i}
+                    {translate(i)}
                   </option>
                 ))}
               </Select>
@@ -166,7 +162,7 @@ export function PlanningDataDialog() {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Größe (cm)">
+            <Field label={translate("Größe (cm)")}>
               <input
                 type="number"
                 inputMode="numeric"
@@ -175,7 +171,7 @@ export function PlanningDataDialog() {
                 className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 focus:border-sky-600 focus:outline-none"
               />
             </Field>
-            <Field label="Gewicht (kg)">
+            <Field label={translate("Gewicht (kg)")}>
               <input
                 type="number"
                 inputMode="numeric"
@@ -184,29 +180,29 @@ export function PlanningDataDialog() {
                 className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 focus:border-sky-600 focus:outline-none"
               />
             </Field>
-            <Field label="BMI">
+            <Field label={translate("BMI")}>
               <div className="rounded border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-sm tabular-nums text-neutral-300">
-                {bmi != null ? bmi.toFixed(1) : '–'}
+                {translate(bmi != null ? bmi.toFixed(1).replace('.', dezimalTrenner()) : '–')}
               </div>
             </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Reha">
+            <Field label={translate("Reha")}>
               <Select
                 value={s.reha}
                 onChange={(v) => s.setField('reha', v as RehaKind)}
               >
-                <option value="">– keine –</option>
+                <option value="">{translate("– keine –")}</option>
                 {REHA_KINDS.map((r) => (
                   <option key={r} value={r}>
-                    {r}
+                    {translate(r)}
                   </option>
                 ))}
               </Select>
             </Field>
             {showRehaDate && (
-              <Field label="… ab dem">
+              <Field label={translate("… ab dem")}>
                 <input
                   type="date"
                   value={s.rehaDate}
@@ -217,49 +213,49 @@ export function PlanningDataDialog() {
             )}
           </div>
 
-          <Field label="Allergien">
+          <Field label={translate("Allergien")}>
             <input
               type="text"
               value={s.allergies}
               onChange={(e) => s.setField('allergies', e.target.value)}
-              placeholder="z. B. Penicillin, Pflaster …"
+              placeholder={translate("z. B. Penicillin, Pflaster …")}
               className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-sky-600 focus:outline-none"
             />
           </Field>
 
-          <Field label="Antikoagulation">
+          <Field label={translate("Antikoagulation")}>
             <input
               type="text"
               value={s.anticoagulation}
               onChange={(e) => s.setField('anticoagulation', e.target.value)}
-              placeholder="z. B. ASS 100, DOAK …"
+              placeholder={translate("z. B. ASS 100, DOAK …")}
               className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-sky-600 focus:outline-none"
             />
           </Field>
 
-          <Field label="Sonstiges">
+          <Field label={translate("Sonstiges")}>
             <input
               type="text"
               value={s.other}
               onChange={(e) => s.setField('other', e.target.value)}
-              placeholder="z. B. Hüftkopf erhalten, Wunsch-Implantat …"
+              placeholder={translate("z. B. Hüftkopf erhalten, Wunsch-Implantat …")}
               className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-sky-600 focus:outline-none"
             />
           </Field>
 
           {planningMode === 'hip' && (
-            <Field label="Klinische Beinlängendifferenz (BLD)">
+            <Field label={translate("Klinische Beinlängendifferenz (BLD)")}>
               <input
                 type="text"
                 value={clinicalBld}
                 onChange={(e) => setClinicalBld(e.target.value)}
-                placeholder="± 0,x cm Rechts/Links"
+                placeholder={translate("± 0,x cm Rechts/Links")}
                 className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-sky-600 focus:outline-none"
               />
             </Field>
           )}
 
-          <Field label="Planung durchgeführt von">
+          <Field label={translate("Planung durchgeführt von")}>
             <input
               type="text"
               value={s.planner}
@@ -273,9 +269,7 @@ export function PlanningDataDialog() {
           <button
             onClick={() => s.setDialogOpen(false)}
             className="rounded bg-sky-700 px-4 py-1.5 text-sm font-medium text-sky-50 transition hover:bg-sky-600"
-          >
-            Fertig
-          </button>
+          >{translate("Fertig")}</button>
         </div>
       </div>
     </div>
@@ -295,13 +289,8 @@ export function PlanningExportWarning() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-sm rounded-lg border border-amber-700 bg-neutral-900 p-5 shadow-xl">
-        <h2 className="mb-2 text-sm font-semibold text-amber-300">
-          Noch keine Planungsdaten erfasst
-        </h2>
-        <p className="mb-4 text-sm leading-relaxed text-neutral-300">
-          Es sind noch keine Angaben zu OP-Termin, Krankenhaus, Versicherung
-          oder Reha hinterlegt. Möchtest du sie vor dem Export eingeben?
-        </p>
+        <h2 className="mb-2 text-sm font-semibold text-amber-300">{translate("Noch keine Planungsdaten erfasst")}</h2>
+        <p className="mb-4 text-sm leading-relaxed text-neutral-300">{translate("Es sind noch keine Angaben zu OP-Termin, Krankenhaus, Versicherung oder Reha hinterlegt. Möchtest du sie vor dem Export eingeben?")}</p>
         <div className="flex justify-end gap-2">
           <button
             onClick={() => {
@@ -309,18 +298,14 @@ export function PlanningExportWarning() {
               void import('../lib/plan/pdfExport').then((m) => m.triggerPdfExport())
             }}
             className="rounded px-3 py-1.5 text-sm text-neutral-300 transition hover:bg-neutral-800"
-          >
-            Trotzdem exportieren
-          </button>
+          >{translate("Trotzdem exportieren")}</button>
           <button
             onClick={() => {
               setWarnOpen(false)
               setDialogOpen(true)
             }}
             className="rounded bg-sky-700 px-4 py-1.5 text-sm font-medium text-sky-50 transition hover:bg-sky-600"
-          >
-            Daten eingeben
-          </button>
+          >{translate("Daten eingeben")}</button>
         </div>
       </div>
     </div>
@@ -337,9 +322,9 @@ function Field({
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium text-neutral-400">
-        {label}
+        {translate(label)}
       </span>
-      {children}
+      {translate(children)}
     </label>
   )
 }
@@ -359,7 +344,7 @@ function Select({
       onChange={(e) => onChange(e.target.value)}
       className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100 focus:border-sky-600 focus:outline-none"
     >
-      {children}
+      {translate(children)}
     </select>
   )
 }

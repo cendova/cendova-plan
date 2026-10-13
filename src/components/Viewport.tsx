@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useEffect, useRef, useState } from 'react'
 import {
   setupViewport,
@@ -243,11 +244,9 @@ export function Viewport() {
           data-overlay-ui
           className="flex items-center gap-2 border-b border-neutral-800 bg-neutral-950/90 px-2 py-1 text-xs"
         >
-          <span className="font-semibold text-neutral-200">AP (Ganzbein)</span>
+          <span className="font-semibold text-neutral-200">{translate("AP (Ganzbein)")}</span>
           {activePane === 'left' && (
-            <span className="text-[11px] font-medium text-sky-400">
-              · aktiv
-            </span>
+            <span className="text-[11px] font-medium text-sky-400">{translate("· aktiv")}</span>
           )}
           <div className="ml-auto flex items-center gap-1.5">
             {/* Vollbild-Umschalter (Doppelpfeil), wie im rechten Pane. */}
@@ -276,17 +275,15 @@ export function Viewport() {
       {!hasImage && !error && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-neutral-600">
           <div className="mb-2 text-5xl">⊡</div>
-          <p className="text-sm">Kein Bild geladen</p>
-          <p className="mt-1 text-xs text-neutral-700">
-            DICOM-Datei, -Ordner oder -ZIP hierher ziehen oder „Bild laden“ wählen
-          </p>
+          <p className="text-sm">{translate("Kein Bild geladen")}</p>
+          <p className="mt-1 text-xs text-neutral-700">{translate("DICOM-Datei, -Ordner oder -ZIP hierher ziehen oder „Bild laden“ wählen")}</p>
         </div>
       )}
 
       {error && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="max-w-sm rounded border border-red-800 bg-red-950/80 px-4 py-3 text-center text-sm text-red-200">
-            {error}
+            {translate(error)}
           </div>
         </div>
       )}
@@ -296,9 +293,7 @@ export function Viewport() {
           versucht ein vollständiges Re-Init + Re-Load des letzten Bilds. */}
       {viewportLost && (
         <div className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-3 rounded border border-amber-700 bg-amber-950/95 px-4 py-2 text-sm text-amber-100 shadow-lg">
-          <span>
-            Render-Kontext verloren — Bild und Planung sind gespeichert.
-          </span>
+          <span>{translate("Render-Kontext verloren — Bild und Planung sind gespeichert.")}</span>
           <button
             onClick={handleRecover}
             disabled={recovering}
@@ -309,7 +304,7 @@ export function Viewport() {
                 : 'hover:bg-amber-600',
             ].join(' ')}
           >
-            {recovering ? 'Stelle wieder her …' : 'Bild wiederherstellen'}
+            {translate(recovering ? 'Stelle wieder her …' : 'Bild wiederherstellen')}
           </button>
         </div>
       )}

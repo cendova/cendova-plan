@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useState, type ReactNode } from 'react'
 import { useViewerStore } from '../state/viewerStore'
 import { Hint } from './Hint'
@@ -77,7 +78,7 @@ function aufteilen(label: string, values: Werte, kalibriert = true) {
         werte: [v.value],
         norm:
           v.kalibrierungNoetig && !kalibriert ? (
-            <span className="text-amber-500">unkalibriert</span>
+            <span className="text-amber-500">{translate("unkalibriert")}</span>
           ) : undefined,
       }),
     ),
@@ -223,7 +224,7 @@ export function MeasurementPanel() {
   const [confirmClear, setConfirmClear] = useState(false)
 
   const unkalibriert = (noetig: boolean) =>
-    noetig && !calibration ? <span className="text-amber-500"> · unkalibriert</span> : null
+    noetig && !calibration ? <span className="text-amber-500">{translate(" · unkalibriert")}</span> : null
 
   // --- Auswertung (Karten) ------------------------------------------------
   const karten: ReactNode[] = []
@@ -286,31 +287,24 @@ export function MeasurementPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center justify-between border-y border-neutral-700 px-3 py-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-          Messungen
-        </span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">{translate("Messungen")}</span>
         {hatLoeschbareMessungen && (
           <button
             onClick={() => setConfirmClear(true)}
             className="text-[11px] text-neutral-500 transition hover:text-red-400"
-          >
-            Alle löschen
-          </button>
+          >{translate("Alle löschen")}</button>
         )}
       </div>
       <ConfirmDialog
         open={confirmClear}
-        title="Alle Messungen löschen?"
-        confirmLabel="Alle löschen"
+        title={translate("Alle Messungen löschen?")}
+        confirmLabel={translate("Alle löschen")}
         onCancel={() => setConfirmClear(false)}
         onConfirm={() => {
           clearAll()
           setConfirmClear(false)
         }}
-      >
-        Alle Messungen beider Bilder werden entfernt. Längen-/Winkel- und
-        seitliche Messungen lassen sich NICHT über Rückgängig zurückholen.
-      </ConfirmDialog>
+      >{translate("Alle Messungen beider Bilder werden entfernt. Längen-/Winkel- und seitliche Messungen lassen sich NICHT über Rückgängig zurückholen.")}</ConfirmDialog>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {!zeigtInhalt && (
@@ -319,12 +313,12 @@ export function MeasurementPanel() {
                 Modus samt Ort. Die generischen Länge-/Winkel-Werkzeuge
                 liegen in der Kopfzeile, nicht in der linken Leiste. */}
             <p className="px-1 py-1 text-xs text-neutral-500">
-              {planningMode === 'hip' &&
-                'Noch keine Messungen. Ein Hüft-Werkzeug in der linken Leiste wählen — oder Länge/Winkel in der Kopfzeile.'}
-              {planningMode === 'knee' &&
-                'Noch keine Messungen. Vollvermessung oder ein Messwerkzeug in der linken Leiste wählen — oder Länge/Winkel in der Kopfzeile.'}
-              {planningMode === 'shoulder' &&
-                'Noch keine Messungen. Ein Schulter-Werkzeug in der linken Leiste wählen — oder Länge/Winkel in der Kopfzeile.'}
+              {translate(planningMode === 'hip' &&
+                'Noch keine Messungen. Ein Hüft-Werkzeug in der linken Leiste wählen — oder Länge/Winkel in der Kopfzeile.')}
+              {translate(planningMode === 'knee' &&
+                'Noch keine Messungen. Vollvermessung oder ein Messwerkzeug in der linken Leiste wählen — oder Länge/Winkel in der Kopfzeile.')}
+              {translate(planningMode === 'shoulder' &&
+                'Noch keine Messungen. Ein Schulter-Werkzeug in der linken Leiste wählen — oder Länge/Winkel in der Kopfzeile.')}
             </p>
           </Hint>
         )}
@@ -338,9 +332,9 @@ export function MeasurementPanel() {
                 badgeColor="text-sky-300"
                 titel={
                   <>
-                    {m.kind === 'length' ? 'Länge' : 'Winkel'}
+                    {translate(m.kind === 'length' ? 'Länge' : 'Winkel')}
                     {m.kind === 'length' && !m.calibrated && (
-                      <span className="text-amber-500"> · unkalibriert</span>
+                      <span className="text-amber-500">{translate(" · unkalibriert")}</span>
                     )}
                   </>
                 }
@@ -377,8 +371,8 @@ export function MeasurementPanel() {
                   badgeColor="text-sky-200"
                   titel={
                     <>
-                      {recipe.label}
-                      {unkalibriert(recipe.needsCalibration === true)}
+                      {translate(recipe.label)}
+                      {translate(unkalibriert(recipe.needsCalibration === true))}
                     </>
                   }
                   wert={wert}
@@ -418,8 +412,8 @@ export function MeasurementPanel() {
                   badgeColor="text-violet-300"
                   titel={
                     <>
-                      {recipe.label}
-                      {unkalibriert(recipe.needsCalibration === true)}
+                      {translate(recipe.label)}
+                      {translate(unkalibriert(recipe.needsCalibration === true))}
                     </>
                   }
                   wert={wert}
@@ -449,12 +443,12 @@ export function MeasurementPanel() {
                   badgeColor="text-emerald-300"
                   titel={
                     <>
-                      {recipe.label}
+                      {translate(recipe.label)}
                       <span className="text-neutral-500">
-                        {' '}
-                        · {m.side === 'R' ? 'rechts' : 'links'}
+                        {translate(' ')}
+                        · {translate(m.side === 'R' ? 'rechts' : 'links')}
                       </span>
-                      {unkalibriert(recipe.needsCalibration === true)}
+                      {translate(unkalibriert(recipe.needsCalibration === true))}
                     </>
                   }
                   wert={wert}
@@ -467,9 +461,7 @@ export function MeasurementPanel() {
             })}
 
             {splitView && rightMeasurements.length > 0 && (
-              <li className="px-2 pb-0.5 pt-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral-500">
-                Seitliches Bild
-              </li>
+              <li className="px-2 pb-0.5 pt-1.5 text-[10px] font-medium uppercase tracking-wider text-neutral-500">{translate("Seitliches Bild")}</li>
             )}
             {splitView &&
               rightMeasurements.map((m) => (
@@ -479,9 +471,9 @@ export function MeasurementPanel() {
                   badgeColor="text-sky-300"
                   titel={
                     <>
-                      {m.kind === 'length' ? 'Länge' : 'Winkel'}
+                      {translate(m.kind === 'length' ? 'Länge' : 'Winkel')}
                       {m.kind === 'length' && !m.calibrated && (
-                        <span className="text-amber-500"> · unkalibriert</span>
+                        <span className="text-amber-500">{translate(" · unkalibriert")}</span>
                       )}
                     </>
                   }
@@ -496,10 +488,8 @@ export function MeasurementPanel() {
 
         {karten.length > 0 && (
           <>
-            <div className="px-2 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-neutral-500">
-              Auswertung
-            </div>
-            <div className="flex flex-col gap-2">{karten}</div>
+            <div className="px-2 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wider text-neutral-500">{translate("Auswertung")}</div>
+            <div className="flex flex-col gap-2">{translate(karten)}</div>
           </>
         )}
       </div>
@@ -538,7 +528,7 @@ function HuefteBilanzKarte({
   return (
     <Karte
       titel="Beinlänge & Offset"
-      kennung={kalibriert ? undefined : <span className="text-amber-500">unkalibriert</span>}
+      kennung={kalibriert ? undefined : <span className="text-amber-500">{translate("unkalibriert")}</span>}
       fuss={
         deltas.length > 0
           ? 'Planung = Verschiebung Pfannenzentrum → Schaftkopf relativ zur Beckenlinie.'
@@ -585,9 +575,7 @@ function HuefteBilanzKarte({
       )}
       {bal && !bal.hasImplants && (
         <Hint>
-          <div className="mt-1 text-[10px] text-neutral-500">
-            Pfanne + Schaft planen für die Post-OP-Bilanz.
-          </div>
+          <div className="mt-1 text-[10px] text-neutral-500">{translate("Pfanne + Schaft planen für die Post-OP-Bilanz.")}</div>
         </Hint>
       )}
     </Karte>
@@ -595,7 +583,7 @@ function HuefteBilanzKarte({
 }
 
 function MaybeAbschnitt({ trennen, children }: { trennen: boolean; children: ReactNode }) {
-  return trennen ? <Abschnitt>{children}</Abschnitt> : <>{children}</>
+  return trennen ? <Abschnitt>{translate(children)}</Abschnitt> : <>{translate(children)}</>
 }
 
 /**
@@ -628,33 +616,33 @@ function Row({
     <li className="group flex items-start gap-2 rounded px-2 py-1 hover:bg-neutral-800/70">
       <span
         className={`w-7 shrink-0 text-[11px] font-semibold leading-5 ${badgeColor}`}
-        title={BADGE_TITEL[badge] ?? undefined}
+        title={translate(BADGE_TITEL[badge] ?? undefined)}
       >
-        {badge}
+        {translate(badge)}
       </span>
       <div className={['min-w-0 flex-1', visible ? '' : 'opacity-50'].join(' ')}>
         <div className="flex items-baseline justify-between gap-2 leading-5">
-          <span className="min-w-0 truncate text-[11px] text-neutral-300">{titel}</span>
+          <span className="min-w-0 truncate text-[11px] text-neutral-300">{translate(titel)}</span>
           {wert != null && (
             <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-neutral-100">
-              {wert}
+              {translate(wert)}
             </span>
           )}
         </div>
         {zeilen && zeilen.length > 0 && <Kennwerte zeilen={zeilen} />}
-        {verweis && <div className="text-[10px] leading-snug text-neutral-500">{verweis}</div>}
+        {verweis && <div className="text-[10px] leading-snug text-neutral-500">{translate(verweis)}</div>}
       </div>
       <button
         onClick={onToggleVisible}
         className="mt-0.5 shrink-0 text-neutral-500 transition hover:text-sky-300"
-        title={visible ? 'Im Bild ausblenden' : 'Im Bild einblenden'}
+        title={translate(visible ? 'Im Bild ausblenden' : 'Im Bild einblenden')}
       >
         <EyeIcon off={!visible} />
       </button>
       <button
         onClick={onDelete}
         className="shrink-0 text-xs leading-5 text-neutral-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
-        title="Messung löschen"
+        title={translate("Messung löschen")}
       >
         ✕
       </button>

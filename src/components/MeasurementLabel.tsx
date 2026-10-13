@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import type { Types } from '@cornerstonejs/core'
 import { getViewport } from '../lib/cornerstone/viewer'
 import { type LabelOffset, type LabelStyle } from '../state/hipStore'
@@ -84,7 +85,7 @@ export function MeasurementLabel({
           store.isSelected ? 'ring-1 ring-slate-300' : '',
         ].join(' ')}
       >
-        {text}
+        {translate(text)}
       </div>
     </div>
   )

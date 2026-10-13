@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { getLanguage } from '../i18n'
 import { useKneeStore, type KneeMeasurement } from '../state/kneeStore'
 import { useViewerStore } from '../state/viewerStore'
 import { useKneeOsteotomieStore, type OsteotomiePlan } from '../state/kneeOsteotomieStore'
@@ -99,6 +100,7 @@ let letzte: {
   ms: KneeMeasurement[]
   plan: OsteotomiePlan | null
   factor: number
+  language: string
   daten: OsteotomieDaten
 } | null = null
 
@@ -107,10 +109,11 @@ function berechneGeteilt(
   plan: OsteotomiePlan | null,
   factor: number,
 ): OsteotomieDaten {
-  if (letzte && letzte.ms === ms && letzte.plan === plan && letzte.factor === factor)
+  const language = getLanguage()
+  if (letzte && letzte.ms === ms && letzte.plan === plan && letzte.factor === factor && letzte.language === language)
     return letzte.daten
   const daten = berechneOsteotomie(ms, plan, factor)
-  letzte = { ms, plan, factor, daten }
+  letzte = { ms, plan, factor, language, daten }
   return daten
 }
 

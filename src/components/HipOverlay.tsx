@@ -1,3 +1,4 @@
+import { dezimalTrenner } from '../lib/zahlFormat'
 import { useRef } from 'react'
 import { getViewport } from '../lib/cornerstone/viewer'
 import { useViewportSync } from '../lib/cornerstone/useViewportSync'
@@ -92,7 +93,7 @@ export function HipOverlay() {
   )
   const opCorr = correction.perSide.length > 0 ? correction.perSide[0] : null
   const signCm = (mm: number) =>
-    `${mm >= 0 ? '+' : ''}${(mm / 10).toFixed(2).replace('.', ',')} cm`
+    `${mm >= 0 ? '+' : ''}${(mm / 10).toFixed(2).replace('.', dezimalTrenner())} cm`
   const signMm = (mm: number) => `${mm >= 0 ? '+' : ''}${mm.toFixed(1)} mm`
   const balanceLines = opCorr
     ? [

@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useState } from 'react'
 import { getViewport } from '../lib/cornerstone/viewer'
 import { useNoteStore, NOTE_COLORS, type TextNote } from '../state/noteStore'
@@ -84,7 +85,7 @@ export function NoteBox({ note, vp }: { note: TextNote; vp: Vp }) {
             textShadow: '0 0 3px #000, 0 0 3px #000',
           }}
         >
-          {note.text || 'Notiz'}
+          {note.text || translate('Notiz')}
         </div>
       )}
     </div>
@@ -109,9 +110,7 @@ function NoteToolbar({ note }: { note: TextNote }) {
           })
         }
         className="h-5 w-5 rounded text-xs text-neutral-300 hover:bg-neutral-700"
-      >
-        A−
-      </button>
+      >{translate("A−")}</button>
       <button
         onClick={() =>
           store.updateStyle(note.id, {
@@ -119,9 +118,7 @@ function NoteToolbar({ note }: { note: TextNote }) {
           })
         }
         className="h-5 w-5 rounded text-xs text-neutral-300 hover:bg-neutral-700"
-      >
-        A+
-      </button>
+      >{translate("A+")}</button>
       <div className="mx-0.5 h-4 w-px bg-neutral-700" />
       <button
         onClick={() => store.updateStyle(note.id, { bold: !note.bold })}
@@ -129,9 +126,7 @@ function NoteToolbar({ note }: { note: TextNote }) {
           'h-5 w-5 rounded text-xs font-bold hover:bg-neutral-700',
           note.bold ? 'bg-neutral-700 text-sky-300' : 'text-neutral-300',
         ].join(' ')}
-      >
-        F
-      </button>
+      >{translate("F")}</button>
       <button
         onClick={() =>
           store.updateStyle(note.id, { underline: !note.underline })
@@ -140,9 +135,7 @@ function NoteToolbar({ note }: { note: TextNote }) {
           'h-5 w-5 rounded text-xs underline hover:bg-neutral-700',
           note.underline ? 'bg-neutral-700 text-sky-300' : 'text-neutral-300',
         ].join(' ')}
-      >
-        U
-      </button>
+      >{translate("U")}</button>
       <div className="mx-0.5 h-4 w-px bg-neutral-700" />
       {NOTE_COLORS.map((c) => (
         <button
@@ -159,7 +152,7 @@ function NoteToolbar({ note }: { note: TextNote }) {
       <button
         onClick={() => store.remove(note.id)}
         className="h-5 w-5 rounded text-xs text-neutral-400 hover:bg-red-900/60 hover:text-red-300"
-        title="Notiz löschen"
+        title={translate("Notiz löschen")}
       >
         ✕
       </button>

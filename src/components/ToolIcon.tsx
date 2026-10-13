@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 /**
  * Wiederverwendbarer Icon-Button für die Header-Werkzeugleiste.
  *
@@ -152,9 +153,7 @@ export function IconPdf(props: SvgProps) {
         fontFamily="sans-serif"
         fill="currentColor"
         stroke="none"
-      >
-        PDF
-      </text>
+      >{translate("PDF")}</text>
     </svg>
   )
 }
@@ -242,8 +241,8 @@ export function ToolIconButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      title={title}
-      aria-label={title}
+      title={translate(title)}
+      aria-label={translate(title)}
       aria-pressed={active}
       className={[
         'relative flex h-7 w-7 items-center justify-center rounded transition',
@@ -253,7 +252,7 @@ export function ToolIconButton({
         disabled ? 'cursor-not-allowed text-neutral-700 hover:bg-transparent hover:text-neutral-700' : '',
       ].join(' ')}
     >
-      {icon}
+      {translate(icon)}
       {statusDot && (
         <span
           className={`absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full ${statusDot}`}
