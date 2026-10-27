@@ -1,7 +1,12 @@
 // Charakterisierungs-Tests (R0): Beinlängendifferenz (LLD).
 // Vorzeichen-Vertrag: positiv = rechts länger (Bild-y wächst nach kaudal).
 import { describe, expect, it } from 'vitest'
-import { computePreopLLDSigned, findPreopLLD, formatSignedLLD } from './lldCalculation'
+import {
+  computePreopLLDSigned,
+  findPreopLLD,
+  formatSignedLLD,
+  korrekturKastenZeilen,
+} from './lldCalculation'
 import type { HipMeasurement } from '../../state/hipStore'
 import type { Types } from '@cornerstonejs/core'
 
@@ -63,5 +68,45 @@ describe('formatSignedLLD (klinischer Berichtstext)', () => {
   it('unterhalb 0.05 mm → „Ausgeglichen"', () => {
     expect(formatSignedLLD(0.02)).toBe('Ausgeglichen')
     expect(formatSignedLLD(-0.04)).toBe('Ausgeglichen')
+  })
+})
+
+describe('korrekturKastenZeilen (Kasten im Bild)', () => {
+  const NB = '\u00a0'
+  // Fall aus dem Realtest 27.10.2026: beidseits geplant, rechts 0,0 mm,
+  // links +5,2 mm; prä-OP rechts +5,5 mm länger → post-OP rechts +0,3 mm.
+  it('zeigt bei beidseitiger Planung BEIDE Seiten und die Post-OP-Differenz', () => {
+    const z = korrekturKastenZeilen(5.5, {
+      totalSigned: 0 - 5.2,
+      perSide: [
+        { side: 'R', mm: 0, offsetMm: 0 },
+        { side: 'L', mm: 5.2, offsetMm: 0 },
+      ],
+    })!
+    expect(z[0]).toBe('Korrektur')
+    expect(z[1]).toMatch(/^Rechts: \+?0,00/)
+    expect(z[2]).toBe(`Links: +0,52${NB}cm · Offset 0,0${NB}mm`)
+    expect(z[3]).toBe(`Differenz post-OP: Rechts +0,03${NB}cm`)
+  })
+
+  it('zeigt bei einseitiger Planung die Seite im Titel', () => {
+    const z = korrekturKastenZeilen(-8, {
+      totalSigned: -7,
+      perSide: [{ side: 'L', mm: 7, offsetMm: -3.4 }],
+    })!
+    expect(z[0]).toBe('Korrektur links')
+    expect(z[1]).toBe(`Beinlänge: +0,70${NB}cm`)
+    expect(z[2]).toMatch(/^Offset: .3,4/)
+    // prä-OP links 0,8 cm länger, Korrektur verlängert links um 0,7 → links 1,5 länger
+    expect(z[3]).toBe(`Differenz post-OP: Links +1,50${NB}cm`)
+  })
+
+  it('lässt die Differenz weg, wenn keine prä-OP-Messung da ist', () => {
+    const z = korrekturKastenZeilen(null, { totalSigned: 4, perSide: [{ side: 'R', mm: 4, offsetMm: 1 }] })!
+    expect(z).toHaveLength(3)
+  })
+
+  it('liefert null ohne geplante Seite', () => {
+    expect(korrekturKastenZeilen(3, { totalSigned: 0, perSide: [] })).toBeNull()
   })
 })

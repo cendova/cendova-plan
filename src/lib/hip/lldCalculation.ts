@@ -209,3 +209,46 @@ export function buildLldBalance(
       : formatLldForSide(preopLLD, opSide),
   }
 }
+
+/**
+ * Zeilen des frei verschiebbaren „Korrektur"-Kastens im Bild.
+ *
+ * Befund 27.10.2026: Der Kasten nahm nur die ERSTE geplante Seite
+ * (`perSide[0]`, immer rechts) und keine Post-OP-Differenz. Bei
+ * beidseitiger Planung (rechts 0,00 cm, links +0,52 cm, prä-OP rechts
+ * +0,55 cm länger) stand im Bild „Beinlänge +0,00 cm", während Seitenleiste
+ * und PDF richtig „Differenz post-OP: Rechts +0,03 cm" zeigten.
+ *
+ * Jetzt: jede geplante Seite eine Zeile, dazu die Post-OP-Differenz aus
+ * `buildLldBalance` — derselben Rechnung wie Seitenleiste und PDF. Ohne
+ * prä-OP-Messung fehlt nur die Differenz-Zeile. Ohne Pfanne+Schaft: null.
+ */
+export function korrekturKastenZeilen(
+  preopLLD: number | null,
+  correction: {
+    totalSigned: number
+    perSide: Array<{ side: 'R' | 'L'; mm: number; offsetMm: number }>
+  },
+): string[] | null {
+  const ps = correction.perSide
+  if (ps.length === 0) return null
+  const zeilen: string[] = []
+  if (ps.length === 1) {
+    const c = ps[0]
+    zeilen.push(`Korrektur ${c.side === 'R' ? 'rechts' : 'links'}`)
+    zeilen.push(`Beinlänge: ${cmMitVorzeichen(c.mm)}`)
+    zeilen.push(`Offset: ${mmMitVorzeichen(c.offsetMm)}`)
+  } else {
+    zeilen.push('Korrektur')
+    for (const c of ps) {
+      zeilen.push(
+        `${c.side === 'R' ? 'Rechts' : 'Links'}: ${cmMitVorzeichen(c.mm)} · Offset ${mmMitVorzeichen(c.offsetMm)}`,
+      )
+    }
+  }
+  if (preopLLD != null) {
+    const bal = buildLldBalance(preopLLD, correction)
+    if (bal.postopText) zeilen.push(`Differenz post-OP: ${bal.postopText}`)
+  }
+  return zeilen
+}

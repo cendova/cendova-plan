@@ -6,7 +6,11 @@ import { useHipStore } from '../state/hipStore'
 import { useNoteStore } from '../state/noteStore'
 import { useTemplateStore } from '../state/templateStore'
 import { getRecipe, type HipKind } from '../lib/hip/recipes'
-import { computeImplantLLDCorrection } from '../lib/hip/lldCalculation'
+import {
+  computeImplantLLDCorrection,
+  findPreopLLD,
+  korrekturKastenZeilen,
+} from '../lib/hip/lldCalculation'
 import { NoteBox } from './NoteBox'
 import { DraggableImageBox } from './DraggableImageBox'
 import {
@@ -81,26 +85,18 @@ export function HipOverlay() {
     factor,
   )
 
-  // „Korrektur"-Kasten (klein, frei verschiebbar) im Bild: zeigt die durch
-  // Pfanne + Schaft geplante Beinlängen- (cm) und Offset-Änderung (mm) der
-  // operierten Seite. Welt-verankert → wandert beim Zoomen/Pannen mit dem Bild.
+  // „Korrektur"-Kasten (klein, frei verschiebbar) im Bild: geplante
+  // Beinlängen- (cm) und Offset-Änderung (mm) JEDER geplanten Seite plus die
+  // Post-OP-Differenz — dieselbe Bilanz wie Seitenleiste und PDF (Befund
+  // 27.10.2026: vorher nur die erste Seite, keine Differenz).
+  // Welt-verankert → wandert beim Zoomen/Pannen mit dem Bild.
   const correction = computeImplantLLDCorrection(
     cups,
     stems,
     referenceLine,
     factor,
   )
-  const opCorr = correction.perSide.length > 0 ? correction.perSide[0] : null
-  const signCm = (mm: number) =>
-    `${mm >= 0 ? '+' : ''}${(mm / 10).toFixed(2).replace('.', ',')} cm`
-  const signMm = (mm: number) => `${mm >= 0 ? '+' : ''}${mm.toFixed(1)} mm`
-  const balanceLines = opCorr
-    ? [
-        'Korrektur',
-        `Beinlänge: ${signCm(opCorr.mm)}`,
-        `Offset: ${signMm(opCorr.offsetMm)}`,
-      ]
-    : null
+  const balanceLines = korrekturKastenZeilen(findPreopLLD(measurements, factor), correction)
 
   const recipe = activeKind ? getRecipe(activeKind) : undefined
   const nextPrompt =
