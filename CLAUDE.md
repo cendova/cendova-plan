@@ -61,6 +61,11 @@ folgen dem Branch **`stable`** — NICHT main.
   diese Fehlerklasse nicht. Automatik reicht hier prinzipiell nicht.
 - Dependabot bietet Cornerstone-Majors bewusst nicht mehr an
   (`.github/dependabot.yml` ignore) — erst nach Mac-Test wieder freigeben.
+- Sicherheitsbefunde unter Cornerstone (vtk.js → fflate/xmlbuilder2/js-yaml,
+  dicom-image-loader → uuid) sind per `overrides` in `package.json` gelöst
+  (10.2026). Das ausgelieferte Bundle blieb dabei byte-gleich. **Lockdatei
+  nicht neu erzeugen:** npm baut gelöschte Einträge unter einem Override
+  nicht zuverlässig neu auf. Normales `npm install` ist unbedenklich.
 - Bei Decode-Fehlern zeigt die rote Meldung „Technische Ursache: …"
   (echter Loader-Fehler via `assertImageUsableMitUrsache`) — diese Zeile
   beim Anwender erfragen statt zu raten.

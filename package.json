@@ -45,5 +45,14 @@
     "typescript": "^7.0.2",
     "vite": "^8.2.0",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "@kitware/vtk.js": {
+      "fflate": "0.7.5",
+      "xmlbuilder2": "^4.0.3"
+    },
+    "@cornerstonejs/dicom-image-loader": {
+      "uuid": "^11.1.1"
+    }
   }
 }
