@@ -2,6 +2,7 @@
 
 [![Verifikation](https://github.com/cendova/cendova-plan/actions/workflows/verify.yml/badge.svg)](https://github.com/cendova/cendova-plan/actions/workflows/verify.yml)
 [![Demo](https://github.com/cendova/cendova-plan/actions/workflows/pages.yml/badge.svg)](https://cendova.de/cendova-plan/)
+<a href="https://cliniciansthatcode.com/directory/#p-philipp-a-michel"><img src="docs/badges/clinicians-that-code.svg" alt="Clinicians That Code: verified builder" height="20"></a>
 
 Browser-basiertes Planungstool für **Hüft-, Knie- und Schulter-Endoprothetik**
 (DICOM) —
